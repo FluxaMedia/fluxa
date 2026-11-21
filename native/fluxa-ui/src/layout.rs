@@ -1,69 +1,10 @@
 use super::*;
 
-pub(crate) fn discover_grid_geometry(
-    available_width: f32,
-    preferred_card_width: f32,
-    gap: f32,
-) -> (usize, f32) {
-    let available_width = available_width.max(1.0);
-    let gap = gap.max(0.0);
-    let preferred_card_width = preferred_card_width.min(available_width).max(1.0);
-    let columns = ((available_width + gap) / (preferred_card_width + gap))
-        .floor()
-        .max(1.0) as usize;
-    let card_width =
-        (available_width - gap * columns.saturating_sub(1) as f32 - 1.0) / columns as f32;
-    (columns, card_width.max(1.0))
-}
-
 pub(crate) fn mobile_scroll_reserve(viewport: Viewport) -> f32 {
     if viewport.is_compact() {
         crate::navigation::nav_reserve()
     } else {
         0.0
-    }
-}
-
-pub(crate) struct PosterGrid {
-    pub columns: usize,
-    pub card_width: f32,
-    pub poster_height: f32,
-    pub card_height: f32,
-    pub gap: f32,
-    pub row_gap: f32,
-}
-
-impl PosterGrid {
-    pub fn new(width: f32) -> Self {
-        let gap = if crate::vars::px("grid-max-gap") > 0.0 {
-            crate::vars::px("horizontal-spacing").min(crate::vars::px("grid-max-gap"))
-        } else {
-            crate::vars::px("horizontal-spacing")
-        };
-        let across = crate::vars::px("grid-min-columns").max(1.0);
-        let preferred = crate::metrics::theme()
-            .poster_width
-            .min((width - gap * (across - 1.0)) / across);
-        let (columns, card_width) = discover_grid_geometry(width, preferred, gap);
-        let poster_height = crate::metrics::theme().poster_height
-            * (card_width / crate::metrics::theme().poster_width.max(1.0));
-        let card_height = poster_height
-            + crate::vars::px("control-gap") * 2.0
-            + crate::vars::px("screen-card-title-size")
-            + crate::vars::px("screen-card-subtitle-size");
-        Self {
-            columns,
-            card_width,
-            poster_height,
-            card_height,
-            gap,
-            row_gap: crate::vars::px("vertical-spacing") * 1.4,
-        }
-    }
-
-    pub fn height(&self, count: usize) -> f32 {
-        let rows = count.div_ceil(self.columns);
-        rows as f32 * self.card_height + rows.saturating_sub(1) as f32 * self.row_gap
     }
 }
 

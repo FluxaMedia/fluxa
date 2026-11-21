@@ -88,6 +88,7 @@
     },
     {
       "type": "grid",
+      "class": "poster-grid",
       "when": "folder.grid",
       "children": [
         {

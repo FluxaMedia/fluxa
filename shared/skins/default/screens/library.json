@@ -206,6 +206,7 @@
     },
     {
       "type": "grid",
+      "class": "poster-grid",
       "children": [
         {
           "each": "library.cards",

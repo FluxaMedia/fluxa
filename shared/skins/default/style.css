@@ -2596,3 +2596,21 @@
     padding: 16px 22px;
   }
 }
+
+.poster-grid {
+  column-width: 160px;
+  gap: 20px;
+}
+
+@media (size: compact) {
+  .poster-grid {
+    columns: 3;
+    gap: 10px;
+  }
+}
+
+@media (tv) {
+  .poster-grid {
+    column-width: 200px;
+  }
+}

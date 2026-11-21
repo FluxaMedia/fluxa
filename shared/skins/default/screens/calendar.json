@@ -127,6 +127,7 @@
     },
     {
       "type": "grid",
+      "class": "poster-grid",
       "when": "len(calendar.selected) > 0",
       "children": [
         {

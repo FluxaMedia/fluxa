@@ -1927,6 +1927,13 @@
       "since": 1
     },
     {
+      "name": "poster-grid",
+      "element": "grid",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
       "name": "preview-art",
       "element": "image",
       "meaning": "Artwork image of a preview",

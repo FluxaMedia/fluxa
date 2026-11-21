@@ -255,6 +255,13 @@ pub(super) fn parse_patch(rule: &str, value: &Value) -> Result<Patch, String> {
         width: length("width")?,
         width_vw: view("width", "vw"),
         column_width: length("column-width")?,
+        columns: value
+            .get("columns")
+            .and_then(|columns| match columns {
+                Value::String(text) => text.trim().parse::<u32>().ok(),
+                other => other.as_f64().map(|columns| columns as u32),
+            })
+            .filter(|columns| *columns > 0),
         height_vh: view("height", "vh"),
         height: length("height")?,
         weight: value

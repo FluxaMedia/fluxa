@@ -89,6 +89,7 @@
     },
     {
       "type": "grid",
+      "class": "poster-grid",
       "props": {
         "more": "{discover.nextPage}"
       },

@@ -22,7 +22,11 @@ pub(super) fn grid<'a, A: HomeAssets>(
             other => other.as_u64(),
         })
         .filter(|columns| *columns > 0);
-    let column_width = sheet_style(node, env).and_then(|style| style.column_width);
+    let style = sheet_style(node, env);
+    let column_width = style.as_ref().and_then(|style| style.column_width);
+    let columns = columns.or(style
+        .as_ref()
+        .and_then(|style| style.columns.map(u64::from)));
     let (cell, gap) = match (columns, column_width) {
         (None, Some(target)) => {
             let gap = gap_of(node, env).unwrap_or(crate::vars::px("control-gap"));
@@ -39,10 +43,7 @@ pub(super) fn grid<'a, A: HomeAssets>(
                 .max(1.0);
             (cell, gap)
         }
-        (None, None) => {
-            let sizes = crate::layout::PosterGrid::new(inner);
-            (sizes.card_width, sizes.gap)
-        }
+        (None, None) => (inner.floor().max(1.0), crate::vars::px("control-gap")),
     };
     request_more(ui.ctx(), node, row_hint(&node.children, ui.ctx()), env);
     let top_id = Id::new(("skin-grid-top", &node.key));
