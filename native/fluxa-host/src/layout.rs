@@ -1,76 +1,5 @@
 use super::*;
 
-pub(super) fn rebuild_home_ui(
-    ui: &mut UiTree,
-    [width, height]: [u32; 2],
-    home: &HomeModel,
-    safe_bottom: f32,
-) {
-    if ui.node(NODE_PLAY).is_some() {
-        return;
-    }
-    *ui = UiTree::default();
-    let root = ui.root();
-    if let Some(node) = ui.node_mut(root) {
-        node.bounds = fluxa_renderer::Rect {
-            x: 0.0,
-            y: 0.0,
-            width: width as f32,
-            height: height as f32,
-        };
-    }
-    let layout = fluxa_ui::home_layout(
-        Viewport::new(width, height, home.form_factor.into())
-            .with_platform(home.platform)
-            .with_safe_bottom(safe_bottom),
-        home,
-    );
-    for (id, rect) in layout.focusable {
-        let label = match id {
-            NODE_HOME => "Home",
-            NODE_LIBRARY => "Library",
-            NODE_DISCOVER => "Search",
-            NODE_CALENDAR => "Calendar",
-            fluxa_ui::NODE_LIVE_TV => "Live TV",
-            NODE_PROFILE => "Profile",
-            fluxa_ui::NODE_SIDEBAR_SEARCH => "Search",
-            fluxa_ui::NODE_SIDEBAR_DOWNLOADS => "Downloads",
-            fluxa_ui::NODE_UPDATE_OPEN => "Update",
-            NODE_PLAY => "Play",
-            NODE_MORE_INFO => "More info",
-            _ => home
-                .card_at((id - NODE_CARD_BASE) as usize)
-                .map(|card| card.title.as_str())
-                .unwrap_or("Title"),
-        };
-        let _ = ui.add(
-            root,
-            UiNode::new(
-                id,
-                UiNodeKind::Button,
-                fluxa_renderer::Rect {
-                    x: rect.left(),
-                    y: rect.top(),
-                    width: rect.width(),
-                    height: rect.height(),
-                },
-            )
-            .focusable()
-            .label(label),
-        );
-    }
-    // Compose opens Home with the primary action focused only when a real
-    // billboard exists. A loading/empty state must not draw a focus ring over
-    // an unrelated row placeholder.
-    let _ = ui.set_focus(if home.form_factor == UiFormFactorJson::Mobile {
-        None
-    } else if home.item_id.is_some() {
-        Some(NODE_PLAY)
-    } else {
-        Some(NODE_HOME)
-    });
-}
-
 pub(super) fn logical_surface_size(state: &RendererState) -> [u32; 2] {
     [
         (state.size[0] as f32 / state.scale()).round().max(1.0) as u32,
@@ -96,16 +25,7 @@ pub(super) fn rebuild_current_ui(state: &mut RendererState) {
         // This path only runs when an input event has invalidated the
         // accessibility tree; the normal frame path borrows the layout.
         rebuild_ui_from_layout(state, &layout, size);
-        return;
     }
-    if state.route != Route::Home
-        || state.player_full()
-        || state.profiles.is_some()
-        || state.welcome.is_some()
-    {
-        return;
-    }
-    rebuild_home_ui(&mut state.ui, size, &state.home, state.safe_bottom);
 }
 
 pub(super) fn label_for_node(state: &RendererState, node: u64) -> String {
@@ -606,14 +526,11 @@ pub(super) fn ensure_focused_visible(state: &mut RendererState) {
         return;
     }
     let top_inset = if viewport.is_tv() && matches!(state.route, Route::Home | Route::Detail) {
-        fluxa_ui::nav_bar_bottom(viewport) + 12.0
+        fluxa_ui::nav_bar_bottom() + 12.0
     } else {
         12.0
     };
     let bottom_inset = 12.0 + viewport.safe_bottom;
-    let pinned_rows = (state.route == Route::Home)
-        .then(|| fluxa_ui::home_pinned_rows(viewport, &state.home))
-        .flatten();
     let visible_top = top_inset;
     let visible_bottom = (viewport.height - bottom_inset).max(visible_top + 1.0);
     let pending_y = state.gpu.as_ref().map_or(0.0, |gpu| {
@@ -627,17 +544,7 @@ pub(super) fn ensure_focused_visible(state: &mut RendererState) {
     };
     let node_top = node.bounds.y - pending_y - grow;
     let node_bottom = node.bounds.y + node.bounds.height - pending_y + grow;
-    let delta = if let Some((rows_top, heading)) = pinned_rows
-        && focused >= NODE_CARD_BASE
-    {
-        let scale = if viewport.is_tv() {
-            fluxa_ui::metric("focused-scale")
-        } else {
-            1.0
-        };
-        let card_top = (node_top + grow) + node.bounds.height * (1.0 - 1.0 / scale) * 0.5;
-        card_top - heading - rows_top
-    } else if node_top < visible_top {
+    let delta = if node_top < visible_top {
         node_top - visible_top
     } else if node_bottom > visible_bottom {
         node_bottom - visible_bottom

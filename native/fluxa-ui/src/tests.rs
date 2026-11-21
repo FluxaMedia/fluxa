@@ -235,37 +235,6 @@ fn continue_rows_prefer_core_formatted_episode_label() {
 }
 
 #[test]
-fn home_scroll_moves_cards() {
-    let mut home = HomeModel::default_empty();
-    home.show_hero_section = false;
-    home.rows = vec![HomeRow {
-        id: Some("popular".to_owned()),
-        title: "Popular".to_owned(),
-        type_label: None,
-        cards: vec![HomeCard {
-            title: "Example".to_owned(),
-            ..Default::default()
-        }],
-        kind: HomeRowKind::Poster,
-        can_load_more: false,
-        catalog_page: None,
-    }];
-    let viewport = Viewport::new(390, 844, UiFormFactor::Mobile);
-    let at_top = home_layout(viewport, &home);
-    home.scroll_offset = 40.0;
-    let scrolled = home_layout(viewport, &home);
-    let card_y = |layout: &HomeLayout| {
-        layout
-            .focusable
-            .iter()
-            .find(|(id, _)| *id == NODE_CARD_BASE)
-            .map(|(_, rect)| rect.top())
-            .expect("first home card should be focusable")
-    };
-    assert!((card_y(&at_top) - card_y(&scrolled) - 40.0).abs() < 0.01);
-}
-
-#[test]
 fn home_model_keeps_all_loaded_catalog_cards_and_pagination_metadata() {
     let items = (0..24)
         .map(|index| {
@@ -304,40 +273,6 @@ fn mobile_continue_cards_leave_the_next_card_peeking() {
     let content = 390.0 - crate::vars::px("page-padding") * 2.0;
     assert!(width > content * 0.5 && width < content);
     assert!((height - width * crate::vars::px("horizontal-card-height-ratio")).abs() < 0.01);
-}
-
-#[test]
-fn narrow_desktop_window_centers_hero_like_a_phone() {
-    let mut home = HomeModel::default();
-    home.item_id = Some("tt42".to_owned());
-    let play_rect = |viewport: Viewport| {
-        home_layout(viewport, &home)
-            .focusable
-            .into_iter()
-            .find(|(id, _)| *id == NODE_PLAY)
-            .map(|(_, rect)| rect)
-            .unwrap()
-    };
-
-    let narrow = Viewport::new(430, 932, UiFormFactor::Desktop);
-    assert!((play_rect(narrow).center().x - narrow.width * 0.5).abs() < 0.01);
-
-    let wide = Viewport::new(1280, 800, UiFormFactor::Mobile);
-    assert!(play_rect(wide).center().x < wide.width * 0.5);
-}
-
-#[test]
-fn mobile_hero_centers_play() {
-    let mut home = HomeModel::default();
-    home.item_id = Some("tt42".to_owned());
-    let viewport = Viewport::new(390, 844, UiFormFactor::Mobile);
-    let play = home_layout(viewport, &home)
-        .focusable
-        .into_iter()
-        .find(|(id, _)| *id == NODE_PLAY)
-        .map(|(_, rect)| rect)
-        .expect("mobile hero should expose its Play action");
-    assert!((play.center().x - viewport.width * 0.5).abs() < 0.01);
 }
 
 #[test]
@@ -643,28 +578,6 @@ fn tv_never_falls_back_to_the_phone_layout() {
     assert!(!tv.is_compact());
     assert!(!tv.is_phone());
     assert_eq!(tv.size_class(), SizeClass::Expanded);
-    let bar = nav_bar_rect(tv).expect("top bar");
-    assert!(
-        bar.top() < tv.height * 0.25,
-        "TV nav sits at the top: {bar:?}"
-    );
-}
-
-#[test]
-fn tablets_use_the_top_bar_and_only_phones_get_the_bottom_bar() {
-    let _guard = screens();
-    let phone = Viewport::new(430, 932, UiFormFactor::Mobile);
-    assert!(phone.is_phone());
-    assert!(nav_bar_rect(phone).is_none());
-    for width in [700, 1000] {
-        let tablet = Viewport::new(width, 1024, UiFormFactor::Mobile);
-        assert!(tablet.is_tablet() && !tablet.is_phone());
-        let bar = nav_bar_rect(tablet).expect("top bar");
-        assert!(
-            bar.top() < tablet.height * 0.25,
-            "{width}dp tablet: {bar:?}"
-        );
-    }
 }
 
 #[test]

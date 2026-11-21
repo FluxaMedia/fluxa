@@ -175,11 +175,6 @@
   --collection-wide-height: 158px;
   --collection-square-size: 150px;
   --screen-margin: 24px;
-  --nav-bar-top: 14px;
-  --nav-item-height: 44px;
-  --nav-bar-padding: 6px;
-  --nav-pill-gap: 2px;
-  --nav-avatar-radius: 15px;
   --control-cue-wrap-ratio: 0.8;
   --control-subtitle-wrap-ratio: 0.6;
   --control-subtitle-bottom-ratio: 0.06;
@@ -224,8 +219,6 @@
   --navigation-icon: 26px;
   --grid-min-columns: 1;
   --grid-max-gap: 0px;
-  --nav-vertical-padding: 16px;
-  --nav-item-gap: 12px;
   --nav-label-size: 15px;
   --screen-title-size: 34px;
   --screen-body-size: 15px;
@@ -282,8 +275,6 @@
     --row-heading-size: 20px;
     --grid-min-columns: 3;
     --grid-max-gap: 10px;
-    --nav-vertical-padding: 10px;
-    --nav-item-gap: 6px;
     --nav-label-size: 13px;
     --screen-title-size: 32px;
     --screen-card-title-size: 15px;
@@ -312,8 +303,6 @@
   :root {
     --page-padding: 28px;
     --row-heading-size: 22px;
-    --nav-vertical-padding: 12px;
-    --nav-item-gap: 8px;
     --nav-label-size: 14px;
     --catalog-title-size: 26px;
     --horizontal-spacing: 16px;

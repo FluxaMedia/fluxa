@@ -1,11 +1,8 @@
 use super::*;
 
-mod category_bar;
-mod hero;
 mod layout;
 mod metrics;
 mod rows;
-use category_bar::category_bar_space;
 pub use layout::*;
 pub use metrics::*;
 pub use rows::{ExpandedPoster, expanded_poster, previewed_poster, set_episode_details};

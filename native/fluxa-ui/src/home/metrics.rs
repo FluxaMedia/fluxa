@@ -88,25 +88,6 @@ pub(crate) fn home_collection_card_dimensions(card: &HomeCard) -> (f32, f32) {
     (width, height)
 }
 
-pub(crate) fn home_card_dimensions(card: &HomeCard, kind: HomeRowKind) -> (f32, f32) {
-    if kind == HomeRowKind::Collection {
-        return home_collection_card_dimensions(card);
-    }
-    let (width, height, _) = home_row_dimensions(kind);
-    if kind != HomeRowKind::Poster || card.is_landscape() {
-        return (width, height);
-    }
-    match card.poster_shape.as_deref() {
-        Some("landscape") => (height * 16.0 / 9.0, height),
-        Some("square") => (height, height),
-        _ => (width, height),
-    }
-}
-
-pub(crate) fn home_card_lead(title: &str, kind: HomeRowKind, index: usize, height: f32) -> f32 {
-    poster_overlay::lead_width(height, poster_overlay::rank_for(title, kind, index))
-}
-
 pub(crate) fn home_row_body_height(cards: &[HomeCard], kind: HomeRowKind) -> f32 {
     if kind != HomeRowKind::Collection {
         return home_row_dimensions(kind).2;
@@ -178,42 +159,6 @@ pub fn home_pinned_rows(viewport: Viewport, home: &HomeModel) -> Option<(f32, f3
             home_row_heading_height(),
         )
     })
-}
-
-/// The first shelf starts after the complete hero viewport, not after an
-/// estimate of where the hero buttons happen to land. This keeps the hero
-/// controls and the shelf heading in separate visual blocks on every size.
-pub(crate) struct HomeFlow {
-    pub hero_top: f32,
-    pub rows_top: f32,
-}
-
-pub(crate) fn home_flow(viewport: Viewport, home: &HomeModel) -> HomeFlow {
-    let hero_height = home_hero_height_for(viewport, home);
-    let lead = if home_hero_pinned(viewport, home) {
-        0.0
-    } else {
-        home.top_inset
-    } + super::category_bar_space(viewport, home);
-    let mut column = crate::flow::Column::from(0.0);
-    column.place(lead);
-    let hero_top = column.place(home_row_start(viewport, hero_height, home_shows_hero(home)));
-    HomeFlow {
-        hero_top,
-        rows_top: column.end(),
-    }
-}
-
-pub(crate) fn home_nav_viewport(viewport: Viewport, home: &HomeModel) -> Viewport {
-    if viewport.is_compact() {
-        return viewport;
-    }
-    let scrolled = if home_hero_pinned(viewport, home) {
-        0.0
-    } else {
-        home.scroll_offset
-    };
-    viewport.with_nav_lead(home.top_inset - scrolled)
 }
 
 pub(crate) struct Shelf<'a> {

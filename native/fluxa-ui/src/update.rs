@@ -50,10 +50,6 @@ pub(crate) fn nav_status() -> Option<Status<'static>> {
     })
 }
 
-pub(crate) fn badge_rect(avatar: Pos2, radius: f32) -> Rect {
-    crate::gfx::square_around(avatar + Vec2::new(radius * 0.85, -radius * 0.85), 30.0)
-}
-
 pub(crate) fn update_data() -> serde_json::Value {
     match nav_status() {
         Some(status) => serde_json::json!({

@@ -1,5 +1,4 @@
 use super::*;
-use std::sync::Mutex;
 use std::sync::atomic::{AtomicU8, AtomicU32, Ordering};
 
 static TOP_LABELS: AtomicU8 = AtomicU8::new(0);
@@ -18,38 +17,15 @@ pub(crate) fn top_label_t() -> f32 {
     f32::from_bits(TOP_T.load(Ordering::Relaxed))
 }
 
-static DRAWN_PROFILE: Mutex<String> = Mutex::new(String::new());
+static NAV_BOTTOM: AtomicU32 = AtomicU32::new(0);
 
-pub(crate) fn drawn_profile() -> String {
-    match DRAWN_PROFILE.lock() {
-        Ok(name) if !name.is_empty() => name.clone(),
-        _ => "Profile".to_owned(),
-    }
+pub(crate) fn set_nav_bottom(bottom: f32) {
+    NAV_BOTTOM.store(bottom.to_bits(), Ordering::Relaxed);
 }
 
-pub(crate) fn nav_bar_top() -> f32 {
-    crate::vars::px("nav-bar-top")
+pub fn nav_bar_bottom() -> f32 {
+    f32::from_bits(NAV_BOTTOM.load(Ordering::Relaxed))
 }
-pub(crate) fn nav_item_height() -> f32 {
-    crate::vars::px("nav-item-height")
-}
-pub(crate) fn nav_bar_padding() -> f32 {
-    crate::vars::px("nav-bar-padding")
-}
-
-pub fn nav_bar_bottom(viewport: Viewport) -> f32 {
-    if viewport.side_inset > 0.0 {
-        return 0.0;
-    }
-    nav_bar_top() + viewport.nav_lead + nav_item_height() + nav_bar_padding() * 2.0
-}
-pub(crate) fn nav_pill_gap() -> f32 {
-    crate::vars::px("nav-item-gap")
-}
-pub(crate) fn nav_avatar_radius() -> f32 {
-    crate::vars::px("nav-avatar-radius")
-}
-
 pub(crate) fn estimated_navigation_text_width(text: &str, size: f32) -> f32 {
     text.chars()
         .map(|character| match character {
@@ -74,8 +50,6 @@ pub fn set_nav_language(language: &str) {
 }
 
 const NAV_KEYS: [&str; 3] = ["home", "discover", "library"];
-pub(crate) const NAV_ITEM_NODES: [u64; 3] = [NODE_HOME, NODE_DISCOVER, NODE_LIBRARY];
-
 pub(crate) fn nav_text(key: &str) -> String {
     let language = NAV_LANGUAGE.read().map(|l| l.clone()).unwrap_or_default();
     localized(key, &language)
@@ -125,14 +99,6 @@ pub fn nav_data(active: &str) -> serde_json::Value {
     })
 }
 
-pub(crate) fn nav_nodes() -> Vec<u64> {
-    nav_entries()
-        .iter()
-        .map(|(index, _)| NAV_ITEM_NODES[*index])
-        .chain([NODE_PROFILE])
-        .collect()
-}
-
 static NAV_RESERVE: AtomicU32 = AtomicU32::new(0);
 
 pub(crate) fn set_nav_reserve(height: f32) {
@@ -141,13 +107,6 @@ pub(crate) fn set_nav_reserve(height: f32) {
 
 pub(crate) fn nav_reserve() -> f32 {
     f32::from_bits(NAV_RESERVE.load(Ordering::Relaxed))
-}
-
-pub fn navigation_focus_rects(viewport: Viewport) -> Vec<(u64, Rect)> {
-    if viewport.side_inset > 0.0 {
-        return crate::sidebar::item_rects(viewport);
-    }
-    crate::navbar::focus_rects(viewport)
 }
 
 pub fn is_navigation_node(node: u64) -> bool {

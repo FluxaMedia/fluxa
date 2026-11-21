@@ -114,6 +114,7 @@ pub(super) fn boxed<'a, A: HomeAssets>(
             ui.ctx()
                 .data_mut(|data| data.insert_temp(Id::new(("skin-group", group)), rect));
             if group == "navbar" {
+                crate::navigation::set_nav_bottom(rect.bottom());
                 crate::navigation::set_nav_reserve(
                     (ui.ctx().content_rect().bottom() - rect.top()).max(0.0),
                 );

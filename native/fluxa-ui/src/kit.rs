@@ -4,10 +4,7 @@ use crate::gfx::{Align, Layout, Response, Ui, UiBuilder};
 mod dialog;
 mod image;
 mod items;
-mod lattice;
 mod page;
-mod part;
-mod solve;
 mod view;
 pub(crate) use image::fit_inside;
 pub(crate) use items::{
@@ -17,7 +14,6 @@ pub(crate) mod layout_items {
     pub(crate) use super::items::{column, fill, gap, row, space, stack};
 }
 pub(crate) use page::{overlay_body, screen_body, scroll_state};
-pub(crate) use solve::{Flow, Slot, solve};
 pub(crate) use view::view;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

@@ -491,14 +491,6 @@ mod tests {
     }
 
     #[test]
-    fn home_exposes_nav_tabs_with_one_selected() {
-        let tree = tree();
-        let tabs: Vec<_> = tree.nodes.iter().filter(|n| n.role == Role::Tab).collect();
-        assert!(!tabs.is_empty());
-        assert_eq!(tabs.iter().filter(|n| n.selected).count(), 1);
-    }
-
-    #[test]
     fn every_node_has_a_label_and_visible_bounds() {
         for node in tree().nodes {
             assert!(!node.label.is_empty(), "node {} has no label", node.id);
