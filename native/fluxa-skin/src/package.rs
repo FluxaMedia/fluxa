@@ -13,19 +13,17 @@ const SKIN_LIMIT: usize = 32;
 fn framed(content: Node) -> Node {
     let frame = serde_json::json!({
         "type": "column",
-        "class": "screen",
-        "gap": 16,
-        "align": "stretch",
+        "class": "screen gap16-items-stretch",
         "children": [
             {"type": "spacer", "class": "spacer-h72"},
-            {"type": "page", "gap": 12},
+            {"type": "page", "class": "gap12"},
             {
                 "type": "fixed",
                 "children": [
-                    {"include": "navbar", "form": ["desktop", "tv"]},
+                    {"include": "navbar", "class": "wide-only"},
                     {
                         "type": "column",
-                        "class": "column-w100vw-h100vh-pad0-0-16-0-items-center-justify-end only-mobile",
+                        "class": "column-w100vw-h100vh-pad0-0-16-0-items-center-justify-end compact-only",
                         "children": [{"include": "navbar"}]
                     }
                 ]

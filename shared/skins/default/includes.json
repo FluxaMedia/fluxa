@@ -1894,7 +1894,7 @@
     "children": [
       {
         "type": "column",
-        "class": "select only-desktop-tv",
+        "class": "select wide-only",
         "width": "{width}",
         "props": {
           "popover": "{key}"
@@ -1973,7 +1973,7 @@
       },
       {
         "type": "column",
-        "class": "select only-mobile",
+        "class": "select compact-only",
         "width": "{width}",
         "action": {
           "name": "setting_menu",
@@ -2021,7 +2021,7 @@
     "children": [
       {
         "type": "column",
-        "class": "select only-desktop-tv",
+        "class": "select wide-only",
         "width": "{width}",
         "props": {
           "popover": "{key}"
@@ -2100,7 +2100,7 @@
       },
       {
         "type": "column",
-        "class": "select only-mobile",
+        "class": "select compact-only",
         "width": "{width}",
         "action": {
           "name": "filter_menu",
@@ -2413,8 +2413,6 @@
             "as": "tracker",
             "template": {
               "type": "column",
-              "gap": 6,
-              "align": "stretch",
               "children": [
                 {
                   "type": "text",
@@ -2429,34 +2427,70 @@
                 },
                 {
                   "type": "row",
-                  "class": "setting-row",
-                  "padding": "0 18",
-                  "action": { "name": "ext_tracker", "args": { "id": "{tracker.extension}", "op": "auth" } },
+                  "class": "setting-row pad0-18",
+                  "action": {
+                    "name": "ext_tracker",
+                    "args": {
+                      "id": "{tracker.extension}",
+                      "op": "auth"
+                    }
+                  },
                   "children": [
-                    { "type": "text", "class": "setting-label", "i18n": "skins.tracker_connect" }
+                    {
+                      "type": "text",
+                      "class": "setting-label",
+                      "i18n": "skins.tracker_connect"
+                    }
                   ]
                 },
                 {
                   "type": "row",
-                  "class": "setting-row",
-                  "padding": "0 18",
-                  "action": { "name": "ext_tracker", "args": { "id": "{tracker.extension}", "op": "watched" } },
+                  "class": "setting-row pad0-18",
+                  "action": {
+                    "name": "ext_tracker",
+                    "args": {
+                      "id": "{tracker.extension}",
+                      "op": "watched"
+                    }
+                  },
                   "children": [
-                    { "type": "text", "class": "setting-label", "i18n": "skins.tracker_watched" },
-                    { "type": "text", "class": "setting-hint", "text": "{tracker.watched}" }
+                    {
+                      "type": "text",
+                      "class": "setting-label",
+                      "i18n": "skins.tracker_watched"
+                    },
+                    {
+                      "type": "text",
+                      "class": "setting-hint",
+                      "text": "{tracker.watched}"
+                    }
                   ]
                 },
                 {
                   "type": "row",
-                  "class": "setting-row",
-                  "padding": "0 18",
-                  "action": { "name": "ext_tracker", "args": { "id": "{tracker.extension}", "op": "library" } },
+                  "class": "setting-row pad0-18",
+                  "action": {
+                    "name": "ext_tracker",
+                    "args": {
+                      "id": "{tracker.extension}",
+                      "op": "library"
+                    }
+                  },
                   "children": [
-                    { "type": "text", "class": "setting-label", "i18n": "skins.tracker_library" },
-                    { "type": "text", "class": "setting-hint", "text": "{tracker.library}" }
+                    {
+                      "type": "text",
+                      "class": "setting-label",
+                      "i18n": "skins.tracker_library"
+                    },
+                    {
+                      "type": "text",
+                      "class": "setting-hint",
+                      "text": "{tracker.library}"
+                    }
                   ]
                 }
-              ]
+              ],
+              "class": "column-gap6-items-stretch"
             }
           },
           {
@@ -2464,8 +2498,6 @@
             "as": "extension",
             "template": {
               "type": "column",
-              "gap": 8,
-              "align": "stretch",
               "children": [
                 {
                   "type": "text",
@@ -2477,7 +2509,6 @@
                   "as": "setting",
                   "template": {
                     "type": "column",
-                    "gap": 6,
                     "children": [
                       {
                         "type": "text",
@@ -2495,8 +2526,7 @@
                         "as": "choice",
                         "template": {
                           "type": "row",
-                          "class": "setting-row",
-                          "padding": "0 18",
+                          "class": "setting-row pad0-18",
                           "action": {
                             "name": "ext_setting",
                             "args": {
@@ -2514,10 +2544,12 @@
                           ]
                         }
                       }
-                    ]
+                    ],
+                    "class": "gap6"
                   }
                 }
-              ]
+              ],
+              "class": "column-gap8-items-stretch"
             }
           },
           {
