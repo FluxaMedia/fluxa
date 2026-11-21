@@ -86,3 +86,13 @@ pub(super) fn set_setting(extension: &fluxa_skin::Extension, key: &str, value: V
     save("settings", &extension.id, saved);
     true
 }
+
+#[cfg(test)]
+pub(super) fn forget(id: &str) {
+    if let Some(file) = path("storage", id) {
+        let _ = std::fs::remove_file(file);
+    }
+    if let Ok(mut cache) = CACHE.lock() {
+        cache.remove(&format!("storage/{id}"));
+    }
+}

@@ -21,6 +21,7 @@ static SCRIPTS: LazyLock<Mutex<Vec<fluxa_skin::Script>>> = LazyLock::new(Default
 static APP: LazyLock<Mutex<Value>> = LazyLock::new(|| Mutex::new(json!({})));
 static REQUESTS: LazyLock<Mutex<Vec<Request>>> = LazyLock::new(Default::default);
 static REPORTED: LazyLock<Mutex<f64>> = LazyLock::new(Default::default);
+static TRACKER_RESULTS: LazyLock<Mutex<HashMap<String, Value>>> = LazyLock::new(Default::default);
 static VERSION: AtomicU64 = AtomicU64::new(0);
 
 #[derive(Clone, Debug, PartialEq)]
@@ -56,7 +57,7 @@ fn choices(setting: &fluxa_skin::Setting) -> Vec<Value> {
         .collect()
 }
 
-pub(super) fn app() -> Value {
+pub(crate) fn app() -> Value {
     let mut app = APP.lock().map_or(json!({}), |app| app.clone());
     let scripts = SCRIPTS
         .lock()
@@ -88,11 +89,24 @@ pub(super) fn app() -> Value {
             json!({"name": extension.name, "settings": settings}),
         );
         if tracker_script(extension) {
+            let results = TRACKER_RESULTS
+                .lock()
+                .map(|all| {
+                    TRACKER_METHODS
+                        .iter()
+                        .filter_map(|method| {
+                            let found = all.get(&format!("{}/{method}", extension.id))?;
+                            Some(((*method).to_owned(), found.clone()))
+                        })
+                        .collect::<serde_json::Map<String, Value>>()
+                })
+                .unwrap_or_default();
             for entry in &extension.contributes.trackers {
                 trackers.push(json!({
                     "extension": extension.id,
                     "id": entry.id,
                     "title": entry.title,
+                    "results": results,
                 }));
             }
         }
@@ -169,6 +183,14 @@ fn commit(extension: &Extension, outcome: &SkinOutcome) {
             );
         }
     }
+}
+
+#[cfg(test)]
+pub(crate) static SERIAL: Mutex<()> = Mutex::new(());
+
+#[cfg(test)]
+pub(crate) fn enqueue(request: Request) {
+    REQUESTS.lock().unwrap().push(request);
 }
 
 pub(crate) fn take_requests() -> Vec<Request> {
@@ -266,6 +288,18 @@ pub(crate) fn act(id: &str, method: &str, args: Value) {
     let _ = std::thread::Builder::new()
         .name(format!("fluxa-skin-action-{id}"))
         .spawn(move || {
+            if let Some(op) = method.strip_prefix("tracker.") {
+                let key = format!("{}/{op}", script.extension.id);
+                let found = match tracker_call(&script.extension.id, op, vec![args]) {
+                    Ok(value) => json!({"ok": true, "value": value}),
+                    Err(error) => json!({"ok": false, "error": error}),
+                };
+                if let Ok(mut all) = TRACKER_RESULTS.lock() {
+                    all.insert(key, found);
+                }
+                bump();
+                return;
+            }
             if method == "setting" {
                 change_setting(&script, &args);
                 return;
@@ -470,7 +504,7 @@ pub(super) fn start(skin: &Skin) {
 mod tests {
     use super::*;
 
-    static SERIAL: Mutex<()> = Mutex::new(());
+    use super::SERIAL;
 
     fn wait(until: &dyn Fn() -> bool) {
         let deadline = std::time::Instant::now() + Duration::from_secs(10);
@@ -632,6 +666,8 @@ mod tests {
     fn app_events_reach_listening_scripts() {
         let _serial = SERIAL.lock().unwrap_or_else(|held| held.into_inner());
         sync(json!({}));
+        data_dir();
+        store::forget("listener");
         launch(
             "listener",
             json!({
@@ -869,5 +905,64 @@ mod tests {
         act(&id, &method, args);
         wait(&|| snapshot()["page-prefs"]["mode"] == "b");
         assert_eq!(snapshot()["page-prefs"]["mode"], "b");
+    }
+
+    #[test]
+    fn tracker_buttons_run_methods_and_show_the_outcome() {
+        let _serial = SERIAL.lock().unwrap_or_else(|held| held.into_inner());
+        launch(
+            "tracker-page",
+            json!({
+                "permissions": ["provider.tracker"],
+                "contributes": {"trackers": [{"id": "probe", "title": "Probe"}]}
+            }),
+            r#"class Provider {
+                constructor() {
+                    this.tracker = {
+                        auth: async () => ({ connected: true }),
+                        watched: async () => [{ id: "a" }, { id: "b" }],
+                        library: async () => { throw new Error("offline"); },
+                    };
+                }
+                async data() { return {}; }
+            }"#,
+        );
+        let press = |op: &str| {
+            let args = [
+                ("id".to_owned(), json!("tracker-page")),
+                ("op".to_owned(), json!(op)),
+            ]
+            .into_iter()
+            .collect();
+            remember(SkinFrame {
+                targets: vec![(
+                    40_000_200,
+                    SkinTarget::Action(Arc::new(fluxa_skin::ResolvedAction {
+                        name: "ext_tracker".to_owned(),
+                        args,
+                    })),
+                )],
+                layout: HomeLayout::default(),
+            });
+            let Some(Local::Script(id, method, args)) = local_for_node(40_000_200) else {
+                panic!("ext_tracker did not route to a script");
+            };
+            act(&id, &method, args);
+        };
+        let listed = || manager_data("en_us")["trackers"][0].clone();
+        press("auth");
+        wait(&|| listed()["status"] != "");
+        assert_eq!(listed()["status"], "Connected");
+        press("watched");
+        wait(&|| listed()["watched"] == 2);
+        assert_eq!(listed()["watched"], 2);
+        press("library");
+        wait(&|| app()["trackers"][0]["results"]["library"]["ok"] == false);
+        assert!(
+            app()["trackers"][0]["results"]["library"]["error"]
+                .as_str()
+                .unwrap()
+                .contains("offline")
+        );
     }
 }

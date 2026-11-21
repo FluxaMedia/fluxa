@@ -3938,6 +3938,13 @@
   "skins.custom_reset": "CSS'i sıfırla",
   "skins.css_placeholder": "/* örnek */\n.btn-primary { background: #ff6a3d; }",
   "skins.scripts_note": "Betik çalıştırır ve şu adreslerle iletişim kurabilir:",
+  "skins.on": "Açık",
+  "skins.off": "Kapalı",
+  "skins.tracker_connect": "Bağlan",
+  "skins.tracker_watched": "İzlenenleri getir",
+  "skins.tracker_library": "Kütüphaneyi getir",
+  "skins.tracker_connected": "Bağlandı",
+  "skins.tracker_failed": "Başarısız:",
   "skins.allow_scripts": "Betiklere izin ver",
   "skins.revoke_scripts": "Betikleri engelle"
 }

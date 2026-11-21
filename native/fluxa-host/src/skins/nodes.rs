@@ -68,6 +68,11 @@ pub(crate) fn local_for_node(node: u64) -> Option<Local> {
             "setting".to_owned(),
             json!({"key": text(action, "key")?, "value": action.args.get("value")?}),
         )),
+        "ext_tracker" => Some(Local::Script(
+            text(action, "id")?,
+            format!("tracker.{}", text(action, "op")?),
+            json!({}),
+        )),
         "page" => Some(Local::Page(text(action, "name")?)),
         "node" => Some(Local::Node(
             text(action, "id")?.parse().ok()?,

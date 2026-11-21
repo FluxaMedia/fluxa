@@ -2457,6 +2457,57 @@
             "text": "{prefs.skins.message}"
           },
           {
+            "each": "prefs.skins.trackers",
+            "as": "tracker",
+            "template": {
+              "type": "column",
+              "gap": 6,
+              "align": "stretch",
+              "children": [
+                {
+                  "type": "text",
+                  "class": "page-title",
+                  "text": "{tracker.title}"
+                },
+                {
+                  "type": "text",
+                  "when": "tracker.status",
+                  "class": "setting-hint",
+                  "text": "{tracker.status}"
+                },
+                {
+                  "type": "row",
+                  "class": "setting-row",
+                  "padding": "0 18",
+                  "action": { "name": "ext_tracker", "args": { "id": "{tracker.extension}", "op": "auth" } },
+                  "children": [
+                    { "type": "text", "class": "setting-label", "i18n": "skins.tracker_connect" }
+                  ]
+                },
+                {
+                  "type": "row",
+                  "class": "setting-row",
+                  "padding": "0 18",
+                  "action": { "name": "ext_tracker", "args": { "id": "{tracker.extension}", "op": "watched" } },
+                  "children": [
+                    { "type": "text", "class": "setting-label", "i18n": "skins.tracker_watched" },
+                    { "type": "text", "class": "setting-hint", "text": "{tracker.watched}" }
+                  ]
+                },
+                {
+                  "type": "row",
+                  "class": "setting-row",
+                  "padding": "0 18",
+                  "action": { "name": "ext_tracker", "args": { "id": "{tracker.extension}", "op": "library" } },
+                  "children": [
+                    { "type": "text", "class": "setting-label", "i18n": "skins.tracker_library" },
+                    { "type": "text", "class": "setting-hint", "text": "{tracker.library}" }
+                  ]
+                }
+              ]
+            }
+          },
+          {
             "each": "prefs.skins.extensions",
             "as": "extension",
             "template": {

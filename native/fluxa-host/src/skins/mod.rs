@@ -25,6 +25,8 @@ pub(crate) use self::ext::{
     Request as ScriptRequest, act as script_act, sync as script_sync,
     take_requests as script_requests, tracker_call, trackers,
 };
+#[cfg(test)]
+pub(crate) use self::ext::{SERIAL as SCRIPT_SERIAL, app as script_app, enqueue as script_enqueue};
 pub(crate) use self::fingerprint::Extra;
 use self::fingerprint::*;
 use self::install::*;

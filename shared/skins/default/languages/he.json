@@ -3938,6 +3938,13 @@
   "skins.custom_reset": "איפוס CSS",
   "skins.css_placeholder": "/* דוגמה */\n.btn-primary { background: #ff6a3d; }",
   "skins.scripts_note": "מריץ סקריפטים ויכול ליצור קשר עם:",
+  "skins.on": "פעיל",
+  "skins.off": "כבוי",
+  "skins.tracker_connect": "התחברות",
+  "skins.tracker_watched": "טען נצפו",
+  "skins.tracker_library": "טען ספרייה",
+  "skins.tracker_connected": "מחובר",
+  "skins.tracker_failed": "נכשל:",
   "skins.allow_scripts": "אפשר סקריפטים",
   "skins.revoke_scripts": "חסום סקריפטים"
 }

@@ -173,6 +173,10 @@
       "op",
       "id"
     ],
+    "ext_tracker": [
+      "id",
+      "op"
+    ],
     "ext_setting": [
       "id",
       "key",

@@ -250,6 +250,7 @@ pub(super) fn manager_data(language: &str) -> Value {
     } else {
         active
     };
+    let app = ext::app();
     let manager = MANAGER.lock();
     let Ok(manager) = manager else {
         return Value::Null;
@@ -272,7 +273,32 @@ pub(super) fn manager_data(language: &str) -> Value {
             "allowed": manager.allowed.contains(id),
         })
     }));
-    let extensions: Vec<Value> = ext::app()["extensions"]
+    let trackers: Vec<Value> = app["trackers"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .map(|tracker| {
+            let auth = &tracker["results"]["auth"];
+            let status = if auth["ok"] == true {
+                fluxa_ui::localized("skins.tracker_connected", language).to_owned()
+            } else if let Some(error) = auth["error"].as_str() {
+                format!(
+                    "{} {error}",
+                    fluxa_ui::localized("skins.tracker_failed", language)
+                )
+            } else {
+                String::new()
+            };
+            json!({
+                "extension": tracker["extension"],
+                "title": tracker["title"],
+                "status": status,
+                "watched": tracker["results"]["watched"]["value"].as_array().map_or(0, Vec::len),
+                "library": tracker["results"]["library"]["value"].as_array().map_or(0, Vec::len),
+            })
+        })
+        .collect();
+    let extensions: Vec<Value> = app["extensions"]
         .as_object()
         .map(|map| {
             map.iter()
@@ -280,13 +306,23 @@ pub(super) fn manager_data(language: &str) -> Value {
                     extension["settings"].as_array().is_some_and(|list| !list.is_empty())
                 })
                 .map(|(id, extension)| {
-                    json!({"id": id, "name": extension["name"], "settings": extension["settings"]})
+                    let mut settings = extension["settings"].clone();
+                    for setting in settings.as_array_mut().into_iter().flatten() {
+                        if setting["kind"] == "toggle" {
+                            setting["choices"] = json!([
+                                {"value": "true", "label": fluxa_ui::localized("skins.on", language)},
+                                {"value": "false", "label": fluxa_ui::localized("skins.off", language)},
+                            ]);
+                        }
+                    }
+                    json!({"id": id, "name": extension["name"], "settings": settings})
                 })
                 .collect()
         })
         .unwrap_or_default();
     json!({
         "extensions": extensions,
+        "trackers": trackers,
         "items": items,
         "message": manager.message,
         "busy": manager.busy,
