@@ -483,4 +483,24 @@ mod tests {
         assert_eq!(skin.scripts()[0].extension.network_hosts, ["example.com"]);
         assert_eq!(skin.manifest.name, "Solo");
     }
+
+    #[test]
+    fn one_file_example_loads_with_its_page_and_script() {
+        let css = include_str!("../../../shared/skins/examples/one-file/one-file.css");
+        let script = include_str!("../../../shared/skins/examples/one-file/notes.js");
+        let (id, files) = files_from_css(css, Some("http://127.0.0.1/one-file.css"), &|url| {
+            assert!(url.ends_with("notes.js"));
+            Ok(script.to_owned())
+        })
+        .unwrap();
+        assert_eq!(id, "one-file");
+        let borrowed: Vec<_> = files
+            .iter()
+            .map(|(name, text)| (name.as_str(), text.as_str()))
+            .collect();
+        let skin = crate::load_embedded(&borrowed).unwrap();
+        assert_eq!(skin.manifest.nav[0].page, "notes");
+        assert_eq!(skin.scripts()[0].extension.id, "notes");
+        assert!(skin.replaces("page.notes"));
+    }
 }
