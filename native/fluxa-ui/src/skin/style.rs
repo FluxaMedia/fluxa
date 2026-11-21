@@ -195,6 +195,110 @@ pub(super) fn paint_box(
     }
 }
 
+pub(super) fn shaped(style: &crate::stylesheet::Style) -> bool {
+    style.rotate != 0.0 || style.clip.is_some()
+}
+
+pub(super) fn outline(rect: Rect, style: &crate::stylesheet::Style) -> Vec<Pos2> {
+    let corner = |(x, y): (f32, f32)| {
+        Pos2::new(
+            rect.left() + rect.width() * x,
+            rect.top() + rect.height() * y,
+        )
+    };
+    let mut points: Vec<Pos2> = match &style.clip {
+        Some(clip) => clip.points[..clip.len]
+            .iter()
+            .map(|at| corner(*at))
+            .collect(),
+        None => [(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)]
+            .map(corner)
+            .to_vec(),
+    };
+    let angle = style.rotate.to_radians();
+    if angle != 0.0 {
+        let center = rect.center();
+        let (sin, cos) = angle.sin_cos();
+        for point in &mut points {
+            let offset = *point - center;
+            *point = center
+                + Vec2::new(
+                    offset.x * cos - offset.y * sin,
+                    offset.x * sin + offset.y * cos,
+                );
+        }
+    }
+    points
+}
+
+fn cross(a: Pos2, b: Pos2, c: Pos2) -> f32 {
+    (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x)
+}
+
+pub(super) fn triangulate(points: &[Pos2]) -> Vec<u32> {
+    let area: f32 = points
+        .iter()
+        .zip(points.iter().cycle().skip(1))
+        .map(|(a, b)| a.x * b.y - b.x * a.y)
+        .sum();
+    let sign = if area >= 0.0 { 1.0 } else { -1.0 };
+    let mut rest: Vec<u32> = (0..points.len() as u32).collect();
+    let mut out = Vec::new();
+    while rest.len() > 3 {
+        let count = rest.len();
+        let ear = (0..count).find(|&at| {
+            let (a, b, c) = (
+                rest[(at + count - 1) % count],
+                rest[at],
+                rest[(at + 1) % count],
+            );
+            let (pa, pb, pc) = (points[a as usize], points[b as usize], points[c as usize]);
+            if cross(pa, pb, pc) * sign <= 0.0 {
+                return false;
+            }
+            !rest.iter().any(|&other| {
+                if other == a || other == b || other == c {
+                    return false;
+                }
+                let p = points[other as usize];
+                cross(pa, pb, p) * sign >= 0.0
+                    && cross(pb, pc, p) * sign >= 0.0
+                    && cross(pc, pa, p) * sign >= 0.0
+            })
+        });
+        let at = ear.unwrap_or(0);
+        out.extend([
+            rest[(at + count - 1) % count],
+            rest[at],
+            rest[(at + 1) % count],
+        ]);
+        rest.remove(at);
+    }
+    out.extend(rest);
+    out
+}
+
+pub(super) fn paint_shape(
+    painter: &crate::gfx::Painter,
+    rect: Rect,
+    style: &crate::stylesheet::Style,
+) {
+    let points = outline(rect, style);
+    let mut mesh = crate::gfx::epaint::Mesh::default();
+    let color = style.fill.gamma_multiply(style.opacity);
+    for point in &points {
+        mesh.colored_vertex(*point, color);
+    }
+    mesh.indices = triangulate(&points);
+    painter.add(crate::gfx::Shape::mesh(mesh));
+    if style.stroke > 0.0 && style.border.a() > 0 {
+        painter.add(crate::gfx::Shape::closed_line(
+            points,
+            crate::gfx::Stroke::new(style.stroke, style.border.gamma_multiply(style.opacity)),
+        ));
+    }
+}
+
 pub(super) fn gradient_fill(
     painter: &crate::gfx::Painter,
     rect: Rect,

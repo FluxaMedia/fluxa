@@ -351,3 +351,31 @@ fn strip_takes_its_gap_from_the_class() {
     assert_eq!(lefts[1] - lefts[0], 124.0);
     assert_eq!(lefts[2] - lefts[1], 124.0);
 }
+
+#[test]
+fn notched_polygon_triangulates_without_overlap() {
+    let points = [
+        Pos2::new(0.0, 0.0),
+        Pos2::new(10.0, 0.0),
+        Pos2::new(10.0, 10.0),
+        Pos2::new(5.0, 4.0),
+        Pos2::new(0.0, 10.0),
+    ];
+    let indices = triangulate(&points);
+    assert_eq!(indices.len(), 9);
+    let area: f32 = indices
+        .chunks(3)
+        .map(|tri| {
+            cross_area(
+                points[tri[0] as usize],
+                points[tri[1] as usize],
+                points[tri[2] as usize],
+            )
+        })
+        .sum();
+    assert!((area - 70.0).abs() < 0.01);
+}
+
+fn cross_area(a: Pos2, b: Pos2, c: Pos2) -> f32 {
+    ((b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x)).abs() / 2.0
+}

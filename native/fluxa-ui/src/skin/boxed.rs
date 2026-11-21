@@ -236,8 +236,12 @@ pub(super) fn boxed<'a, A: HomeAssets>(
             let width = rect.width();
             rect.min.x += width * start;
             rect.max.x = rect.min.x + width * span;
-            paint_box(painter, rect, radius, &style);
-            if style.stroke > 0.0 && style.border.a() > 0 {
+            if shaped(&style) {
+                paint_shape(painter, rect, &style);
+            } else {
+                paint_box(painter, rect, radius, &style);
+            }
+            if !shaped(&style) && style.stroke > 0.0 && style.border.a() > 0 {
                 painter.rect_stroke(
                     rect,
                     radius,

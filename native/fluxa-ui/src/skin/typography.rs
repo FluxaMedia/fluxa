@@ -102,6 +102,36 @@ pub(super) fn text<'a, A: HomeAssets>(
             .as_ref()
             .and_then(|style| style.weight)
             .is_some_and(|weight| weight >= 600.0);
+        if let Some(style) = style.as_ref().filter(|style| shaped(style)) {
+            let style = *style;
+            let mut label = kit::text(content.clone(), kind).role(role).inert();
+            if bold {
+                label = label.bold();
+            }
+            if let Some(color) = color {
+                label = label.color(color);
+            }
+            if let Some(size) = font_size {
+                label = label.size(size);
+            }
+            let (galley, tint) = label.galley(ui, f32::INFINITY);
+            let inset = style.padding_box.map_or([style.padding; 4], |sides| sides);
+            let size = galley.size() + Vec2::new(inset[1] + inset[3], inset[0] + inset[2]);
+            return kit::direct(size, move |painter, rect| {
+                paint_shape(painter, rect, &style);
+                let anchor = Pos2::new(
+                    rect.center().x + (inset[3] - inset[1]) * 0.5,
+                    rect.center().y + (inset[0] - inset[2]) * 0.5,
+                );
+                let shape =
+                    crate::gfx::epaint::TextShape::new(anchor - galley.size() * 0.5, galley, tint)
+                        .with_angle_and_anchor(
+                            style.rotate.to_radians(),
+                            crate::gfx::Align2::CENTER_CENTER,
+                        );
+                painter.add(shape);
+            });
+        }
         let lines = node
             .props
             .get("lines")

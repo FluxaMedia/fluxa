@@ -48,6 +48,16 @@ pub(crate) struct Style {
     pub order: i32,
     pub padding_box: Option<[f32; 4]>,
     pub gap_set: Option<f32>,
+    pub rotate: f32,
+    pub clip: Option<Clip>,
+}
+
+pub(crate) const MAX_CLIP_POINTS: usize = 8;
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(crate) struct Clip {
+    pub points: [(f32, f32); MAX_CLIP_POINTS],
+    pub len: usize,
 }
 
 pub(crate) const MAX_GRADIENT_STOPS: usize = 16;
@@ -133,6 +143,8 @@ impl Style {
             order: 0,
             padding_box: None,
             gap_set: None,
+            rotate: 0.0,
+            clip: None,
         }
     }
 }
@@ -304,6 +316,8 @@ struct Patch {
     fill_space: Option<bool>,
     order: Option<i32>,
     padding_box: Option<[Length; 4]>,
+    rotate: Option<f32>,
+    clip: Option<Clip>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -873,6 +887,12 @@ fn apply(style: &mut Style, patch: &Patch) {
     if let Some(order) = patch.order {
         style.order = order;
     }
+    if let Some(rotate) = patch.rotate {
+        style.rotate = rotate;
+    }
+    if let Some(clip) = patch.clip {
+        style.clip = Some(clip);
+    }
 }
 
 fn mix(from: Style, to: Style, t: f32) -> Style {
@@ -918,6 +938,8 @@ fn mix(from: Style, to: Style, t: f32) -> Style {
         order: to.order,
         padding_box: to.padding_box,
         gap_set: to.gap_set,
+        rotate: from.rotate + (to.rotate - from.rotate) * t,
+        clip: to.clip,
     }
 }
 
@@ -1692,5 +1714,20 @@ mod tests {
         assert!(variants.iter().any(|v| v.modifiers == ["last-child"]));
         assert_eq!(sheet.rules["glass"].layer.base.backdrop, Some(12.0));
         assert!(Sheet::parse(".a:bogus { opacity: 1; }").is_err());
+    }
+
+    #[test]
+    fn rotate_and_polygon_clip_parse() {
+        let sheet = Sheet::parse(
+            ".sash { transform: rotate(45deg); clip-path: polygon(0% 0%, 100% 0%, 100% 70%, 50% 100%, 0% 70%); }",
+        )
+        .unwrap();
+        let patch = &sheet.rules["sash"].layer.base;
+        assert_eq!(patch.rotate, Some(45.0));
+        let clip = patch.clip.expect("clip");
+        assert_eq!(clip.len, 5);
+        assert_eq!(clip.points[3], (0.5, 1.0));
+        assert!(Sheet::parse(".a { clip-path: polygon(0% 0%, 1% 1%); }").is_err());
+        assert!(Sheet::parse(".a { transform: scale(2); }").is_err());
     }
 }

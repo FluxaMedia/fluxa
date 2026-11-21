@@ -361,6 +361,27 @@ fn properties(
             props.insert("backdrop".to_owned(), serde_json::json!(blur));
             continue;
         }
+        if name == "transform" {
+            let degrees = value
+                .trim()
+                .strip_prefix("rotate(")
+                .and_then(|rest| rest.strip_suffix(')'))
+                .and_then(|inner| {
+                    inner
+                        .trim()
+                        .trim_end_matches("deg")
+                        .trim()
+                        .parse::<f64>()
+                        .ok()
+                })
+                .ok_or_else(|| format!("transform: expected rotate(<n>deg), got {value}"))?;
+            props.insert("rotate".to_owned(), serde_json::json!(degrees));
+            continue;
+        }
+        if name == "clip-path" {
+            props.insert("clip".to_owned(), Value::String(value));
+            continue;
+        }
         if name == "font-weight" {
             let weight = match value.trim() {
                 "bold" => 700.0,
