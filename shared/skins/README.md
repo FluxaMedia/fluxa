@@ -1,5 +1,87 @@
 # Making and installing skins
 
+## Write your first skin in one file
+
+A skin can be one `.css` file with one small script beside it. This one adds a Notes page to the navigation bar; ticking a note is remembered between launches. The finished files are in `shared/skins/examples/one-file`.
+
+`one-file.css`:
+
+```css
+@skin {
+  id: one-file;
+  name: "One File";
+  version: 1.0.0;
+  script: "notes.js";
+  script-id: notes;
+  permissions: storage;
+  refresh: 30;
+}
+
+.notes-title { padding: 24px; }
+
+.notes-row {
+  padding: 12px 20px;
+  background: #1f3a5f;
+  border-radius: 12px;
+}
+
+@page notes { nav-label: "Notes"; nav-icon: NavLibrary; }
+
+@element notes-title {
+  parent: .page-notes;
+  type: text;
+  style: title;
+  text: "{ext.notes.title}";
+}
+
+@element notes-row {
+  parent: .page-notes;
+  each: ext.notes.items;
+  text: "{item.label}";
+  action: ext.notes.toggle(index: item.index);
+}
+```
+
+`notes.js`:
+
+```js
+class Provider {
+  async data() {
+    const done = storage.get("done", []);
+    const items = ["Write a skin", "Share the link", "Watch it update"];
+    return {
+      title: "Notes (" + done.length + "/" + items.length + ")",
+      items: items.map((text, index) => ({
+        label: (done.includes(index) ? "[x] " : "[ ] ") + text,
+        index,
+      })),
+    };
+  }
+
+  async toggle(args) {
+    const done = new Set(storage.get("done", []));
+    if (done.has(args.index)) done.delete(args.index);
+    else done.add(args.index);
+    storage.set("done", [...done]);
+  }
+}
+```
+
+1. Put both files in one folder and serve it from anywhere: a static host, a GitHub raw link, or `python3 -m http.server` while you try it out.
+2. In Fluxa open Settings, Theme, Skins, paste the link of the `.css` file and press Install. The script is fetched from the same place (`script` is relative to the CSS link). The skin turns on at once and Notes appears in the navigation bar.
+3. The Notes page stays empty until you press Allow scripts under the skin in the same list. Scripts never run before that.
+4. Open Notes. `{ext.notes.title}` and `ext.notes.items` are what `data()` returned; pressing a row calls `toggle`, and `storage` keeps the ticks.
+5. Edit the files on your server. The app checks the link again every few hours (set `FLUXA_SKIN_REFRESH_SECONDS` to shorten that while you test) and applies new CSS by itself. If the script changed, Allow scripts is asked again before the new script runs.
+
+Things to know about `@element`:
+
+- `type` can be left out: an element with `text` is a text node, one with `src` an image, anything else a column. An element with `text` and an `action` becomes a row holding the text, so it can be pressed and styled with padding and a background.
+- With `each`, the element's own fields describe one entry of the list; `item` is the entry and `item.index` its position (`as` renames `item`).
+- A page gets the navigation bar and the usual top spacing; its elements go inside it. A page opens over whichever screen you are on, and Back returns to it.
+- A one-file skin can declare `id`, `name`, `version`, `script`, `script-id`, `hosts`, `permissions`, `events` and `refresh`. Settings pages and tracker providers need an `extension.json`, so they belong to a skin folder (see Scripts).
+
+## What a skin is
+
 A skin changes how Fluxa looks and how screens are arranged. It is mostly data: JSON layouts, a stylesheet, strings and constants. A skin can also bring script extensions (see Scripts below); they run in a sandbox and only after you allow them. What the app can do (addons, trackers, sources) is not part of a skin.
 
 Fluxa's own interface is the default skin in `shared/skins/default`. It is the best reference: every file below exists there and is written in exactly the format third-party skins use.
@@ -231,6 +313,18 @@ A skin lists extension manifests under `extensions`. Each `extension.json` has `
 
 Layouts call other methods with an action named `ext.<id>.<method>`. Extensions that declare `contributes.events` receive events through `onEvent(name, payload)` and need the matching `events.*` and `background` permissions. Events: `playback.started`, `playback.paused`, `playback.progress`, `playback.ended`, `playback.watched` (ids the core newly marks watched), `profile.changed`, `navigation.changed`.
 
+Event payloads: `playback.started`, `playback.paused` and `playback.progress` carry the player state (`title`, `position`, `duration`, `paused`, `volume`); `playback.ended` carries `{title}`; `playback.watched` carries `{ids}`; `profile.changed` carries the new profile (`id`, `name`); `navigation.changed` carries `{route}`. A script only receives the events it lists in `contributes.events` and has the `events.playback`, `events.profile`, `events.navigation`, `events.library` or `events.tracker` permission for.
+
+```js
+class Provider {
+  async onEvent(name, payload) {
+    if (name === "playback.watched") storage.set("last", payload.ids);
+  }
+}
+```
+
+Permissions an extension can ask for: `storage`, `network` (with `networkHosts`), `background`, `ui.settings`, `provider.tracker`, `state.player`, `state.profile`, `state.library`, `state.settings`, `state.navigation`, `actions.player`, `actions.navigate` and the `events.*` ones above. A call that needs a permission the extension did not declare fails.
+
 Globals available to every script call:
 
 - `storage.get(key, fallback)`, `storage.set(key, value)`, `storage.remove(key)`, `storage.keys()`: persistent per extension, 64 KiB, needs `storage`.
@@ -240,7 +334,40 @@ Globals available to every script call:
 
 An extension declares `settings` (`toggle`, `choice` with `choices`, `text`, `number` with `min`/`max`, optional `default`) and needs `ui.settings`. Layouts read them from `app.extensions.<id>.settings` and change one with the action `ext.<id>.setting(key, value)`; the script is told through `onSetting(key, value)`.
 
+```json
+"permissions": ["storage", "ui.settings"],
+"settings": [
+  { "key": "days", "title": "Days shown", "kind": "choice", "default": "5",
+    "choices": [{ "value": "5", "label": "Weekdays" }, { "value": "7", "label": "Full week" }] },
+  { "key": "quiet", "title": "Quiet mode", "kind": "toggle", "default": false }
+]
+```
+
+The values are listed under the skin in Settings, Theme, Skins, and a script reads them from `settings.days` and `settings.quiet`.
+
 An extension with `provider.tracker` and `contributes.trackers` implements a `tracker` object: `auth`, `scrobbleStart`, `scrobblePause`, `scrobbleStop` (called by the app on playback events), `watched` and `library`. Optional `status()` returning `{connected}` and `disconnect()` let the app show the tracker as a row on the Account page with a Connect or Disconnect button.
+
+```js
+class Provider {
+  constructor() {
+    this.tracker = {
+      status: async () => ({ connected: storage.get("token", "") !== "" }),
+      disconnect: async () => storage.remove("token"),
+      auth: async (credentials) => {
+        storage.set("token", await login(credentials));
+        return { connected: true };
+      },
+      scrobbleStart: (item) => send("/start", item),
+      scrobblePause: (item) => send("/pause", item),
+      scrobbleStop: (item) => send("/stop", item),
+      watched: async () => [],
+      library: async () => [],
+    };
+  }
+}
+```
+
+The extension declares `provider.tracker` and `contributes.trackers: [{ "id": "example", "title": "Example Tracker" }]`. The app calls the scrobble methods on its own when playback starts, pauses and ends; `watched` and `library` results are shown on the tracker's row; `login` and `send` stand for your own calls (see `shared/skins/examples/agenda/ext/tracker.js`).
 
 Scripts never run until you allow them for that skin in Settings. The consent covers the exact scripts and hosts; any change to them asks again. `shared/skins/examples/agenda` is a complete example with a page, a nav entry, state, storage, settings and a tracker.
 
