@@ -17,7 +17,6 @@ mod content;
 mod controls;
 mod detail_modal;
 mod downloads;
-mod dropdown;
 mod filmstrip;
 mod fit;
 mod focus;
@@ -39,7 +38,6 @@ mod sticky_bar;
 mod streams;
 mod subtitle_preview;
 mod surfaces;
-mod ticket;
 mod toggle;
 
 pub use avatar::*;
@@ -49,7 +47,6 @@ pub use content::*;
 pub(crate) use controls::*;
 pub use detail_modal::*;
 pub use downloads::*;
-pub(crate) use dropdown::*;
 pub use focus::*;
 pub use glass::*;
 pub use input::*;
@@ -63,7 +60,6 @@ pub use recent_searches::*;
 pub(crate) use seats::*;
 pub use subtitle_preview::SubtitleLook;
 pub use surfaces::*;
-pub(crate) use ticket::*;
 pub use toggle::*;
 
 use super::{

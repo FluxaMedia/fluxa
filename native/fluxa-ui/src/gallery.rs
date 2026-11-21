@@ -1,7 +1,6 @@
 use super::*;
 use crate::components::{
-    ListRow, Trailing, bottom_sheet, chip, labeled_button, list_row, primary_button,
-    secondary_button, segmented, side_drawer, stepper, swatch, switch,
+    ListRow, Trailing, chip, labeled_button, list_row, segmented, stepper, swatch, switch,
 };
 use crate::flex::{Insets, Justify, column, leaf, row, text};
 
@@ -12,8 +11,6 @@ use std::cell::RefCell;
 
 #[derive(Clone)]
 struct State {
-    sheet: bool,
-    drawer: bool,
     labeled: usize,
     chip: usize,
     segment: usize,
@@ -27,8 +24,6 @@ struct State {
 impl Default for State {
     fn default() -> Self {
         Self {
-            sheet: false,
-            drawer: false,
             labeled: 0,
             chip: 1,
             segment: 1,
@@ -76,18 +71,12 @@ pub fn draw_gallery(
         posters::draw(context, viewport);
         return;
     }
-    if let Some(variant) = scene.strip_prefix("ticket") {
-        draw_ticket_scene(context, viewport, variant, assets);
-        return;
-    }
     let state_id = Id::new("fluxa-gallery");
     let mut state = context
         .data(|data| data.get_temp::<State>(state_id))
         .unwrap_or_default();
     if !state.started {
         state.started = true;
-        state.sheet = scene == "sheet";
-        state.drawer = scene == "drawer";
         state.focused = (scene == "focus").then_some(11);
     }
     let icons = ["Settings", "Plus", "Lock", "Edit"].map(|name| assets.icon(name));
@@ -112,10 +101,6 @@ pub fn draw_gallery(
                     let state = &state;
                     ui.set_width(size.x);
                     ui.set_item_spacing(Vec2::splat(gap));
-                    let options: Vec<(String, String)> = ["English", "Turkish", "Japanese"]
-                        .iter()
-                        .map(|label| (label.to_lowercase(), (*label).to_owned()))
-                        .collect();
                     let mut items = vec![layout_items::gap(Space::S24.px())];
                     items.push(heading(ui, "LabeledButton"));
                     items.push(
@@ -164,17 +149,6 @@ pub fn draw_gallery(
                         .gap(gap)
                         .wrap(),
                     );
-                    items.push(heading(ui, "Dropdown"));
-                    items.push(kit::widget(ui, |ui| {
-                        crate::components::dropdown(
-                            ui,
-                            "gallery-dropdown",
-                            "english",
-                            &options,
-                            Space::S48.px() * 5.0,
-                            false,
-                        );
-                    }));
                     items.push(heading(ui, "Segmented"));
                     items.push(kit::widget(ui, |ui| {
                         let current = state.borrow().segment;
@@ -271,22 +245,6 @@ pub fn draw_gallery(
                         .gap(gap)
                         .wrap(),
                     );
-                    items.push(heading(ui, "Overlays"));
-                    items.push(
-                        layout_items::row(vec![
-                            kit::widget(ui, |ui| {
-                                if primary_button(ui, "Bottom sheet", 160.0, true).clicked() {
-                                    state.borrow_mut().sheet = true;
-                                }
-                            }),
-                            kit::widget(ui, |ui| {
-                                if secondary_button(ui, "Side drawer", 160.0).clicked() {
-                                    state.borrow_mut().drawer = true;
-                                }
-                            }),
-                        ])
-                        .gap(gap),
-                    );
                     items.push(heading(ui, "Layout tree"));
                     items.push(kit::item(Vec2::new(360.0, 120.0), |ui, rect| {
                         paint_layout_sample(ui.painter(), rect);
@@ -296,54 +254,7 @@ pub fn draw_gallery(
                 },
             );
         });
-    let mut state = state.into_inner();
-    if bottom_sheet(
-        context,
-        "fluxa-gallery-sheet",
-        state.sheet,
-        viewport,
-        |ui| {
-            let title = RichText::new("Playback")
-                .size(crate::vars::px("text-title"))
-                .strong()
-                .color(text_primary());
-            let buttons = labels
-                .iter()
-                .enumerate()
-                .map(|(index, label)| {
-                    kit::widget(ui, move |ui| {
-                        labeled_button(ui, icons[index], label, index == 1);
-                    })
-                })
-                .collect();
-            let items = vec![
-                kit::widget(ui, |ui| {
-                    ui.label(title.clone());
-                }),
-                layout_items::space(ui, Space::S12),
-                layout_items::row(buttons).gap(gap).wrap(),
-            ];
-            kit::lay(ui, items);
-        },
-    ) {
-        state.sheet = false;
-    }
-    if side_drawer(
-        context,
-        "fluxa-gallery-drawer",
-        state.drawer,
-        viewport,
-        |ui| {
-            ui.label(
-                RichText::new("Details")
-                    .size(crate::vars::px("text-title"))
-                    .strong()
-                    .color(text_primary()),
-            );
-        },
-    ) {
-        state.drawer = false;
-    }
+    let state = state.into_inner();
     let _ = crate::take_focus_targets(context);
     context.data_mut(|data| data.insert_temp(state_id, state));
 }
@@ -389,58 +300,4 @@ fn paint_layout_sample(painter: &crate::gfx::Painter, rect: Rect) {
             painter.rect_filled(slot, radius::chip(), crate::stylesheet::color("raised"));
         }
     }
-}
-
-fn draw_ticket_scene(
-    context: &crate::gfx::Context,
-    viewport: Viewport,
-    variant: &str,
-    assets: &mut impl HomeAssets,
-) {
-    let member = |name: &str, host: bool, you: bool| crate::WatchMemberView {
-        id: name.to_owned(),
-        name: name.to_owned(),
-        host,
-        you,
-        ..Default::default()
-    };
-    let joined = variant.contains("joined")
-        || (variant.contains("tear") && context.input(|input| input.time()) > 1.0);
-    if variant.contains("tear") {
-        context.request_repaint();
-    }
-    let ticket = crate::WatchTicket {
-        room: joined.then(|| "K7Q4M2".to_owned()),
-        title: joined.then(|| "Andor".to_owned()),
-        episode: joined.then(|| "S1 · E4 · Aldhani".to_owned()),
-        backdrop: variant
-            .contains("poster")
-            .then(|| "fixture-backdrop".to_owned()),
-        host: joined.then(|| member("Emma", true, false)),
-        members: if joined {
-            vec![
-                member("Emma", true, false),
-                member("Marcus", false, false),
-                member("Zoe", false, false),
-                member("You", false, true),
-            ]
-        } else {
-            Vec::new()
-        },
-        max_members: 6,
-        ..Default::default()
-    };
-    let width = (viewport.width - 48.0).min(560.0);
-    let origin = Pos2::new(
-        (viewport.width - width) * 0.5,
-        (viewport.height - crate::components::ticket_height(width)) * 0.5,
-    );
-    let mut code = if joined {
-        String::new()
-    } else {
-        "K7Q".to_owned()
-    };
-    crate::components::placed_front(context, Id::new("fluxa-gallery-ticket"), origin, |ui| {
-        crate::components::watch_ticket(ui, &ticket, &mut code, width, "en", assets);
-    });
 }

@@ -498,10 +498,6 @@ menu-row {
   align: center;
 }
 
-dropdown-row {
-  align: center;
-}
-
 media-calendar-release {
   fill: surface.raised;
   radius: card;
