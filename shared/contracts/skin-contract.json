@@ -173,6 +173,11 @@
       "op",
       "id"
     ],
+    "ext_setting": [
+      "id",
+      "key",
+      "value"
+    ],
     "node": [
       "id",
       "fill"

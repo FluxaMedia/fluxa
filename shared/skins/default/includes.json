@@ -2457,6 +2457,67 @@
             "text": "{prefs.skins.message}"
           },
           {
+            "each": "prefs.skins.extensions",
+            "as": "extension",
+            "template": {
+              "type": "column",
+              "gap": 8,
+              "align": "stretch",
+              "children": [
+                {
+                  "type": "text",
+                  "class": "page-title",
+                  "text": "{extension.name}"
+                },
+                {
+                  "each": "extension.settings",
+                  "as": "setting",
+                  "template": {
+                    "type": "column",
+                    "gap": 6,
+                    "children": [
+                      {
+                        "type": "text",
+                        "class": "setting-label",
+                        "text": "{setting.title}"
+                      },
+                      {
+                        "type": "text",
+                        "when": "setting.description",
+                        "class": "setting-hint",
+                        "text": "{setting.description}"
+                      },
+                      {
+                        "each": "setting.choices",
+                        "as": "choice",
+                        "template": {
+                          "type": "row",
+                          "class": "setting-row",
+                          "padding": "0 18",
+                          "action": {
+                            "name": "ext_setting",
+                            "args": {
+                              "id": "{extension.id}",
+                              "key": "{setting.key}",
+                              "value": "{choice.value}"
+                            }
+                          },
+                          "children": [
+                            {
+                              "type": "text",
+                              "class": "setting-label",
+                              "text": "{choice.label}"
+                            }
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          },
+          {
             "type": "column",
             "gap": 12,
             "align": "stretch",

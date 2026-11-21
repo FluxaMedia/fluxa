@@ -829,4 +829,45 @@ mod tests {
         assert!(!tree[0].children.is_empty());
         assert_eq!(snapshot()["agenda"]["items"][1]["done"], true);
     }
+
+    #[test]
+    fn settings_page_lists_extension_settings_and_routes_changes() {
+        let _serial = SERIAL.lock().unwrap_or_else(|held| held.into_inner());
+        launch(
+            "page-prefs",
+            json!({
+                "permissions": ["ui.settings"],
+                "settings": [{"key": "mode", "title": "Mode", "kind": "choice", "default": "a",
+                    "choices": [{"value": "a", "label": "A"}, {"value": "b", "label": "B"}]}]
+            }),
+            r#"class Provider { async data() { return { mode: settings.mode }; } }"#,
+        );
+        wait(&|| snapshot()["page-prefs"]["mode"] == "a");
+        let listed = manager_data("en_us")["extensions"].clone();
+        assert_eq!(listed[0]["id"], "page-prefs");
+        assert_eq!(listed[0]["settings"][0]["choices"][1]["value"], "b");
+        let args = [
+            ("id".to_owned(), json!("page-prefs")),
+            ("key".to_owned(), json!("mode")),
+            ("value".to_owned(), json!("b")),
+        ]
+        .into_iter()
+        .collect();
+        remember(SkinFrame {
+            targets: vec![(
+                40_000_100,
+                SkinTarget::Action(Arc::new(fluxa_skin::ResolvedAction {
+                    name: "ext_setting".to_owned(),
+                    args,
+                })),
+            )],
+            layout: HomeLayout::default(),
+        });
+        let Some(Local::Script(id, method, args)) = local_for_node(40_000_100) else {
+            panic!("ext_setting did not route to a script");
+        };
+        act(&id, &method, args);
+        wait(&|| snapshot()["page-prefs"]["mode"] == "b");
+        assert_eq!(snapshot()["page-prefs"]["mode"], "b");
+    }
 }

@@ -272,7 +272,21 @@ pub(super) fn manager_data(language: &str) -> Value {
             "allowed": manager.allowed.contains(id),
         })
     }));
+    let extensions: Vec<Value> = ext::app()["extensions"]
+        .as_object()
+        .map(|map| {
+            map.iter()
+                .filter(|(_, extension)| {
+                    extension["settings"].as_array().is_some_and(|list| !list.is_empty())
+                })
+                .map(|(id, extension)| {
+                    json!({"id": id, "name": extension["name"], "settings": extension["settings"]})
+                })
+                .collect()
+        })
+        .unwrap_or_default();
     json!({
+        "extensions": extensions,
         "items": items,
         "message": manager.message,
         "busy": manager.busy,
