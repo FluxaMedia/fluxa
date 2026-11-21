@@ -6,7 +6,6 @@ pub(super) struct Frame<'a> {
     pub viewport: Viewport,
     pub settings: &'a SettingsModel,
     pub language: &'a str,
-    pub metrics: UiMetrics,
     pub painter: &'a crate::gfx::Painter,
     pub scroll_y: f32,
     pub section_top: f32,

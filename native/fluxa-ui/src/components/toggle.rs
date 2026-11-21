@@ -6,7 +6,6 @@ pub(crate) fn toggle(
     id: Id,
     track: Rect,
     on: bool,
-    metrics: UiMetrics,
 ) {
     let seen = id.with("haptic");
     let before = context.data_mut(|data| {
@@ -26,7 +25,7 @@ pub(crate) fn toggle(
         enabled: true,
         ..Default::default()
     };
-    let look = crate::stylesheet::resolve(context, "toggle", id, state, Some(&metrics));
+    let look = crate::stylesheet::resolve(context, "toggle", id, state);
     let t = look.selected;
     painter.rect_filled(track, look.radius.of(track.height()), look.fill);
     painter.rect_stroke(
@@ -41,13 +40,7 @@ pub(crate) fn toggle(
     let x = track.left() + radius + 2.0 + travel * t;
     let knob = crate::flex::centered(track, Vec2::new(radius * 2.0 + stretch, radius * 2.0))
         .translate(Vec2::new(x - track.center().x, 0.0));
-    let knob_color = crate::stylesheet::resolve(
-        context,
-        "toggle.knob",
-        id.with("knob"),
-        state,
-        Some(&metrics),
-    )
-    .fill;
+    let knob_color =
+        crate::stylesheet::resolve(context, "toggle.knob", id.with("knob"), state).fill;
     painter.rect_filled(knob, radius, knob_color);
 }

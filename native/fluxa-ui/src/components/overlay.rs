@@ -36,7 +36,6 @@ pub(crate) fn bottom_sheet(
     id: &str,
     open: bool,
     viewport: Viewport,
-    metrics: UiMetrics,
     add: impl FnOnce(&mut Ui),
 ) -> bool {
     let screen = crate::gfx::rect_at(Pos2::ZERO, Vec2::new(viewport.width, viewport.height));
@@ -67,28 +66,28 @@ pub(crate) fn bottom_sheet(
     } else {
         viewport.width.min(crate::vars::px("sheet-max-width"))
     };
-    let pad = Space::S16.px(&metrics);
+    let pad = Space::S16.px();
     crate::gfx::Area::new(Id::new(id))
         .order(crate::gfx::Order::Foreground)
         .anchor(Align2::CENTER_BOTTOM, frame.offset)
         .interactable(!frame.closing)
         .show(context, |ui| {
             ui.set_opacity(frame.alpha);
-            let shown = surface_frame(&metrics, Radius::Sheet, Edge::Top, Some(Cast::Up))
+            let shown = surface_frame(Radius::Sheet, Edge::Top, Some(Cast::Up))
                 .inner_margin(crate::gfx::Margin {
                     left: pad as i8,
                     right: pad as i8,
-                    top: Space::S8.px(&metrics) as i8,
+                    top: Space::S8.px() as i8,
                     bottom: (pad + viewport.safe_bottom) as i8,
                 })
                 .show(ui, |ui| {
                     ui.set_width(width - pad * 2.0);
                     ui.set_max_height(viewport.height * 0.85);
                     let (bar, _) = ui.allocate_exact_size(
-                        Vec2::new(ui.available_width(), Space::S20.px(&metrics)),
+                        Vec2::new(ui.available_width(), Space::S20.px()),
                         Sense::hover(),
                     );
-                    let handle = row([leaf(metrics.sheet_handle).id(0)])
+                    let handle = row([leaf(crate::metrics::theme().sheet_handle).id(0)])
                         .align(Align::Center)
                         .justify(Justify::Center)
                         .solve(bar);
@@ -114,7 +113,6 @@ pub(crate) fn side_drawer(
     id: &str,
     open: bool,
     viewport: Viewport,
-    metrics: UiMetrics,
     add: impl FnOnce(&mut Ui),
 ) -> bool {
     let screen = crate::gfx::rect_at(Pos2::ZERO, Vec2::new(viewport.width, viewport.height));
@@ -135,14 +133,14 @@ pub(crate) fn side_drawer(
         crate::vars::byte("scrim-alpha"),
         &frame,
     );
-    let pad = Space::S20.px(&metrics);
+    let pad = Space::S20.px();
     crate::gfx::Area::new(Id::new(id))
         .order(crate::gfx::Order::Foreground)
         .anchor(Align2::RIGHT_TOP, frame.offset)
         .interactable(!frame.closing)
         .show(context, |ui| {
             ui.set_opacity(frame.alpha);
-            surface_frame(&metrics, Radius::Sheet, Edge::Left, Some(Cast::Left))
+            surface_frame(Radius::Sheet, Edge::Left, Some(Cast::Left))
                 .inner_margin(crate::gfx::Margin {
                     left: pad as i8,
                     right: pad as i8,
@@ -166,7 +164,6 @@ pub(crate) fn labeled_button(
     icon: Option<crate::gfx::TextureId>,
     label: &str,
     selected: bool,
-    metrics: UiMetrics,
 ) -> Response {
     let font = FontId::proportional(crate::vars::px("labeled-button-text"));
     let icon_size = crate::vars::px("labeled-button-icon");
@@ -174,10 +171,10 @@ pub(crate) fn labeled_button(
         leaf(Vec2::splat(icon_size)).id(0),
         text(ui.painter(), label, &font).id(1),
     ])
-    .gap(Space::S8.px(&metrics))
+    .gap(Space::S8.px())
     .align(Align::Center)
     .justify(Justify::SpaceAround)
-    .padding(Insets::xy(Space::S6.px(&metrics), Space::S8.px(&metrics)))
+    .padding(Insets::xy(Space::S6.px(), Space::S8.px()))
     .min_height(crate::vars::px("icon-button-size"));
     let size = tree.outer_size();
     let (rect, response) = ui.allocate_exact_size(size, Sense::click());
@@ -215,7 +212,7 @@ mod tests {
     fn sheet_is_drawn_while_closing_then_dropped() {
         let context = crate::gfx::Context::default();
         let viewport = Viewport::new(390, 844, UiFormFactor::Mobile);
-        let metrics = UiMetrics::for_viewport(viewport);
+        crate::metrics::enter(viewport);
         let mut drawn = Vec::new();
         for tick in 0..90 {
             let open = tick < 30;
@@ -228,7 +225,7 @@ mod tests {
             let mut body = false;
             context
                 .run_pass(input, |context| {
-                    bottom_sheet(context, "test-sheet", open, viewport, metrics, |ui| {
+                    bottom_sheet(context, "test-sheet", open, viewport, |ui| {
                         body = true;
                         ui.label("content");
                     });

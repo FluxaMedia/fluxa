@@ -50,11 +50,11 @@ const SWATCHES: [Color32; 6] = [
     Color32::from_rgb(191, 90, 242),
 ];
 
-fn heading<'a>(ui: &mut crate::gfx::Ui, text: &'a str, metrics: &UiMetrics) -> kit::Item<'a> {
+fn heading<'a>(ui: &mut crate::gfx::Ui, text: &'a str) -> kit::Item<'a> {
     let size = crate::vars::px("text-subtitle");
-    let color = metrics.text_muted;
+    let color = crate::metrics::theme().text_muted;
     layout_items::column(vec![
-        layout_items::gap(Space::S8.px(metrics)),
+        layout_items::gap(Space::S8.px()),
         kit::widget(ui, move |ui| {
             ui.label(RichText::new(text).size(size).strong().color(color));
         }),
@@ -67,18 +67,17 @@ pub fn draw_gallery(
     scene: &str,
     assets: &mut impl HomeAssets,
 ) {
-    let metrics = metrics_for_assets(viewport, assets);
-    crate::kit::provide(context, metrics);
+    crate::metrics::enter(viewport);
     let screen = Rect::from_min_max(Pos2::ZERO, Pos2::new(viewport.width, viewport.height));
     context
         .layer_painter(crate::gfx::LayerId::background())
         .rect_filled(screen, 0.0, background());
     if scene == "posters" {
-        posters::draw(context, viewport, metrics);
+        posters::draw(context, viewport);
         return;
     }
     if let Some(variant) = scene.strip_prefix("ticket") {
-        draw_ticket_scene(context, viewport, variant, assets, metrics);
+        draw_ticket_scene(context, viewport, variant, assets);
         return;
     }
     let state_id = Id::new("fluxa-gallery");
@@ -94,14 +93,14 @@ pub fn draw_gallery(
     let icons = ["Settings", "Plus", "Lock", "Edit"].map(|name| assets.icon(name));
     let labels = ["Audio", "Subtitles", "Speed", "A very long label"];
     let safe = viewport.safe_area();
-    let gap = Space::S12.px(&metrics);
+    let gap = Space::S12.px();
     crate::begin_focus_frame(context, state.focused);
     let state = RefCell::new(state);
     crate::gfx::Area::new(Id::new("fluxa-gallery-body"))
-        .fixed_pos(Pos2::new(safe.left + Space::S24.px(&metrics), safe.top))
+        .fixed_pos(Pos2::new(safe.left + Space::S24.px(), safe.top))
         .show(context, |ui| {
             let size = Vec2::new(
-                viewport.width - safe.left - safe.right - Space::S24.px(&metrics) * 2.0,
+                viewport.width - safe.left - safe.right - Space::S24.px() * 2.0,
                 viewport.height - safe.top - safe.bottom,
             );
             ui.set_max_size(size);
@@ -117,8 +116,8 @@ pub fn draw_gallery(
                         .iter()
                         .map(|label| (label.to_lowercase(), (*label).to_owned()))
                         .collect();
-                    let mut items = vec![layout_items::gap(Space::S24.px(&metrics))];
-                    items.push(heading(ui, "LabeledButton", &metrics));
+                    let mut items = vec![layout_items::gap(Space::S24.px())];
+                    items.push(heading(ui, "LabeledButton"));
                     items.push(
                         layout_items::row(
                             labels
@@ -132,7 +131,6 @@ pub fn draw_gallery(
                                             icons[index],
                                             label,
                                             selected,
-                                            metrics,
                                         );
                                         if !crate::kit::probing() {
                                             response.clone().focus_node(ui, 10 + index as u64);
@@ -147,7 +145,7 @@ pub fn draw_gallery(
                         .gap(gap)
                         .wrap(),
                     );
-                    items.push(heading(ui, "Chip", &metrics));
+                    items.push(heading(ui, "Chip"));
                     items.push(
                         layout_items::row(
                             ["All", "Movies", "Series", "Anime", "Live"]
@@ -156,7 +154,7 @@ pub fn draw_gallery(
                                 .map(|(index, label)| {
                                     kit::widget(ui, move |ui| {
                                         let selected = state.borrow().chip == index;
-                                        if chip(ui, label, selected, metrics).clicked() {
+                                        if chip(ui, label, selected).clicked() {
                                             state.borrow_mut().chip = index;
                                         }
                                     })
@@ -166,19 +164,18 @@ pub fn draw_gallery(
                         .gap(gap)
                         .wrap(),
                     );
-                    items.push(heading(ui, "Dropdown", &metrics));
+                    items.push(heading(ui, "Dropdown"));
                     items.push(kit::widget(ui, |ui| {
                         crate::components::dropdown(
                             ui,
                             "gallery-dropdown",
                             "english",
                             &options,
-                            Space::S48.px(&metrics) * 5.0,
+                            Space::S48.px() * 5.0,
                             false,
-                            metrics,
                         );
                     }));
-                    items.push(heading(ui, "Segmented", &metrics));
+                    items.push(heading(ui, "Segmented"));
                     items.push(kit::widget(ui, |ui| {
                         let current = state.borrow().segment;
                         if let Some(next) = segmented(
@@ -186,12 +183,11 @@ pub fn draw_gallery(
                             Id::new("gallery-segmented"),
                             &["Off", "Auto", "On"],
                             current,
-                            metrics,
                         ) {
                             state.borrow_mut().segment = next;
                         }
                     }));
-                    items.push(heading(ui, "Stepper", &metrics));
+                    items.push(heading(ui, "Stepper"));
                     items.push(kit::widget(ui, |ui| {
                         let steps = state.borrow().steps;
                         let label = format!("{steps}");
@@ -201,12 +197,11 @@ pub fn draw_gallery(
                             &label,
                             steps > 0,
                             steps < 9,
-                            metrics,
                         ) {
                             state.borrow_mut().steps += delta;
                         }
                     }));
-                    items.push(heading(ui, "Switch and ListRow", &metrics));
+                    items.push(heading(ui, "Switch and ListRow"));
                     for (index, title) in ["Autoplay next", "Skip intros"].iter().enumerate() {
                         items.push(kit::widget(ui, move |ui| {
                             let on = state.borrow().switches[index];
@@ -218,7 +213,6 @@ pub fn draw_gallery(
                                     subtitle: Some("Starts the next episode without asking"),
                                     trailing: Trailing::Switch(on),
                                 },
-                                metrics,
                             );
                             if response.clicked() {
                                 state.borrow_mut().switches[index] = !on;
@@ -234,7 +228,6 @@ pub fn draw_gallery(
                                 subtitle: None,
                                 trailing: Trailing::Value("Türkçe"),
                             },
-                            metrics,
                         );
                     }));
                     items.push(kit::widget(ui, |ui| {
@@ -246,21 +239,20 @@ pub fn draw_gallery(
                                 subtitle: None,
                                 trailing: Trailing::Chevron,
                             },
-                            metrics,
                         );
                     }));
                     items.push(
                         layout_items::row(vec![
                             kit::widget(ui, |ui| {
-                                switch(ui, Id::new("gallery-switch-a"), true, metrics);
+                                switch(ui, Id::new("gallery-switch-a"), true);
                             }),
                             kit::widget(ui, |ui| {
-                                switch(ui, Id::new("gallery-switch-b"), false, metrics);
+                                switch(ui, Id::new("gallery-switch-b"), false);
                             }),
                         ])
                         .gap(gap),
                     );
-                    items.push(heading(ui, "Swatch", &metrics));
+                    items.push(heading(ui, "Swatch"));
                     items.push(
                         layout_items::row(
                             SWATCHES
@@ -269,7 +261,7 @@ pub fn draw_gallery(
                                 .map(|(index, color)| {
                                     kit::widget(ui, move |ui| {
                                         let selected = state.borrow().swatch == index;
-                                        if swatch(ui, *color, selected, metrics).clicked() {
+                                        if swatch(ui, *color, selected).clicked() {
                                             state.borrow_mut().swatch = index;
                                         }
                                     })
@@ -279,7 +271,7 @@ pub fn draw_gallery(
                         .gap(gap)
                         .wrap(),
                     );
-                    items.push(heading(ui, "Overlays", &metrics));
+                    items.push(heading(ui, "Overlays"));
                     items.push(
                         layout_items::row(vec![
                             kit::widget(ui, |ui| {
@@ -295,11 +287,11 @@ pub fn draw_gallery(
                         ])
                         .gap(gap),
                     );
-                    items.push(heading(ui, "Layout tree", &metrics));
+                    items.push(heading(ui, "Layout tree"));
                     items.push(kit::item(Vec2::new(360.0, 120.0), |ui, rect| {
-                        paint_layout_sample(ui.painter(), rect, metrics);
+                        paint_layout_sample(ui.painter(), rect);
                     }));
-                    items.push(layout_items::gap(Space::S48.px(&metrics) + viewport.safe_bottom));
+                    items.push(layout_items::gap(Space::S48.px() + viewport.safe_bottom));
                     kit::lay(ui, items);
                 },
             );
@@ -310,7 +302,6 @@ pub fn draw_gallery(
         "fluxa-gallery-sheet",
         state.sheet,
         viewport,
-        metrics,
         |ui| {
             let title = RichText::new("Playback")
                 .size(crate::vars::px("text-title"))
@@ -321,7 +312,7 @@ pub fn draw_gallery(
                 .enumerate()
                 .map(|(index, label)| {
                     kit::widget(ui, move |ui| {
-                        labeled_button(ui, icons[index], label, index == 1, metrics);
+                        labeled_button(ui, icons[index], label, index == 1);
                     })
                 })
                 .collect();
@@ -342,7 +333,6 @@ pub fn draw_gallery(
         "fluxa-gallery-drawer",
         state.drawer,
         viewport,
-        metrics,
         |ui| {
             ui.label(
                 RichText::new("Details")
@@ -358,7 +348,7 @@ pub fn draw_gallery(
     context.data_mut(|data| data.insert_temp(state_id, state));
 }
 
-fn paint_layout_sample(painter: &crate::gfx::Painter, rect: Rect, metrics: UiMetrics) {
+fn paint_layout_sample(painter: &crate::gfx::Painter, rect: Rect) {
     let font = FontId::proportional(crate::vars::px("labeled-button-text"));
     let tree = column([
         row([
@@ -367,21 +357,21 @@ fn paint_layout_sample(painter: &crate::gfx::Painter, rect: Rect, metrics: UiMet
             leaf(Vec2::ZERO).grow(1.0),
             leaf(Vec2::new(48.0, 24.0)).id(2),
         ])
-        .gap(Space::S8.px(&metrics))
+        .gap(Space::S8.px())
         .align(Align::Center),
         row((3..8).map(|i| leaf(Vec2::new(54.0, 28.0)).id(i)))
-            .gap(Space::S6.px(&metrics))
-            .line_gap(Space::S6.px(&metrics))
+            .gap(Space::S6.px())
+            .line_gap(Space::S6.px())
             .wrap(),
     ])
-    .gap(Space::S10.px(&metrics))
+    .gap(Space::S10.px())
     .align(Align::Stretch)
-    .padding(Insets::all(Space::S12.px(&metrics)))
+    .padding(Insets::all(Space::S12.px()))
     .justify(Justify::Start);
     painter.rect_stroke(
         rect,
         radius::control(),
-        crate::gfx::Stroke::new(stroke::hairline(), metrics.border),
+        crate::gfx::Stroke::new(stroke::hairline(), crate::metrics::theme().border),
         crate::gfx::StrokeKind::Inside,
     );
     let placed = tree.solve(rect);
@@ -406,7 +396,6 @@ fn draw_ticket_scene(
     viewport: Viewport,
     variant: &str,
     assets: &mut impl HomeAssets,
-    metrics: UiMetrics,
 ) {
     let member = |name: &str, host: bool, you: bool| crate::WatchMemberView {
         id: name.to_owned(),
@@ -452,6 +441,6 @@ fn draw_ticket_scene(
         "K7Q".to_owned()
     };
     crate::components::placed_front(context, Id::new("fluxa-gallery-ticket"), origin, |ui| {
-        crate::components::watch_ticket(ui, &ticket, &mut code, width, "en", assets, metrics);
+        crate::components::watch_ticket(ui, &ticket, &mut code, width, "en", assets);
     });
 }

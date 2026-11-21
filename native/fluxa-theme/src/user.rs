@@ -6,7 +6,7 @@ use std::{
 
 use serde_json::Value;
 
-use crate::theme::{ThemeError, ThemePack, UiTokens};
+use crate::theme::ThemeError;
 
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct UserTheme {
@@ -15,7 +15,7 @@ pub struct UserTheme {
     spacing: Vec<(&'static str, f64)>,
     motion_enabled: Option<bool>,
     motion_ms: Vec<(&'static str, f64)>,
-    tokens: Vec<TokenOverride>,
+    vars: Vec<(String, f64)>,
     hidden_rows: Vec<String>,
     row_order: Vec<String>,
     hero_actions: Option<Vec<String>>,
@@ -25,14 +25,6 @@ pub struct UserTheme {
     base: Option<String>,
     fonts: Vec<(&'static str, Arc<Vec<u8>>)>,
     background: Option<Arc<Vec<u8>>>,
-}
-
-#[derive(Clone, Debug, PartialEq)]
-struct TokenOverride {
-    platform: Option<&'static str>,
-    group: &'static str,
-    key: String,
-    value: f64,
 }
 
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -71,9 +63,6 @@ const COLOR_KEYS: [&str; 24] = [
 const SHAPE_KEYS: [&str; 3] = ["cardRadius", "controlRadius", "dialogRadius"];
 const SPACING_KEYS: [&str; 3] = ["screenPadding", "sectionGap", "controlGap"];
 const MOTION_KEYS: [&str; 3] = ["fastMs", "normalMs", "slowMs"];
-const COMMON_GROUPS: [&str; 5] = ["dp", "sp", "durationMs", "alpha", "number"];
-const PLATFORM_GROUPS: [&str; 3] = ["dp", "sp", "player"];
-const PLATFORMS: [&str; 3] = ["mobile", "desktop", "tv"];
 const HERO_ACTIONS: [&str; 2] = ["play", "watchlist"];
 const DETAIL_ACTIONS: [&str; 5] = ["play", "watchlist", "shuffle", "completed", "dropped"];
 const NAV_ITEMS: [&str; 3] = ["home", "discover", "library"];
@@ -325,103 +314,44 @@ pub fn nav_items() -> Option<Vec<String>> {
         .and_then(|user| user.nav_items.clone())
 }
 
-pub(crate) fn apply_user_theme(theme: &mut ThemePack) {
-    if let Ok(user) = user_theme().read() {
-        user.apply_to_theme(theme);
-    }
+pub fn active_vars() -> Vec<(String, String)> {
+    let Ok(user) = user_theme().read() else {
+        return Vec::new();
+    };
+    user.css_vars()
 }
 
-pub(crate) fn apply_user_tokens(tokens: &mut UiTokens) {
-    if let Ok(user) = user_theme().read() {
-        user.apply_to_tokens(tokens);
+fn kebab(name: &str) -> String {
+    let mut out = String::new();
+    for (index, ch) in name.chars().enumerate() {
+        if ch.is_ascii_uppercase() {
+            if index > 0 {
+                out.push('-');
+            }
+            out.push(ch.to_ascii_lowercase());
+        } else {
+            out.push(ch);
+        }
     }
+    out
 }
 
 impl UserTheme {
-    fn apply_to_theme(&self, theme: &mut ThemePack) {
+    fn css_vars(&self) -> Vec<(String, String)> {
+        let mut vars = Vec::new();
         for (name, value) in &self.colors {
-            let optional = match *name {
-                "buttonPrimary" => Some(&mut theme.colors.button_primary),
-                "buttonPrimaryText" => Some(&mut theme.colors.button_primary_text),
-                "cardBackground" => Some(&mut theme.colors.card_background),
-                "inputBackground" => Some(&mut theme.colors.input_background),
-                "inputBorder" => Some(&mut theme.colors.input_border),
-                "inputBorderFocus" => Some(&mut theme.colors.input_border_focus),
-                _ => None,
-            };
-            if let Some(slot) = optional {
-                *slot = Some(value.clone());
-                continue;
-            }
-            let slot = match *name {
-                "background" => &mut theme.colors.background,
-                "backgroundElevated" => &mut theme.colors.background_elevated,
-                "surface" => &mut theme.colors.surface,
-                "surfaceRaised" => &mut theme.colors.surface_raised,
-                "navigation" => &mut theme.colors.navigation,
-                "textPrimary" => &mut theme.colors.text_primary,
-                "textSecondary" => &mut theme.colors.text_secondary,
-                "textMuted" => &mut theme.colors.text_muted,
-                "border" => &mut theme.colors.border,
-                "borderStrong" => &mut theme.colors.border_strong,
-                "accent" => &mut theme.colors.accent,
-                "accentForeground" => &mut theme.colors.accent_foreground,
-                "success" => &mut theme.colors.success,
-                "warning" => &mut theme.colors.warning,
-                "error" => &mut theme.colors.error,
-                "info" => &mut theme.colors.info,
-                "focus" => &mut theme.colors.focus,
-                _ => &mut theme.colors.scrim,
-            };
-            slot.clone_from(value);
-        }
-        for (name, value) in &self.shape {
-            let value = *value as f32;
-            match *name {
-                "cardRadius" => theme.shape.card_radius = value,
-                "controlRadius" => theme.shape.control_radius = value,
-                _ => theme.shape.dialog_radius = value,
-            }
-        }
-        for (name, value) in &self.spacing {
-            let value = *value as f32;
-            match *name {
-                "screenPadding" => theme.spacing.screen_padding = value,
-                "sectionGap" => theme.spacing.section_gap = value,
-                _ => theme.spacing.control_gap = value,
-            }
+            vars.push((format!("color-{}", kebab(name)), value.clone()));
         }
         if let Some(enabled) = self.motion_enabled {
-            theme.motion.enabled = enabled;
+            vars.push(("motion-enabled".to_owned(), u8::from(enabled).to_string()));
         }
         for (name, value) in &self.motion_ms {
-            let value = *value as u64;
-            match *name {
-                "fastMs" => theme.motion.fast_ms = value,
-                "normalMs" => theme.motion.normal_ms = value,
-                _ => theme.motion.slow_ms = value,
-            }
+            vars.push((format!("motion-{}", kebab(name)), value.to_string()));
         }
-    }
-
-    fn apply_to_tokens(&self, tokens: &mut UiTokens) {
-        for entry in &self.tokens {
-            let scope = match entry.platform {
-                Some(platform) => tokens
-                    .layout
-                    .get_mut("platforms")
-                    .and_then(|platforms| platforms.get_mut(platform)),
-                None => tokens.layout.get_mut("common"),
-            };
-            let slot = scope
-                .and_then(|scope| scope.get_mut(entry.group))
-                .and_then(|group| group.get_mut(entry.key.as_str()));
-            if let Some(slot) = slot
-                && slot.is_number()
-            {
-                *slot = Value::from(entry.value);
-            }
+        for (name, value) in &self.vars {
+            vars.push((name.clone(), value.to_string()));
         }
+        vars
     }
 }
 
@@ -452,7 +382,7 @@ pub fn parse_user_theme_in(source: &str, base: Option<&Path>) -> (UserTheme, Use
                 Some(name) => theme.name = Some(name.chars().take(40).collect()),
                 None => report.rejected.push("name: expected text".to_owned()),
             },
-            "base" => match body.as_str().filter(|id| crate::theme::theme(id).is_ok()) {
+            "base" => match body.as_str().filter(|id| crate::theme::is_builtin(id)) {
                 Some(id) => theme.base = Some(id.to_owned()),
                 None => report
                     .rejected
@@ -469,7 +399,7 @@ pub fn parse_user_theme_in(source: &str, base: Option<&Path>) -> (UserTheme, Use
             "motion" => parse_motion(&mut theme, body, &mut report),
             "fonts" => parse_fonts(&mut theme, body, base, &mut report),
             "images" => parse_images(&mut theme, body, base, &mut report),
-            "tokens" => parse_tokens(&mut theme, body, &mut report),
+            "vars" => parse_vars(&mut theme, body, &mut report),
             "home" => parse_home(&mut theme, body, &mut report),
             other => report.rejected.push(format!("{other}: unknown section")),
         }
@@ -633,95 +563,28 @@ fn parse_motion(theme: &mut UserTheme, body: &Value, report: &mut UserThemeRepor
     );
 }
 
-fn parse_tokens(theme: &mut UserTheme, body: &Value, report: &mut UserThemeReport) {
-    for (key, value) in entries("tokens", body, report) {
-        if key == "platforms" {
-            for (platform, groups) in entries("tokens.platforms", value, report) {
-                let Some(platform) = PLATFORMS.iter().find(|known| **known == platform) else {
-                    report
-                        .rejected
-                        .push(format!("tokens.platforms.{platform}: unknown platform"));
-                    continue;
-                };
-                token_groups(theme, Some(platform), &PLATFORM_GROUPS, groups, report);
-            }
-        }
-    }
-    let common: serde_json::Map<String, Value> = body
-        .as_object()
-        .into_iter()
-        .flatten()
-        .filter(|(key, _)| key.as_str() != "platforms")
-        .map(|(key, value)| (key.clone(), value.clone()))
-        .collect();
-    token_groups(theme, None, &COMMON_GROUPS, &Value::Object(common), report);
-}
-
-fn token_groups(
-    theme: &mut UserTheme,
-    platform: Option<&'static str>,
-    allowed: &[&'static str],
-    body: &Value,
-    report: &mut UserThemeReport,
-) {
-    let base = crate::theme::shared_ui_tokens().ok();
-    for (group, keys) in entries("tokens", body, report) {
-        let Some(group_name) = allowed.iter().find(|known| **known == group) else {
+fn parse_vars(theme: &mut UserTheme, body: &Value, report: &mut UserThemeReport) {
+    for (key, value) in entries("vars", body, report) {
+        let valid = key
+            .chars()
+            .all(|ch| ch.is_ascii_lowercase() || ch.is_ascii_digit() || ch == '-')
+            && !key.is_empty();
+        if !valid {
             report
                 .rejected
-                .push(format!("tokens.{group}: unknown group"));
+                .push(format!("vars.{key}: expected a lowercase dashed name"));
             continue;
-        };
-        for (key, value) in entries(group, keys, report) {
-            let scope = base.and_then(|tokens| match platform {
-                Some(platform) => tokens
-                    .layout
-                    .get("platforms")
-                    .and_then(|platforms| platforms.get(platform)),
-                None => tokens.layout.get("common"),
-            });
-            let exists = scope
-                .and_then(|scope| scope.get(group_name))
-                .and_then(|group| group.get(key.as_str()))
-                .is_some_and(Value::is_number);
-            if base.is_some() && !exists {
-                report
-                    .rejected
-                    .push(format!("tokens.{group}.{key}: unknown token"));
-                continue;
-            }
-            let (min, max) = token_range(group_name, key);
-            match number(value, min, max) {
-                Some(number) => {
-                    theme.tokens.retain(|existing| {
-                        !(existing.platform == platform
-                            && existing.group == *group_name
-                            && existing.key == *key)
-                    });
-                    theme.tokens.push(TokenOverride {
-                        platform,
-                        group: group_name,
-                        key: key.clone(),
-                        value: number,
-                    });
-                    report.applied += 1;
-                }
-                None => report.rejected.push(format!(
-                    "tokens.{group}.{key}: expected a number between {min} and {max}"
-                )),
-            }
         }
-    }
-}
-
-fn token_range(group: &str, key: &str) -> (f64, f64) {
-    match (group, key) {
-        ("alpha", _) => (0.0, 1.0),
-        ("sp", _) => (1.0, 300.0),
-        ("durationMs", _) => (0.0, 5000.0),
-        ("number", "cardFocusedScale") => (1.0, 1.3),
-        ("number", _) => (0.0, 100.0),
-        _ => (0.0, 4000.0),
+        match number(value, -100000.0, 100000.0) {
+            Some(number) => {
+                theme.vars.retain(|(existing, _)| existing != key);
+                theme.vars.push((key.clone(), number));
+                report.applied += 1;
+            }
+            None => report
+                .rejected
+                .push(format!("vars.{key}: expected a number")),
+        }
     }
 }
 
@@ -852,7 +715,6 @@ fn expand_hex(hex: &str) -> Option<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::theme::{shared_ui_tokens, theme};
 
     #[test]
     fn row_lists_are_lowercased_and_deduplicated() {
@@ -897,73 +759,24 @@ mod tests {
     }
 
     #[test]
-    fn theme_overrides_reach_the_theme_pack() {
-        let (user, _) = parse_user_theme(
-            r##"{"colors": {"accent": "#112233"}, "shape": {"cardRadius": 4},
-                "spacing": {"sectionGap": 30}, "motion": {"enabled": false, "fastMs": 50}}"##,
-        );
-        let mut pack = theme("fluxa-dark").expect("theme").clone();
-        user.apply_to_theme(&mut pack);
-        assert_eq!(pack.colors.accent, "#112233FF");
-        assert_eq!(pack.shape.card_radius, 4.0);
-        assert_eq!(pack.spacing.section_gap, 30.0);
-        assert!(!pack.motion.enabled);
-        assert_eq!(pack.motion.fast_ms, 50);
-        assert_eq!(pack.motion.slow_ms, 300);
-    }
-
-    #[test]
-    fn token_overrides_respect_scope_and_limits() {
-        let json = r#"{"tokens": {
-            "number": {"cardFocusedScale": 1.2, "posterHeightRatio": 1000},
-            "alpha": {"hairline": 0.1, "notAToken": 0.2},
-            "platforms": {"tv": {"dp": {"buttonHeight": 72}}, "watch": {}}
-        }}"#;
-        let (user, report) = parse_user_theme(json);
-        assert_eq!(report.applied, 3);
-        assert_eq!(report.rejected.len(), 3);
-
-        let mut tokens = shared_ui_tokens().expect("tokens").clone();
-        user.apply_to_tokens(&mut tokens);
-        let layout = &tokens.layout;
-        assert_eq!(layout["common"]["number"]["cardFocusedScale"], 1.2);
-        assert_eq!(layout["common"]["alpha"]["hairline"], 0.1);
-        assert_eq!(layout["platforms"]["tv"]["dp"]["buttonHeight"], 72.0);
-        assert_eq!(
-            layout["platforms"]["desktop"]["dp"]["buttonHeight"],
-            shared_ui_tokens().expect("tokens").layout["platforms"]["desktop"]["dp"]["buttonHeight"]
-        );
-    }
-
-    #[test]
-    fn button_colors_are_optional_theme_fields() {
-        let base = theme("fluxa-dark").expect("theme").clone();
-        assert_eq!(base.colors.button_primary, None);
+    fn overrides_become_css_variables() {
         let (user, report) = parse_user_theme(
-            r##"{"colors": {"buttonPrimary": "#E8A33D", "buttonPrimaryText": "#000"},
-                "tokens": {"number": {"pillRadiusRatio": 0.2}}}"##,
+            r##"{"colors": {"accent": "#112233", "buttonPrimary": "#E8A33D"},
+                "motion": {"enabled": false, "fastMs": 50},
+                "vars": {"focused-scale": 1.2, "Bad Name": 3}}"##,
         );
-        assert!(report.rejected.is_empty());
-        let mut pack = base;
-        user.apply_to_theme(&mut pack);
-        assert_eq!(pack.colors.button_primary.as_deref(), Some("#E8A33DFF"));
-        assert!(pack.color("buttonPrimaryText").is_ok());
-    }
-
-    #[test]
-    fn card_and_input_tokens_are_accepted() {
-        let (user, report) = parse_user_theme(
-            r##"{"colors": {"cardBackground": "#222", "inputBackground": "#111",
-                    "inputBorder": "#333", "inputBorderFocus": "#E8A33D"},
-                "tokens": {"alpha": {"cardBorder": 0.2, "cardLogoScrim": 0.5},
-                    "number": {"inputFocusWidth": 2}}}"##,
-        );
-        assert!(report.rejected.is_empty(), "{:?}", report.rejected);
-        assert_eq!(report.applied, 7);
-        let mut pack = theme("fluxa-dark").expect("theme").clone();
-        user.apply_to_theme(&mut pack);
-        assert_eq!(pack.colors.card_background.as_deref(), Some("#222222FF"));
-        assert!(pack.color("inputBorderFocus").is_ok());
+        assert_eq!(report.rejected.len(), 1, "{:?}", report.rejected);
+        let vars = user.css_vars();
+        let find = |name: &str| {
+            vars.iter()
+                .find(|(key, _)| key == name)
+                .map(|(_, v)| v.as_str())
+        };
+        assert_eq!(find("color-accent"), Some("#112233FF"));
+        assert_eq!(find("color-button-primary"), Some("#E8A33DFF"));
+        assert_eq!(find("motion-enabled"), Some("0"));
+        assert_eq!(find("motion-fast-ms"), Some("50"));
+        assert_eq!(find("focused-scale"), Some("1.2"));
     }
 
     #[test]

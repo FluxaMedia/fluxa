@@ -176,18 +176,13 @@ fn collection_shelves_keep_web_tile_shapes_and_hide_title_metadata() {
 
     let collection = &model.rows[0];
     assert_eq!(collection.kind, HomeRowKind::Collection);
+    crate::metrics::enter(Viewport::new(1280, 720, UiFormFactor::Desktop));
     assert_eq!(
-        home_collection_card_dimensions(
-            UiMetrics::for_viewport(Viewport::new(1280, 720, UiFormFactor::Desktop)),
-            &collection.cards[0]
-        ),
+        home_collection_card_dimensions(&collection.cards[0]),
         (150.0, 150.0)
     );
     assert_eq!(
-        home_collection_card_dimensions(
-            UiMetrics::for_viewport(Viewport::new(1280, 720, UiFormFactor::Desktop)),
-            &collection.cards[1]
-        ),
+        home_collection_card_dimensions(&collection.cards[1]),
         (280.0, 158.0)
     );
     assert!(collection.cards[0].hide_title);
@@ -333,8 +328,8 @@ fn mobile_home_navigation_respects_real_system_bottom_inset() {
 #[test]
 fn mobile_bottom_navigation_splits_the_floating_bar_into_four_slots() {
     let viewport = Viewport::new(390, 844, UiFormFactor::Mobile);
-    let metrics = UiMetrics::for_viewport(viewport);
-    let navigation = navigation_focus_rects(viewport, metrics);
+    crate::metrics::enter(viewport);
+    let navigation = navigation_focus_rects(viewport);
     let slots = [NODE_HOME, NODE_LIBRARY, NODE_DISCOVER, NODE_PROFILE].map(|node| {
         navigation
             .iter()
@@ -352,8 +347,8 @@ fn mobile_bottom_navigation_splits_the_floating_bar_into_four_slots() {
 
 #[test]
 fn mobile_continue_cards_leave_the_next_card_peeking() {
-    let metrics = UiMetrics::for_viewport(Viewport::new(390, 844, UiFormFactor::Mobile));
-    let (width, height, _) = home_row_dimensions(metrics, HomeRowKind::Continue);
+    crate::metrics::enter(Viewport::new(390, 844, UiFormFactor::Mobile));
+    let (width, height, _) = home_row_dimensions(HomeRowKind::Continue);
 
     let content = 390.0 - crate::vars::px("page-padding") * 2.0;
     assert!(width > content * 0.5 && width < content);
@@ -586,12 +581,12 @@ fn core_snapshot_projection_maps_detail_and_settings() {
 
 #[test]
 fn responsive_metrics_come_from_the_metrics_sheet() {
-    let desktop = UiMetrics::for_viewport(Viewport::new(1920, 1080, UiFormFactor::Desktop));
-    assert_eq!(desktop.accent, Color32::WHITE);
+    crate::metrics::enter(Viewport::new(1920, 1080, UiFormFactor::Desktop));
+    assert_eq!(crate::metrics::theme().accent, Color32::WHITE);
     assert_eq!(crate::metric("page-padding"), 24.0);
     assert_eq!(crate::metric("horizontal-card-width"), 300.0);
-    assert_eq!(desktop.poster_card_width, 200.0);
-    assert_eq!(desktop.poster_card_height, 300.0);
+    assert_eq!(crate::metrics::theme().poster_width, 200.0);
+    assert_eq!(crate::metrics::theme().poster_height, 300.0);
     assert_eq!(crate::metric("poster-height-ratio"), 1.5);
     assert_eq!(crate::metric("library-search-reserved-width"), 150.0);
     assert_eq!(crate::metric("focus-ring-width"), 2.5);
@@ -599,17 +594,20 @@ fn responsive_metrics_come_from_the_metrics_sheet() {
     assert_eq!(crate::metric("settings-content-offset"), 300.0);
     assert_eq!(crate::metric("settings-row-height"), 52.0);
 
-    let narrow = UiMetrics::for_viewport(Viewport::new(1100, 800, UiFormFactor::Desktop));
-    assert!((140.0..200.0).contains(&narrow.poster_card_width));
+    crate::metrics::enter(Viewport::new(1100, 800, UiFormFactor::Desktop));
+    assert!((140.0..200.0).contains(&crate::metrics::theme().poster_width));
 
-    let mobile = UiMetrics::for_viewport(Viewport::new(390, 844, UiFormFactor::Mobile));
-    assert_eq!(mobile.poster_card_height, mobile.poster_card_width * 1.5);
+    crate::metrics::enter(Viewport::new(390, 844, UiFormFactor::Mobile));
+    assert_eq!(
+        crate::metrics::theme().poster_height,
+        crate::metrics::theme().poster_width * 1.5
+    );
     assert_eq!(crate::metric("page-padding"), 16.0);
     assert_eq!(crate::metric("horizontal-card-width"), 244.0);
     assert_eq!(crate::metric("settings-nav-width"), 196.0);
     assert_eq!(crate::metric("settings-row-height"), 46.0);
 
-    UiMetrics::for_viewport(Viewport::new(1920, 1080, UiFormFactor::Tv));
+    crate::metrics::enter(Viewport::new(1920, 1080, UiFormFactor::Tv));
     assert_eq!(crate::metric("horizontal-card-width"), 356.0);
     assert_eq!(crate::metric("calendar-panel-width-tv"), 440.0);
 }
@@ -1263,51 +1261,4 @@ fn season_opens_on_the_one_being_resumed() {
     assert_eq!(detail.current_season(), 3);
     detail.selected_season = Some(2);
     assert_eq!(detail.current_season(), 2);
-}
-
-#[test]
-#[ignore]
-fn dump_metrics_matrix() {
-    let cases: Vec<(&str, u32, u32, UiFormFactor)> = vec![
-        ("d500", 500, 800, UiFormFactor::Desktop),
-        ("d599", 599, 800, UiFormFactor::Desktop),
-        ("d600", 600, 800, UiFormFactor::Desktop),
-        ("d700", 700, 800, UiFormFactor::Desktop),
-        ("d839", 839, 800, UiFormFactor::Desktop),
-        ("d840", 840, 800, UiFormFactor::Desktop),
-        ("d1000", 1000, 800, UiFormFactor::Desktop),
-        ("d1280", 1280, 800, UiFormFactor::Desktop),
-        ("d1920", 1920, 1080, UiFormFactor::Desktop),
-        ("d2560", 2560, 1440, UiFormFactor::Desktop),
-        ("m390", 390, 844, UiFormFactor::Mobile),
-        ("m844", 844, 390, UiFormFactor::Mobile),
-        ("m768", 768, 1024, UiFormFactor::Mobile),
-        ("t960", 960, 540, UiFormFactor::Tv),
-        ("t1280", 1280, 720, UiFormFactor::Tv),
-    ];
-    let dir = std::env::var("DUMP_DIR").unwrap();
-    for (name, w, h, form) in cases {
-        let metrics = UiMetrics::for_viewport(Viewport::new(w, h, form));
-        let text = format!("{metrics:#?}");
-        std::fs::write(format!("{dir}/{name}.txt"), &text).unwrap();
-        let mut checked = 0;
-        for line in text.lines() {
-            let Some((field, value)) = line.trim().trim_end_matches(',').split_once(": ") else {
-                continue;
-            };
-            let Ok(expected) = value.parse::<f32>() else {
-                continue;
-            };
-            let var = field.replace('_', "-");
-            if let Some(raw) = crate::stylesheet::vars::raw(&var) {
-                let got: f32 = raw.trim_end_matches("px").parse().unwrap();
-                assert!(
-                    (got - expected).abs() < 1e-4,
-                    "{name} {field}: {got} vs {expected}"
-                );
-                checked += 1;
-            }
-        }
-        assert!(checked > 100, "{name}: only {checked} checked");
-    }
 }

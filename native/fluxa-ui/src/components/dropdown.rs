@@ -1,12 +1,7 @@
 use super::*;
 use crate::Space;
 
-pub(crate) fn dropdown_popup_width(
-    ui: &Ui,
-    options: &[(String, String)],
-    minimum: f32,
-    metrics: UiMetrics,
-) -> f32 {
+pub(crate) fn dropdown_popup_width(ui: &Ui, options: &[(String, String)], minimum: f32) -> f32 {
     let font = FontId::proportional(crate::vars::px("nav-label-size") + 1.0);
     let widest_label = options
         .iter()
@@ -27,14 +22,13 @@ pub(crate) fn dropdown(
     options: &[(String, String)],
     width: f32,
     sheet: bool,
-    metrics: UiMetrics,
 ) -> (Response, Option<String>) {
     let selected_label = options
         .iter()
         .find(|(option, _)| option == selected)
         .map(|(_, label)| label.as_str())
         .unwrap_or(selected);
-    let popup_width = dropdown_popup_width(ui, options, width, metrics);
+    let popup_width = dropdown_popup_width(ui, options, width);
     dropdown_inner(
         ui,
         id,
@@ -45,7 +39,6 @@ pub(crate) fn dropdown(
         popup_width,
         !options.is_empty(),
         sheet,
-        metrics,
     )
 }
 
@@ -59,7 +52,6 @@ fn dropdown_inner(
     popup_width: f32,
     enabled: bool,
     sheet: bool,
-    metrics: UiMetrics,
 ) -> (Response, Option<String>) {
     let height = crate::vars::px("screen-control-height").max(38.0);
     let mut value = selected.to_owned();
@@ -74,7 +66,6 @@ fn dropdown_inner(
         popup_width,
         enabled,
         sheet,
-        metrics,
     );
     let changed = value != selected;
     (response, changed.then_some(value))
@@ -101,7 +92,6 @@ pub(crate) fn choice_field(
     popup_width: f32,
     enabled: bool,
     sheet: bool,
-    metrics: UiMetrics,
 ) -> Response {
     let sense = if enabled {
         Sense::click()
@@ -119,7 +109,7 @@ pub(crate) fn choice_field(
         enabled,
         ..Default::default()
     };
-    let look = crate::stylesheet::resolve(ui.ctx(), "dropdown", response.id, field_state, None);
+    let look = crate::stylesheet::resolve(ui.ctx(), "dropdown", response.id, field_state);
     let painter = ui.painter();
     painter.rect(
         rect,
@@ -156,7 +146,6 @@ pub(crate) fn choice_field(
                 enabled,
                 ..Default::default()
             },
-            None,
         )
         .text,
     );
@@ -172,7 +161,6 @@ pub(crate) fn choice_field(
             enabled: true,
             ..Default::default()
         },
-        Some(&metrics),
     );
     crate::gfx::Popup::from_toggle_button_response(&response)
         .id(popup_id)
@@ -246,7 +234,6 @@ pub(crate) fn choice_field(
                                 enabled: true,
                                 ..Default::default()
                             },
-                            None,
                         );
                         ui.painter()
                             .rect_filled(row_response.rect, radius::control(), option.fill);
@@ -261,8 +248,10 @@ pub(crate) fn choice_field(
                         );
                         if active {
                             let c = check.center();
-                            let stroke =
-                                crate::gfx::Stroke::new(stroke::icon(), metrics.text_primary);
+                            let stroke = crate::gfx::Stroke::new(
+                                stroke::icon(),
+                                crate::metrics::theme().text_primary,
+                            );
                             ui.painter().line_segment(
                                 [c + Vec2::new(-5.0, 0.0), c + Vec2::new(-1.5, 3.5)],
                                 stroke,
@@ -282,7 +271,11 @@ pub(crate) fn choice_field(
             if let Some(slot) = slot {
                 backdrop.set(
                     slot,
-                    glass_shape(ui.min_rect().expand(5.0), 12.0, metrics.surface_raised),
+                    glass_shape(
+                        ui.min_rect().expand(5.0),
+                        12.0,
+                        crate::metrics::theme().surface_raised,
+                    ),
                 );
             }
         });

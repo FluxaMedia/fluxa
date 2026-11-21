@@ -96,8 +96,7 @@ pub(crate) fn gap<'a>(px: f32) -> Item<'a> {
 }
 
 pub(crate) fn space<'a>(ui: &Ui, space: Space) -> Item<'a> {
-    use crate::kit::UiKit;
-    gap(space.px(&ui.tokens()))
+    gap(space.px())
 }
 
 pub(crate) fn fill<'a>() -> Item<'a> {

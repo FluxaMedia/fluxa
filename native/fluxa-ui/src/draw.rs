@@ -22,7 +22,7 @@ pub(crate) enum Cast {
     Left,
 }
 
-pub(crate) fn shadow(metrics: &UiMetrics, cast: Cast) -> crate::gfx::Shadow {
+pub(crate) fn shadow(cast: Cast) -> crate::gfx::Shadow {
     let reach = crate::vars::signed("shadow-offset");
     let offset = match cast {
         Cast::Up => [0, -reach],
@@ -36,18 +36,16 @@ pub(crate) fn shadow(metrics: &UiMetrics, cast: Cast) -> crate::gfx::Shadow {
     }
 }
 
-pub(crate) fn surface_frame(
-    metrics: &UiMetrics,
-    radius: Radius,
-    edge: Edge,
-    cast: Option<Cast>,
-) -> crate::gfx::Frame {
+pub(crate) fn surface_frame(radius: Radius, edge: Edge, cast: Option<Cast>) -> crate::gfx::Frame {
     let frame = crate::gfx::Frame::NONE
-        .fill(metrics.surface_raised)
-        .stroke(crate::gfx::Stroke::new(stroke::hairline(), metrics.border))
-        .corner_radius(corners(radius.corner(metrics), edge));
+        .fill(crate::metrics::theme().surface_raised)
+        .stroke(crate::gfx::Stroke::new(
+            stroke::hairline(),
+            crate::metrics::theme().border,
+        ))
+        .corner_radius(corners(radius.corner(), edge));
     match cast {
-        Some(cast) => frame.shadow(shadow(metrics, cast)),
+        Some(cast) => frame.shadow(shadow(cast)),
         None => frame,
     }
 }

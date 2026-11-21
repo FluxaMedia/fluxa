@@ -174,11 +174,11 @@ pub fn mobile_nav_reserve(viewport: Viewport) -> f32 {
     viewport.height - mobile_nav_rect(viewport).top()
 }
 
-pub fn navigation_focus_rects(viewport: Viewport, metrics: UiMetrics) -> Vec<(u64, Rect)> {
+pub fn navigation_focus_rects(viewport: Viewport) -> Vec<(u64, Rect)> {
     if viewport.side_inset > 0.0 {
         return crate::sidebar::item_rects(viewport);
     }
-    crate::navbar::focus_rects(viewport, metrics)
+    crate::navbar::focus_rects(viewport)
 }
 
 pub fn is_navigation_node(node: u64) -> bool {

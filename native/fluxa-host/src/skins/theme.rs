@@ -124,9 +124,6 @@ pub(super) fn apply_theme(active: Option<&Skin>) {
                 )
             }),
     );
-    if let Err(error) = fluxa_theme::theme::set_live_tokens(active.and_then(Skin::tokens)) {
-        crate::host_log(format!("skin tokens: {error}"));
-    }
     let default = DEFAULT.read().ok().and_then(|slot| slot.clone());
     let custom = CUSTOM_CSS.lock().map(|css| css.clone()).unwrap_or_default();
     let builtin = [default.as_deref(), active]

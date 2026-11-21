@@ -6,7 +6,6 @@ pub(crate) fn textless_logo(
     url: &str,
     assets: &mut impl HomeAssets,
 ) {
-    let metrics = crate::metrics::active();
     let scrim = crate::flex::anchored(
         rect,
         Align2::CENTER_BOTTOM,
@@ -59,7 +58,6 @@ pub(crate) fn landscape_logo(
     card: &HomeCard,
     assets: &mut impl HomeAssets,
 ) {
-    let metrics = crate::metrics::active();
     let bounds = Vec2::new(
         rect.width() * crate::vars::px("surface-card-landscape-logo-width-share"),
         rect.height() * crate::vars::px("surface-card-landscape-logo-height-share"),

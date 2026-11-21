@@ -52,7 +52,6 @@ pub(crate) fn button_core(
     kind: ButtonKind,
     text_size: f32,
     enabled: bool,
-    metrics: Option<UiMetrics>,
 ) -> Response {
     let (rect, response) = ui.allocate_exact_size(
         Vec2::new(width, height),
@@ -73,7 +72,6 @@ pub(crate) fn button_core(
             focused: response.has_focus(),
             enabled,
         },
-        metrics.as_ref(),
     );
     let (fill, text) = (style.fill, style.text);
     let painter = ui.painter();
@@ -90,19 +88,10 @@ pub(crate) fn button_core(
         );
     });
     if enabled && response.has_focus() {
-        let (expand, width) = match metrics {
-            Some(look) => (
-                crate::vars::px("focus-ring-expand"),
-                crate::vars::px("focus-ring-width"),
-            ),
-            None => {
-                let look = crate::metrics::active();
-                (
-                    crate::vars::px("focus-ring-expand"),
-                    crate::vars::px("focus-ring-width"),
-                )
-            }
-        };
+        let (expand, width) = (
+            crate::vars::px("focus-ring-expand"),
+            crate::vars::px("focus-ring-width"),
+        );
         painter.rect_stroke(
             rect.expand(expand),
             height * 0.5 + expand,

@@ -7,10 +7,7 @@ fn bar_visible(viewport: Viewport, home: &HomeModel) -> bool {
 
 pub(crate) fn category_bar_space(viewport: Viewport, home: &HomeModel) -> f32 {
     if bar_visible(viewport, home) && !home_shows_hero(home) {
-        nav_bar_top()
-            + nav_item_height()
-            + nav_bar_padding() * 2.0
-            + Space::S8.px(&crate::metrics::active())
+        nav_bar_top() + nav_item_height() + nav_bar_padding() * 2.0 + Space::S8.px()
     } else {
         0.0
     }

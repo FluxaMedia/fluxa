@@ -22,7 +22,6 @@ pub(super) fn text_style(style: Option<&str>) -> (Type, Role) {
 pub(super) fn text_rule(
     ui: &Ui,
     node: &Resolved,
-    metrics: &UiMetrics,
     chain: &[std::rc::Rc<Ancestor>],
     position: Option<(usize, usize)>,
 ) -> Option<crate::stylesheet::Style> {
@@ -42,7 +41,6 @@ pub(super) fn text_rule(
                 enabled: true,
                 selected: false,
             },
-            Some(metrics),
             &modifiers,
         )
     }))
@@ -82,7 +80,6 @@ pub(super) fn text<'a, A: HomeAssets>(
         let style = text_rule(
             ui,
             node,
-            env.metrics,
             &env.ancestors.borrow(),
             env.positions.get(&node.key).copied(),
         );
@@ -113,11 +110,9 @@ pub(super) fn text<'a, A: HomeAssets>(
             .map(|lines| lines as usize);
         if let Some(rows) = lines {
             let size = font_size.unwrap_or(crate::stylesheet::hero_synopsis_size());
-            let color = color.unwrap_or(env.metrics.text_primary);
+            let color = color.unwrap_or(crate::metrics::theme().text_primary);
             let grown = match EXPAND.get() {
-                Some((ease, Some(base))) if ease > 0.0 => {
-                    Some(expanded_width(base as f32, ease, env.metrics))
-                }
+                Some((ease, Some(base))) if ease > 0.0 => Some(expanded_width(base as f32, ease)),
                 _ => None,
             };
             let centered = prop(node, "center") == "true";
@@ -260,17 +255,12 @@ pub(super) fn text<'a, A: HomeAssets>(
     }
     let assets = env.assets;
     kit::widget(ui, move |ui| {
-        let theme = ui.tokens();
         crate::emoji::label(
             ui,
             &mut **assets.borrow_mut(),
             &content,
-            if section {
-                section_size
-            } else {
-                kind.size(&theme)
-            },
-            role.color(&theme),
+            if section { section_size } else { kind.size() },
+            role.color(),
             crate::emoji::Label::default(),
         );
     })

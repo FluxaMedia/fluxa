@@ -258,7 +258,6 @@ pub(crate) fn paint_trailer_subtitle(context: &crate::gfx::Context, rect: Rect, 
         crate::gfx::Order::Foreground,
         Id::new("fluxa-trailer-subtitle"),
     ));
-    let metrics = crate::metrics::active();
     let size = crate::vars::scaled("paint-text-width", rect.width());
     let galley = painter.layout(
         text.to_owned(),
@@ -270,7 +269,7 @@ pub(crate) fn paint_trailer_subtitle(context: &crate::gfx::Context, rect: Rect, 
         Align2::CENTER_BOTTOM,
         [
             flex::stack(Align2::CENTER_CENTER, [flex::leaf(galley.size()).id(1)])
-                .padding(Insets::xy(Space::S12.px(&metrics), Space::S6.px(&metrics)))
+                .padding(Insets::xy(Space::S12.px(), Space::S6.px()))
                 .id(0),
         ],
     )
@@ -289,7 +288,6 @@ pub(crate) fn paint_trailer_subtitle(context: &crate::gfx::Context, rect: Rect, 
 }
 
 pub(crate) fn paint_subtitle_cue(painter: &crate::gfx::Painter, rect: Rect, text: &str, lift: f32) {
-    let metrics = crate::metrics::active();
     let size = crate::vars::scaled("paint-text-height", rect.height());
     let wrap = rect.width() * crate::vars::px("control-cue-wrap-ratio");
     let galley = painter.layout(

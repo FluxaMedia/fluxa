@@ -34,8 +34,6 @@ pub struct Manifest {
     #[serde(default)]
     pub constants: Option<String>,
     #[serde(default)]
-    pub tokens: Option<String>,
-    #[serde(default)]
     pub languages: BTreeMap<String, String>,
     #[serde(default)]
     pub extensions: Vec<String>,
@@ -68,7 +66,6 @@ pub struct Skin {
     screens: BTreeMap<String, Node>,
     includes: BTreeMap<String, Node>,
     constants: BTreeMap<String, f32>,
-    tokens: Option<String>,
     strings: BTreeMap<String, BTreeMap<String, String>>,
     scripts: Vec<Script>,
     elements: Vec<crate::blocks::Element>,
@@ -116,10 +113,6 @@ impl Skin {
 
     pub fn strings(&self) -> &BTreeMap<String, BTreeMap<String, String>> {
         &self.strings
-    }
-
-    pub fn tokens(&self) -> Option<&str> {
-        self.tokens.as_deref()
     }
 
     pub fn constants(&self) -> &BTreeMap<String, f32> {
@@ -368,16 +361,6 @@ fn load(files: &dyn Files, dir: &Path) -> Result<Skin, Vec<String>> {
             Err(error) => problems.push(error),
         }
     }
-    let mut tokens = None;
-    if let Some(file) = &manifest.tokens {
-        match files.read(file) {
-            Ok(source) => match serde_json::from_str::<Value>(&source) {
-                Ok(_) => tokens = Some(source),
-                Err(error) => problems.push(format!("{file}: {error}")),
-            },
-            Err(error) => problems.push(error),
-        }
-    }
 
     let mut scripts = Vec::new();
     for file in &manifest.extensions {
@@ -502,7 +485,6 @@ fn load(files: &dyn Files, dir: &Path) -> Result<Skin, Vec<String>> {
             screens,
             includes,
             constants,
-            tokens,
             strings,
             scripts,
         })

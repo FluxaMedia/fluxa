@@ -340,9 +340,10 @@ pub fn option_label(key: &str, value: &str, language: &str) -> String {
         (_, "off") => Some("settings.off"),
         ("themeId", _) => match fluxa_theme::user::pack_name(value) {
             Some(name) => return name,
-            None => fluxa_theme::theme::theme(value)
-                .ok()
-                .map(|theme| theme.name_key.as_str()),
+            None if fluxa_theme::theme::is_builtin(value) => {
+                return localized(&fluxa_theme::theme::name_key(value), language);
+            }
+            None => None,
         },
         ("animeUpscalingMode", "auto") => Some("settings.auto"),
         ("animeUpscalingQuality", _) => Some(match value {

@@ -219,8 +219,7 @@ mod tests {
     fn bound_components_register_targets_and_activation() {
         let context = crate::gfx::Context::default();
         context.set_fonts(crate::fonts::definitions());
-        let metrics = UiMetrics::for_viewport(Viewport::new(400, 300, UiFormFactor::Tv));
-        crate::kit::provide(&context, metrics);
+        crate::metrics::enter(Viewport::new(400, 300, UiFormFactor::Tv));
         let input = crate::gfx::RawInput {
             screen_rect: Some(crate::gfx::rect_at(Pos2::ZERO, Vec2::new(400.0, 300.0))),
             ..Default::default()
@@ -230,8 +229,8 @@ mod tests {
             .run_ui(input, |root| {
                 begin_focus_frame(root.ctx(), Some(7));
                 crate::gfx::CentralPanel::default().show(root, |ui| {
-                    crate::components::chip(ui, "One", false, metrics).focus_node(ui, 7);
-                    crate::components::chip(ui, "Two", false, metrics).focus_node(ui, 8);
+                    crate::components::chip(ui, "One", false).focus_node(ui, 7);
+                    crate::components::chip(ui, "Two", false).focus_node(ui, 8);
                 });
                 targets = take_focus_targets(root.ctx()).0;
             })

@@ -42,24 +42,22 @@ pub struct HomeLayout {
 pub fn home_layout(viewport: Viewport, home: &HomeModel) -> HomeLayout {
     let compact = viewport.is_compact();
     let show_hero = home_shows_hero(home);
-    let metrics = home_metrics(viewport);
+    crate::metrics::enter(viewport);
     let margin = crate::vars::px("screen-margin");
     let mut layout = HomeLayout::default();
     if !compact {
-        layout.focusable.extend(navigation_focus_rects(
-            home_nav_viewport(viewport, home),
-            metrics,
-        ));
+        layout
+            .focusable
+            .extend(navigation_focus_rects(home_nav_viewport(viewport, home)));
     }
     let hero_height = home_hero_height_for(viewport, home);
-    let flow = home_flow(viewport, metrics, home);
+    let flow = home_flow(viewport, home);
     if show_hero && home.item_id.is_some() && !home_hero_pinned(viewport, home) {
         let play_y = flow.hero_top + hero_height
             - crate::vars::px("home-hero-bottom-inset")
             - home.scroll_offset;
         let play = hero::play_rect(
             compact,
-            metrics,
             viewport.width,
             margin,
             play_y,
@@ -67,7 +65,7 @@ pub fn home_layout(viewport: Viewport, home: &HomeModel) -> HomeLayout {
         );
         layout.focusable.push((NODE_PLAY, play));
     }
-    for shelf in home_shelves(metrics, home, flow.rows_top).take(64) {
+    for shelf in home_shelves(home, flow.rows_top).take(64) {
         let (title, cards, kind) = (shelf.title, shelf.cards, shelf.kind);
         let row_height = shelf.height();
         let visible_y = shelf.top - home.scroll_offset;
@@ -81,16 +79,15 @@ pub fn home_layout(viewport: Viewport, home: &HomeModel) -> HomeLayout {
             .copied()
             .unwrap_or(0.0);
         let origin = Pos2::new(margin - row_scroll, visible_y + shelf.heading);
-        for rect in shelf_card_rects(metrics, title, kind, cards, origin, |_, width, _| width) {
+        for rect in shelf_card_rects(title, kind, cards, origin, |_, width, _| width) {
             layout.focusable.push((NODE_CARD_BASE + flat as u64, rect));
             flat += 1;
         }
     }
     if compact {
-        layout.focusable.extend(navigation_focus_rects(
-            home_nav_viewport(viewport, home),
-            metrics,
-        ));
+        layout
+            .focusable
+            .extend(navigation_focus_rects(home_nav_viewport(viewport, home)));
     }
     layout
 }
@@ -107,7 +104,6 @@ pub fn home_row_of_card(home: &HomeModel, card: usize) -> Option<usize> {
 }
 
 pub(crate) fn shelf_card_rects(
-    metrics: UiMetrics,
     title: &str,
     kind: HomeRowKind,
     cards: &[HomeCard],
@@ -118,7 +114,7 @@ pub(crate) fn shelf_card_rects(
         .iter()
         .enumerate()
         .map(|(index, card)| {
-            let (width, height) = home_card_dimensions(metrics, card, kind);
+            let (width, height) = home_card_dimensions(card, kind);
             crate::kit::Slot::sized(widen(index, width, height), height)
                 .lead(home_card_lead(title, kind, index, height))
         })

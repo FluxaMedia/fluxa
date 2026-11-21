@@ -3,7 +3,7 @@ use super::*;
 pub(super) struct PrefetchPlan {
     pub(super) tree: Arc<Vec<Resolved>>,
     pub(super) sheet: Arc<crate::stylesheet::Sheet>,
-    pub(super) metrics: Arc<UiMetrics>,
+    pub(super) key: Option<crate::metrics::MetricsKey>,
     pub(super) view: Vec2,
     pub(super) requests: Vec<(String, [u32; 2])>,
     pub(super) logos: Vec<(String, [u32; 2])>,
@@ -20,13 +20,12 @@ thread_local! {
 
 pub(super) fn prefetch<A: HomeAssets>(env: &Env<'_, A>, tree: &Arc<Vec<Resolved>>) {
     let sheet = crate::stylesheet::sheet();
-    let metrics = crate::metrics::active();
     PREFETCH.with(|plans| {
         let mut plans = plans.borrow_mut();
         let at = plans.iter().position(|plan| {
             Arc::ptr_eq(&plan.tree, tree)
                 && Arc::ptr_eq(&plan.sheet, &sheet)
-                && Arc::ptr_eq(&plan.metrics, &metrics)
+                && plan.key == crate::metrics::active_key()
                 && plan.view == env.view.get()
         });
         let at = at.unwrap_or_else(|| {
@@ -39,7 +38,7 @@ pub(super) fn prefetch<A: HomeAssets>(env: &Env<'_, A>, tree: &Arc<Vec<Resolved>
             plans.push(PrefetchPlan {
                 tree: tree.clone(),
                 sheet,
-                metrics,
+                key: crate::metrics::active_key(),
                 view: env.view.get(),
                 requests,
                 logos,
@@ -96,17 +95,14 @@ pub(super) fn plan_prefetch<A: HomeAssets>(
                 let share = prop(node, "share").parse::<f32>().unwrap_or(1.0);
                 let size = Vec2::new(
                     node.width
-                        .unwrap_or_else(|| expanded_width(base, 1.0, env.metrics) * share),
+                        .unwrap_or_else(|| expanded_width(base, 1.0) * share),
                     node.height.unwrap_or(base * 1.5),
                 );
                 logos.push((logo, crate::artwork_target_size(size, 1.0)));
             } else if node.kind == "image"
                 && let Some(url) = node.src.clone().filter(|url| !url.is_empty())
             {
-                let size = Vec2::new(
-                    expanded_width(base, 1.0, env.metrics),
-                    node.height.unwrap_or(base * 1.5),
-                );
+                let size = Vec2::new(expanded_width(base, 1.0), node.height.unwrap_or(base * 1.5));
                 into.push((url, crate::artwork_target_size(size, 1.0)));
             }
             continue;

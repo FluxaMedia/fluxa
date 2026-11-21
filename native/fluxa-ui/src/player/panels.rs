@@ -7,7 +7,6 @@ pub(super) fn draw_seek_preview(
     pointer_x: f32,
     time: f64,
     player: &PlayerModel,
-    metrics: UiMetrics,
 ) {
     let painter = context.layer_painter(crate::gfx::LayerId::new(
         crate::gfx::Order::Foreground,
@@ -28,7 +27,7 @@ pub(super) fn draw_seek_preview(
         Align2::CENTER_BOTTOM,
         format_time(time),
         font.clone(),
-        metrics.text_primary,
+        crate::metrics::theme().text_primary,
         None,
     );
     bottom -= 18.0;
@@ -39,7 +38,7 @@ pub(super) fn draw_seek_preview(
             Align2::CENTER_BOTTOM,
             chapter,
             font,
-            metrics.text_primary,
+            crate::metrics::theme().text_primary,
             Some(width),
         );
         bottom -= 20.0;

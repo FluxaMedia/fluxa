@@ -248,7 +248,10 @@ pub fn draw_player_with(
                 crate::vars::scaled("player-panel-narrow", rect.width())
             };
             let (left, right) = rect.split_left_right_at_x(rect.right() - width);
-            let surface = UiMetrics::for_viewport(viewport).surface;
+            let surface = {
+                crate::metrics::enter(viewport);
+                crate::metrics::theme().surface
+            };
             context
                 .layer_painter(crate::gfx::LayerId::background())
                 .rect_filled(left, 0.0, surface);
@@ -286,14 +289,7 @@ pub fn draw_player_with(
         && let Some(Some((track, pointer_x, time))) = context
             .data(|data| data.get_temp::<Option<(Rect, f32, f64)>>(Id::new("player-seek-hover")))
     {
-        draw_seek_preview(
-            context,
-            track,
-            pointer_x,
-            time,
-            player,
-            UiMetrics::for_viewport(viewport),
-        );
+        draw_seek_preview(context, track, pointer_x, time, player);
     }
     layout
 }

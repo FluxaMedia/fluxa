@@ -73,28 +73,14 @@ pub fn set_nav_focus(node: Option<u64>) {
 }
 
 fn widths(form_factor: UiFormFactor) -> (f32, f32) {
-    let (platform, rail, expanded) = if form_factor == UiFormFactor::Tv {
-        ("tv", 104.0, 300.0)
+    let form = if form_factor == UiFormFactor::Tv {
+        "tv"
     } else {
-        ("desktop", 76.0, 232.0)
-    };
-    let read = |key: &str, fallback: f32| {
-        fluxa_theme::theme::shared_ui_tokens()
-            .ok()
-            .and_then(|tokens| {
-                tokens
-                    .layout
-                    .get("platforms")?
-                    .get(platform)?
-                    .get("dp")?
-                    .get(key)?
-                    .as_f64()
-            })
-            .map_or(fallback, |value| value as f32)
+        "desktop"
     };
     (
-        read("navigationRailWidth", rail),
-        read("navigationRailExpandedWidth", expanded),
+        crate::vars::px(&format!("navigation-rail-width-{form}")),
+        crate::vars::px(&format!("navigation-rail-expanded-width-{form}")),
     )
 }
 
@@ -124,10 +110,10 @@ fn bounds(viewport: Viewport) -> Rect {
 }
 
 fn slots(viewport: Viewport) -> Vec<Slot> {
-    let metrics = UiMetrics::for_viewport(viewport);
+    crate::metrics::enter(viewport);
     let height = crate::vars::px("sidebar-item-height");
-    let card = height + Space::S12.px(&metrics);
-    let item_gap = Space::S4.px(&metrics);
+    let card = height + Space::S12.px();
+    let item_gap = Space::S4.px();
     let link = |node: u64, icon: &'static str, label: String, route: usize, lead: f32| {
         (node, Kind::Link { icon, label, route }, height, lead)
     };
@@ -138,7 +124,7 @@ fn slots(viewport: Viewport) -> Vec<Slot> {
             0,
             Kind::Heading(nav_text("nav.section_browse")),
             Dp::D28.px(),
-            Space::S6.px(&metrics),
+            Space::S6.px(),
         ),
     ];
     for (index, label) in nav_entries() {
@@ -191,14 +177,14 @@ fn slots(viewport: Viewport) -> Vec<Slot> {
         children.push(crate::flex::leaf(Vec2::new(0.0, item_gap)));
     }
     children.push(crate::flex::leaf(Vec2::ZERO).height(card).id(profile_id));
-    let inset = Space::S10.px(&metrics);
+    let inset = Space::S10.px();
     let placed = crate::flex::column(children)
         .align(crate::flex::Align::Stretch)
         .padding(crate::flex::Insets {
             left: inset,
-            top: Space::S20.px(&metrics),
+            top: Space::S20.px(),
             right: inset,
-            bottom: Space::S16.px(&metrics) + viewport.safe_bottom,
+            bottom: Space::S16.px() + viewport.safe_bottom,
         })
         .solve(bounds(viewport));
     let rect = |id: usize| placed.find(id).unwrap_or(Rect::NOTHING);

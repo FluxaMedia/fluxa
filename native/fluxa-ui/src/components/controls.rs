@@ -3,11 +3,11 @@ use crate::dp::Dp;
 use crate::flex::{Align, Insets, Weight, column, fill, leaf, paint_text, row, text};
 use crate::{IconSize, Radius, Space};
 
-pub(crate) fn chip(ui: &mut Ui, label: &str, selected: bool, metrics: UiMetrics) -> Response {
+pub(crate) fn chip(ui: &mut Ui, label: &str, selected: bool) -> Response {
     let font = Weight::Medium.font(crate::vars::px("text-label"));
     let tree = row([text(ui.painter(), label, &font).id(0)])
         .align(Align::Center)
-        .padding(Insets::xy(Space::S12.px(&metrics), Space::S6.px(&metrics)))
+        .padding(Insets::xy(Space::S12.px(), Space::S6.px()))
         .min_height(
             crate::vars::px("icon-button-size") * crate::vars::px("control-chip-height-ratio"),
         );
@@ -24,7 +24,6 @@ pub(crate) fn chip(ui: &mut Ui, label: &str, selected: bool, metrics: UiMetrics)
             focused: response.has_focus(),
             enabled: true,
         },
-        Some(&metrics),
     );
     crate::motion::press_scale(ui.painter(), rect, || {
         let painter = ui.painter();
@@ -34,20 +33,14 @@ pub(crate) fn chip(ui: &mut Ui, label: &str, selected: bool, metrics: UiMetrics)
     response
 }
 
-pub(crate) fn segmented(
-    ui: &mut Ui,
-    id: Id,
-    labels: &[&str],
-    selected: usize,
-    metrics: UiMetrics,
-) -> Option<usize> {
+pub(crate) fn segmented(ui: &mut Ui, id: Id, labels: &[&str], selected: usize) -> Option<usize> {
     let font = Weight::Medium.font(crate::vars::px("text-label"));
     let height = crate::vars::px("screen-control-height");
     let width = ui
         .available_width()
         .min(labels.len() as f32 * crate::vars::px("control-segment-max-width"));
     let (rect, _) = ui.allocate_exact_size(Vec2::new(width, height), Sense::hover());
-    let pad = Space::S2.px(&metrics);
+    let pad = Space::S2.px();
     let tree = row(labels.iter().enumerate().map(|(i, _)| fill().id(i)))
         .padding(Insets::all(pad))
         .align(Align::Stretch);
@@ -92,7 +85,6 @@ pub(crate) fn segmented(
                     enabled: true,
                     ..Default::default()
                 },
-                None,
             )
             .text,
             Align2::CENTER_CENTER,
@@ -110,7 +102,6 @@ pub(crate) fn stepper(
     value_label: &str,
     can_decrease: bool,
     can_increase: bool,
-    metrics: UiMetrics,
 ) -> Option<i32> {
     let font = Weight::Bold.font(crate::vars::px("text-body"));
     let button = crate::vars::px("screen-control-height");
@@ -122,7 +113,7 @@ pub(crate) fn stepper(
         leaf(Vec2::new(value_width, button)).id(1),
         leaf(Vec2::splat(button)).id(2),
     ])
-    .gap(Space::S4.px(&metrics))
+    .gap(Space::S4.px())
     .align(Align::Center);
     let (rect, _) = ui.allocate_exact_size(tree.outer_size(), Sense::hover());
     let placed = tree.solve(rect);
@@ -139,11 +130,10 @@ pub(crate) fn stepper(
                 enabled,
                 ..Default::default()
             },
-            None,
         );
         let painter = ui.painter();
         painter.rect_filled(slot, slot.height() * 0.5, look.fill);
-        let arm = IconSize::Sm.px(&metrics) * 0.4;
+        let arm = IconSize::Sm.px() * 0.4;
         let color = look.text;
         let line = crate::gfx::Stroke::new(stroke::emphasis(), color);
         let center = slot.center();
@@ -166,19 +156,19 @@ pub(crate) fn stepper(
         placed.find(1).unwrap_or(rect),
         value_label,
         &font,
-        metrics.text_primary,
+        crate::metrics::theme().text_primary,
         Align2::CENTER_CENTER,
     );
     delta
 }
 
-pub(crate) fn switch(ui: &mut Ui, id: Id, on: bool, metrics: UiMetrics) -> Response {
+pub(crate) fn switch(ui: &mut Ui, id: Id, on: bool) -> Response {
     let size = Vec2::new(
         crate::vars::px("settings-toggle-width"),
         crate::vars::px("settings-toggle-height"),
     );
     let (rect, response) = ui.allocate_exact_size(size, Sense::click());
-    toggle(ui.ctx(), ui.painter(), id, rect, on, metrics);
+    toggle(ui.ctx(), ui.painter(), id, rect, on);
     response
 }
 
@@ -195,20 +185,17 @@ pub(crate) struct ListRow<'a> {
     pub trailing: Trailing<'a>,
 }
 
-pub(crate) fn list_row(ui: &mut Ui, row_data: ListRow, metrics: UiMetrics) -> Response {
+pub(crate) fn list_row(ui: &mut Ui, row_data: ListRow) -> Response {
     let title_font = Weight::Medium.font(crate::vars::px("text-body"));
     let sub_font = Weight::Regular.font(crate::vars::px("text-label"));
     let value_font = Weight::Regular.font(crate::vars::px("text-body"));
-    let icon = IconSize::Md.px(&metrics);
+    let icon = IconSize::Md.px();
     let trailing_size = match &row_data.trailing {
         Trailing::Value(value) => {
             let width = crate::flex::text_size(ui.painter(), value, &value_font).x;
-            Vec2::new(
-                width + IconSize::Sm.px(&metrics) + Space::S4.px(&metrics),
-                Dp::D20.px(),
-            )
+            Vec2::new(width + IconSize::Sm.px() + Space::S4.px(), Dp::D20.px())
         }
-        Trailing::Chevron => Vec2::splat(IconSize::Sm.px(&metrics)),
+        Trailing::Chevron => Vec2::splat(IconSize::Sm.px()),
         Trailing::Switch(_) => Vec2::new(
             crate::vars::px("settings-toggle-width"),
             crate::vars::px("settings-toggle-height"),
@@ -241,12 +228,12 @@ pub(crate) fn list_row(ui: &mut Ui, row_data: ListRow, metrics: UiMetrics) -> Re
             .grow(1.0)
             .align(Align::Stretch)
             .min_width(0.0)
-            .gap(Space::S2.px(&metrics)),
+            .gap(Space::S2.px()),
         leaf(trailing_size).id(3),
     ])
-    .gap(Space::S12.px(&metrics))
+    .gap(Space::S12.px())
     .align(Align::Center)
-    .padding(Insets::xy(Space::S16.px(&metrics), Space::S8.px(&metrics)))
+    .padding(Insets::xy(Space::S16.px(), Space::S8.px()))
     .min_height(crate::vars::px("settings-row-height"));
     let size = Vec2::new(ui.available_width(), tree.outer_size().y);
     let (rect, response) = ui.allocate_exact_size(size, Sense::click());
@@ -255,11 +242,11 @@ pub(crate) fn list_row(ui: &mut Ui, row_data: ListRow, metrics: UiMetrics) -> Re
     let painter = ui.painter();
     painter.rect_filled(
         rect,
-        Radius::Md.px(&metrics),
-        metrics.ink((tone::faint() as f32 * hover) as u8),
+        Radius::Md.px(),
+        crate::metrics::ink((tone::faint() as f32 * hover) as u8),
     );
     if let (Some(texture), Some(slot)) = (row_data.icon, placed.find(0)) {
-        painter.image(texture, slot, full_uv(), metrics.ink(tone::body()));
+        painter.image(texture, slot, full_uv(), crate::metrics::ink(tone::body()));
     }
     if let Some(slot) = placed.find(1) {
         paint_text(
@@ -267,7 +254,7 @@ pub(crate) fn list_row(ui: &mut Ui, row_data: ListRow, metrics: UiMetrics) -> Re
             slot,
             row_data.title,
             &title_font,
-            metrics.text_primary,
+            crate::metrics::theme().text_primary,
             Align2::LEFT_CENTER,
         );
     }
@@ -277,51 +264,41 @@ pub(crate) fn list_row(ui: &mut Ui, row_data: ListRow, metrics: UiMetrics) -> Re
             slot,
             subtitle,
             &sub_font,
-            metrics.text_secondary,
+            crate::metrics::theme().text_secondary,
             Align2::LEFT_CENTER,
         );
     }
     if let Some(slot) = placed.find(3) {
         match row_data.trailing {
             Trailing::Value(value) => {
-                let parts = row([
-                    fill().id(4),
-                    leaf(Vec2::splat(IconSize::Sm.px(&metrics))).id(5),
-                ])
-                .gap(Space::S4.px(&metrics))
-                .align(Align::Center)
-                .solve(slot);
+                let parts = row([fill().id(4), leaf(Vec2::splat(IconSize::Sm.px())).id(5)])
+                    .gap(Space::S4.px())
+                    .align(Align::Center)
+                    .solve(slot);
                 let chevron = parts.find(5).unwrap_or(slot);
                 paint_text(
                     painter,
                     parts.find(4).unwrap_or(slot),
                     value,
                     &value_font,
-                    metrics.text_muted,
+                    crate::metrics::theme().text_muted,
                     Align2::RIGHT_CENTER,
                 );
-                paint_chevron(painter, chevron, &metrics);
+                paint_chevron(painter, chevron);
             }
-            Trailing::Chevron => paint_chevron(painter, slot, &metrics),
+            Trailing::Chevron => paint_chevron(painter, slot),
             Trailing::Switch(on) => {
-                toggle(
-                    ui.ctx(),
-                    ui.painter(),
-                    response.id.with("switch"),
-                    slot,
-                    on,
-                    metrics,
-                );
+                toggle(ui.ctx(), ui.painter(), response.id.with("switch"), slot, on);
             }
         }
     }
     response
 }
 
-fn paint_chevron(painter: &Painter, rect: Rect, metrics: &UiMetrics) {
+fn paint_chevron(painter: &Painter, rect: Rect) {
     let arm = rect.width() * 0.25;
     let center = rect.center();
-    let stroke = crate::gfx::Stroke::new(stroke::icon(), metrics.ink(tone::muted()));
+    let stroke = crate::gfx::Stroke::new(stroke::icon(), crate::metrics::ink(tone::muted()));
     painter.line_segment(
         [
             center + Vec2::new(-arm * 0.5, -arm),
@@ -338,9 +315,9 @@ fn paint_chevron(painter: &Painter, rect: Rect, metrics: &UiMetrics) {
     );
 }
 
-pub(crate) fn swatch(ui: &mut Ui, color: Color32, selected: bool, metrics: UiMetrics) -> Response {
-    let size = IconSize::Xl.px(&metrics);
-    let outer = size + Space::S8.px(&metrics);
+pub(crate) fn swatch(ui: &mut Ui, color: Color32, selected: bool) -> Response {
+    let size = IconSize::Xl.px();
+    let outer = size + Space::S8.px();
     let (rect, response) = ui.allocate_exact_size(Vec2::splat(outer), Sense::click());
     let hover = crate::motion::hover(ui.ctx(), &response);
     crate::motion::press_scale(ui.painter(), rect, || {
@@ -350,13 +327,13 @@ pub(crate) fn swatch(ui: &mut Ui, color: Color32, selected: bool, metrics: UiMet
         painter.circle_stroke(
             rect.center(),
             radius,
-            crate::gfx::Stroke::new(stroke::hairline(), metrics.border),
+            crate::gfx::Stroke::new(stroke::hairline(), crate::metrics::theme().border),
         );
         if selected {
             painter.circle_stroke(
                 rect.center(),
                 outer * 0.5 - Dp::D1.px(),
-                crate::gfx::Stroke::new(stroke::emphasis(), metrics.text_primary),
+                crate::gfx::Stroke::new(stroke::emphasis(), crate::metrics::theme().text_primary),
             );
         }
     });
@@ -404,17 +381,12 @@ mod tests {
         }
     }
 
-    fn metrics() -> UiMetrics {
-        UiMetrics::for_viewport(Viewport::new(400, 300, UiFormFactor::Desktop))
-    }
-
     #[test]
     fn segmented_reports_the_clicked_segment() {
         let context = crate::gfx::Context::default();
-        let metrics = metrics();
         let mut chosen = None;
         click_at(&context, Pos2::new(350.0, 12.0), |ui| {
-            chosen = chosen.or(segmented(ui, Id::new("seg"), &["a", "b", "c"], 0, metrics));
+            chosen = chosen.or(segmented(ui, Id::new("seg"), &["a", "b", "c"], 0));
         });
         assert_eq!(chosen, Some(2));
     }
@@ -422,10 +394,9 @@ mod tests {
     #[test]
     fn stepper_ignores_a_disabled_direction() {
         let context = crate::gfx::Context::default();
-        let metrics = metrics();
         let mut delta = None;
         click_at(&context, Pos2::new(10.0, 12.0), |ui| {
-            delta = delta.or(stepper(ui, Id::new("step"), "3", false, true, metrics));
+            delta = delta.or(stepper(ui, Id::new("step"), "3", false, true));
         });
         assert_eq!(delta, None);
     }
@@ -433,13 +404,12 @@ mod tests {
     #[test]
     fn stepper_increases_from_the_plus_button() {
         let context = crate::gfx::Context::default();
-        let metrics = metrics();
         let mut delta = None;
         let plus = crate::vars::px("screen-control-height") * 2.0
             + 4.0 * 2.0
             + crate::vars::px("screen-control-height") * 0.5;
         click_at(&context, Pos2::new(plus + 8.0, 12.0), |ui| {
-            delta = delta.or(stepper(ui, Id::new("step"), "3", true, true, metrics));
+            delta = delta.or(stepper(ui, Id::new("step"), "3", true, true));
         });
         assert_eq!(delta, Some(1));
     }

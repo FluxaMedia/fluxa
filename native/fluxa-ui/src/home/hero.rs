@@ -26,7 +26,7 @@ pub(super) struct HeroStyle {
 }
 
 impl HeroStyle {
-    pub fn new(viewport: Viewport, metrics: UiMetrics, margin: f32) -> Self {
+    pub fn new(viewport: Viewport, margin: f32) -> Self {
         if viewport.is_compact() {
             return Self {
                 centered: true,
@@ -79,7 +79,7 @@ impl HeroStyle {
         }
     }
 
-    pub fn fallback_play(&self, metrics: UiMetrics, width: f32, margin: f32) -> Rect {
+    pub fn fallback_play(&self, width: f32, margin: f32) -> Rect {
         let (rise, height) = if self.centered {
             (Dp::D96.px(), crate::vars::px("button-height"))
         } else {
@@ -88,7 +88,7 @@ impl HeroStyle {
                 Dp::D48.px(),
             )
         };
-        play_rect(self.centered, metrics, width, margin, -rise, height)
+        play_rect(self.centered, width, margin, -rise, height)
     }
 
     pub fn synopsis_width(&self) -> f32 {
@@ -100,14 +100,7 @@ impl HeroStyle {
     }
 }
 
-pub(super) fn play_rect(
-    centered: bool,
-    metrics: UiMetrics,
-    width: f32,
-    margin: f32,
-    top: f32,
-    height: f32,
-) -> Rect {
+pub(super) fn play_rect(centered: bool, width: f32, margin: f32, top: f32, height: f32) -> Rect {
     let wide = (crate::vars::px("horizontal-card-width")
         * crate::vars::px("screen-hero-play-card-ratio"))
     .max(crate::vars::px("screen-hero-play-min-width"));

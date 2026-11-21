@@ -13,7 +13,6 @@ pub(crate) fn secondary_button(
         ButtonKind::Secondary,
         size::BUTTON_TEXT,
         true,
-        None,
     )
 }
 
@@ -31,6 +30,5 @@ pub(crate) fn primary_button(
         ButtonKind::Primary,
         size::BUTTON_TEXT,
         enabled,
-        None,
     )
 }

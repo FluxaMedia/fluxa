@@ -155,7 +155,6 @@ pub(crate) fn watch_ticket(
     width: f32,
     language: &str,
     assets: &mut impl HomeAssets,
-    metrics: UiMetrics,
 ) -> TicketOutput {
     let t = |key: &str| localized(key, language);
     let (rect, _) = ui.allocate_exact_size(Vec2::new(width, ticket_height(width)), Sense::hover());
@@ -206,7 +205,9 @@ pub(crate) fn watch_ticket(
     let border = crate::gfx::Stroke::new(stroke::hairline(), white(0.1));
 
     if !dom_backdrop {
-        top_shape.fill(&painter, top_place, 18.0, &|_| metrics.surface);
+        top_shape.fill(&painter, top_place, 18.0, &|_| {
+            crate::metrics::theme().surface
+        });
     }
     if let Some((texture, size)) = backdrop {
         let uv = cover_uv(size, stage);
@@ -230,7 +231,9 @@ pub(crate) fn watch_ticket(
     }
     top_shape.stroke(&painter, top_place, border);
 
-    bottom_shape.fill(&painter, stub_place, 24.0, &|_| metrics.surface_raised);
+    bottom_shape.fill(&painter, stub_place, 24.0, &|_| {
+        crate::metrics::theme().surface_raised
+    });
     bottom_shape.stroke(&painter, stub_place, border);
 
     let dash = white(0.45 * (1.0 - bump));
@@ -252,7 +255,7 @@ pub(crate) fn watch_ticket(
         x += Dp::D12.px();
     }
 
-    let muted = metrics.text_muted;
+    let muted = crate::metrics::theme().text_muted;
     let faint = white(0.34);
     let number = match ticket.room.as_deref() {
         Some(room) => format!("№ {:04}", serial(room) % 10_000),
@@ -367,12 +370,11 @@ pub(crate) fn watch_ticket(
         }
     } else {
         copy_children.push(crate::flex::text(&painter, &idle_title, &idle_title_font).id(main_id));
-        copy_children.push(
-            crate::flex::leaf(Vec2::new(content_width, Space::S24.px(&metrics))).id(prompt_id),
-        );
+        copy_children
+            .push(crate::flex::leaf(Vec2::new(content_width, Space::S24.px())).id(prompt_id));
     }
     let copy = crate::flex::column(copy_children)
-        .gap(if joined { Space::S12.px(&metrics) } else { 0.0 })
+        .gap(if joined { Space::S12.px() } else { 0.0 })
         .id(copy_id)
         .align(crate::flex::Align::Start);
 
@@ -396,7 +398,7 @@ pub(crate) fn watch_ticket(
         top_row,
         crate::flex::fill(),
         copy,
-        crate::flex::leaf(Vec2::new(0.0, Space::S16.px(&metrics))),
+        crate::flex::leaf(Vec2::new(0.0, Space::S16.px())),
         details,
     ])
     .align(crate::flex::Align::Stretch)
@@ -413,7 +415,7 @@ pub(crate) fn watch_ticket(
     );
     if let Some(host) = hosted {
         let fade = timeline.reveal(0.5);
-        let lift = Vec2::new(0.0, (1.0 - fade) * Space::S6.px(&metrics));
+        let lift = Vec2::new(0.0, (1.0 - fade) * Space::S6.px());
         let mut faded = painter.clone();
         faded.set_opacity(fade);
         avatar(
@@ -423,7 +425,6 @@ pub(crate) fn watch_ticket(
             Dp::D14.px(),
             &host.name,
             host.avatar.as_deref(),
-            metrics,
         );
         faded.text(
             rect_of(hosted_id).translate(lift).left_center(),
@@ -436,7 +437,7 @@ pub(crate) fn watch_ticket(
 
     if joined {
         let fade = timeline.reveal(0.45);
-        let lift = Vec2::new(0.0, (1.0 - fade) * Space::S8.px(&metrics));
+        let lift = Vec2::new(0.0, (1.0 - fade) * Space::S8.px());
         let mut shown = painter.clone();
         shown.set_opacity(fade);
         if let Some((badge, title)) = &episode {
@@ -568,8 +569,7 @@ pub(crate) fn watch_ticket(
             .find(1)
             .unwrap_or(row_rect);
             let mut child = ui.new_child(crate::gfx::UiBuilder::new().max_rect(field));
-            let input =
-                code_input_styled(&mut child, code, 6, field.width(), metrics, CodeLook::Boxes);
+            let input = code_input_styled(&mut child, code, 6, field.width(), CodeLook::Boxes);
             if input.submitted {
                 output.action = Some(TicketAction::Join);
             }
@@ -611,11 +611,15 @@ pub(crate) fn watch_ticket(
                     let slot = line.find(index + 1).unwrap_or(row_rect);
                     let center = Pos2::new(
                         slot.left() + radius,
-                        slot.center().y + (1.0 - fade) * Space::S8.px(&metrics),
+                        slot.center().y + (1.0 - fade) * Space::S8.px(),
                     );
                     match ticket.members.get(index) {
                         Some(member) => {
-                            cell.circle_filled(center, radius + 2.0, metrics.surface_raised);
+                            cell.circle_filled(
+                                center,
+                                radius + 2.0,
+                                crate::metrics::theme().surface_raised,
+                            );
                             avatar(
                                 &cell,
                                 assets,
@@ -623,7 +627,6 @@ pub(crate) fn watch_ticket(
                                 radius,
                                 &member.name,
                                 member.avatar.as_deref(),
-                                metrics,
                             );
                             if member.you {
                                 cell.circle_stroke(

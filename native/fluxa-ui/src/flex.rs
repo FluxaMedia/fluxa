@@ -17,8 +17,8 @@ pub(crate) enum Space {
 }
 
 impl Space {
-    pub fn px(self, metrics: &UiMetrics) -> f32 {
-        metrics.space[self as usize]
+    pub fn px(self) -> f32 {
+        crate::metrics::theme().space[self as usize]
     }
 }
 
@@ -29,12 +29,12 @@ pub(crate) enum Radius {
 }
 
 impl Radius {
-    pub fn px(self, metrics: &UiMetrics) -> f32 {
-        metrics.radius[self as usize]
+    pub fn px(self) -> f32 {
+        crate::metrics::theme().radius[self as usize]
     }
 
-    pub fn corner(self, metrics: &UiMetrics) -> u8 {
-        self.px(metrics).round().clamp(0.0, 255.0) as u8
+    pub fn corner(self) -> u8 {
+        self.px().round().clamp(0.0, 255.0) as u8
     }
 }
 
@@ -46,8 +46,8 @@ pub(crate) enum IconSize {
 }
 
 impl IconSize {
-    pub fn px(self, metrics: &UiMetrics) -> f32 {
-        metrics.icon[self as usize]
+    pub fn px(self) -> f32 {
+        crate::metrics::theme().icon[self as usize]
     }
 }
 

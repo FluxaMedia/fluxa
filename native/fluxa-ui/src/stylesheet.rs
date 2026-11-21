@@ -166,30 +166,27 @@ enum Metric {
 impl Length {
     fn px(self) -> f32 {
         match self {
-            Length::Space(space) => space.px(&crate::metrics::active()),
+            Length::Space(space) => space.px(),
             Length::Px(px) => px,
-            Length::Metric(metric) => {
-                let metrics = crate::metrics::active();
-                match metric {
-                    Metric::PosterWidth => metrics.poster_card_width,
-                    Metric::PosterHeight => metrics.poster_card_height,
-                    Metric::ContinueWidth => metrics.home_continue_card_width,
-                    Metric::IconButton => crate::vars::px("icon-button-size"),
-                    Metric::ControlHeight => crate::vars::px("screen-control-height"),
-                    Metric::Gutter => crate::vars::px("gutter"),
-                    Metric::SynopsisSize => hero_synopsis_size(),
-                    Metric::LabelSize => crate::vars::px("nav-label-size") + crate::dp::Dp::D2.px(),
-                    Metric::ContinueHeight => metrics.home_continue_card_height,
-                    Metric::WideWidth => crate::vars::px("collection-wide-width"),
-                    Metric::WideHeight => crate::vars::px("collection-wide-height"),
-                    Metric::SquareSize => crate::vars::px("collection-square-size"),
-                    Metric::CollectionWidth => crate::vars::px("collection-poster-width"),
-                    Metric::CollectionHeight => crate::vars::px("collection-poster-height"),
-                    Metric::CardTitle => crate::vars::px("screen-card-title-size"),
-                    Metric::CardSubtitle => crate::vars::px("screen-card-subtitle-size"),
-                    Metric::CardPadding => crate::vars::px("card-content-padding"),
-                }
-            }
+            Length::Metric(metric) => match metric {
+                Metric::PosterWidth => crate::metrics::theme().poster_width,
+                Metric::PosterHeight => crate::metrics::theme().poster_height,
+                Metric::ContinueWidth => crate::metrics::theme().continue_width,
+                Metric::IconButton => crate::vars::px("icon-button-size"),
+                Metric::ControlHeight => crate::vars::px("screen-control-height"),
+                Metric::Gutter => crate::vars::px("gutter"),
+                Metric::SynopsisSize => hero_synopsis_size(),
+                Metric::LabelSize => crate::vars::px("nav-label-size") + crate::dp::Dp::D2.px(),
+                Metric::ContinueHeight => crate::metrics::theme().continue_height,
+                Metric::WideWidth => crate::vars::px("collection-wide-width"),
+                Metric::WideHeight => crate::vars::px("collection-wide-height"),
+                Metric::SquareSize => crate::vars::px("collection-square-size"),
+                Metric::CollectionWidth => crate::vars::px("collection-poster-width"),
+                Metric::CollectionHeight => crate::vars::px("collection-poster-height"),
+                Metric::CardTitle => crate::vars::px("screen-card-title-size"),
+                Metric::CardSubtitle => crate::vars::px("screen-card-subtitle-size"),
+                Metric::CardPadding => crate::vars::px("card-content-padding"),
+            },
         }
     }
 
@@ -335,6 +332,7 @@ struct Layer {
 enum Query {
     Platform(String),
     Input(String),
+    Theme(String),
     Window(String),
     MinWidth(f32),
     MaxWidth(f32),
@@ -348,6 +346,7 @@ impl Query {
         match self {
             Query::Platform(name) => metrics.platform == name,
             Query::Input(name) => crate::metrics::input() == name,
+            Query::Theme(id) => fluxa_theme::theme::selected_theme_id() == *id,
             Query::Window(name) => metrics.window_class == name,
             Query::MinWidth(width) => metrics.width >= *width,
             Query::MaxWidth(width) => metrics.width <= *width,
@@ -691,7 +690,7 @@ fn parse_function_color(text: &str) -> Option<Color32> {
     Some(Color32::from_rgba_unmultiplied(r, g, b, alpha))
 }
 
-fn resolve_paint(paint: &Paint, metrics: Option<&UiMetrics>) -> Color32 {
+fn resolve_paint(paint: &Paint) -> Color32 {
     match paint {
         Paint::Rgba(color) => *color,
         Paint::Ink(level) => ink(*level),
@@ -702,33 +701,34 @@ fn resolve_paint(paint: &Paint, metrics: Option<&UiMetrics>) -> Color32 {
                 "theme.settings.description.compact" => {
                     ink(crate::vars::byte("settings-swatch-alpha-compact"))
                 }
-                "theme.surface" => crate::metrics::active().surface,
-                "theme.border" => crate::metrics::active().border,
-                "theme.input.background" => crate::metrics::active().input_background,
-                "theme.input.border" => crate::metrics::active().input_border,
-                "theme.input.border.focus" => crate::metrics::active()
+                "theme.surface" => crate::metrics::theme().surface,
+                "theme.border" => crate::metrics::theme().border,
+                "theme.input.background" => crate::metrics::theme().input_background,
+                "theme.input.border" => crate::metrics::theme().input_border,
+                "theme.input.border.focus" => crate::metrics::theme()
                     .input_border_focus
                     .unwrap_or_else(accent),
                 "theme.toggle.knob.on" => {
-                    let theme = crate::metrics::active();
-                    if theme.accent_foreground == theme.text_primary {
-                        theme.text_primary
+                    if crate::metrics::theme().accent_foreground
+                        == crate::metrics::theme().text_primary
+                    {
+                        crate::metrics::theme().text_primary
                     } else {
-                        theme.background
+                        crate::metrics::theme().background
                     }
                 }
-                "theme.button.primary" => crate::metrics::active().button_primary,
-                "theme.button.primary.text" => crate::metrics::active().button_primary_text,
+                "theme.button.primary" => crate::metrics::theme().button_primary,
+                "theme.button.primary.text" => crate::metrics::theme().button_primary_text,
                 "theme.button.border" => {
                     Color32::from_white_alpha(crate::vars::byte("button-border"))
                 }
                 "text.primary" => text_primary(),
                 "accent" => accent(),
                 "danger" => danger_color(),
-                "accent.foreground" => metrics.map_or(background(), |m| m.accent_foreground),
-                "surface.raised" => metrics.map_or(ink(tone::raised()), |m| m.surface_raised),
-                "text.secondary" => metrics.map_or(ink(tone::muted()), |m| m.text_secondary),
-                "text.muted" => metrics.map_or(ink(tone::subtle()), |m| m.text_muted),
+                "accent.foreground" => crate::metrics::theme().accent_foreground,
+                "surface.raised" => crate::metrics::theme().surface_raised,
+                "text.secondary" => crate::metrics::theme().text_secondary,
+                "text.muted" => crate::metrics::theme().text_muted,
                 _ => Color32::MAGENTA,
             };
             if *factor == 1.0 {
@@ -740,9 +740,9 @@ fn resolve_paint(paint: &Paint, metrics: Option<&UiMetrics>) -> Color32 {
     }
 }
 
-fn apply(style: &mut Style, patch: &Patch, metrics: Option<&UiMetrics>) {
+fn apply(style: &mut Style, patch: &Patch) {
     if let Some(paint) = &patch.fill {
-        style.fill = resolve_paint(paint, metrics);
+        style.fill = resolve_paint(paint);
         style.gradient = None;
     }
     if let Some(spec) = &patch.gradient {
@@ -754,7 +754,7 @@ fn apply(style: &mut Style, patch: &Patch, metrics: Option<&UiMetrics>) {
             } else {
                 0.0
             };
-            stops[index] = (at.unwrap_or(fallback), resolve_paint(paint, metrics));
+            stops[index] = (at.unwrap_or(fallback), resolve_paint(paint));
         }
         style.gradient = Some(Gradient {
             angle: spec.angle,
@@ -768,7 +768,7 @@ fn apply(style: &mut Style, patch: &Patch, metrics: Option<&UiMetrics>) {
             y: spec.y,
             blur: spec.blur,
             spread: spec.spread,
-            color: resolve_paint(&spec.color, metrics),
+            color: resolve_paint(&spec.color),
         });
     }
     if let Some(margin) = patch.margin {
@@ -811,11 +811,11 @@ fn apply(style: &mut Style, patch: &Patch, metrics: Option<&UiMetrics>) {
         style.reach = value;
     }
     if let Some(paint) = &patch.text {
-        style.text = resolve_paint(paint, metrics);
+        style.text = resolve_paint(paint);
         style.text_declared = true;
     }
     if let Some(paint) = &patch.border {
-        style.border = resolve_paint(paint, metrics);
+        style.border = resolve_paint(paint);
     }
     if let Some(scale) = patch.scale {
         style.scale = scale;
@@ -990,7 +990,6 @@ pub(crate) fn look(context: &crate::gfx::Context, rule: &str) -> Style {
             enabled: true,
             ..State::default()
         },
-        None,
     )
 }
 
@@ -1079,7 +1078,7 @@ pub(crate) fn base_with(rule: &str, modifiers: &[&str]) -> Style {
     let sheet = sheet();
     let mut style = Style::blank();
     for layer in layers(&sheet, rule, modifiers) {
-        apply(&mut style, &layer.base, None);
+        apply(&mut style, &layer.base);
     }
     MEMO.with(|memo| {
         memo.borrow_mut()
@@ -1103,7 +1102,7 @@ pub(crate) fn color(rule: &str) -> Color32 {
     let sheet = sheet();
     let mut style = Style::blank();
     for layer in layers(&sheet, rule, &[]) {
-        apply(&mut style, &layer.base, None);
+        apply(&mut style, &layer.base);
     }
     style.fill
 }
@@ -1178,14 +1177,8 @@ fn modifier_met(wanted: &str, present: &[&str]) -> bool {
     }
 }
 
-pub(crate) fn resolve(
-    context: &crate::gfx::Context,
-    rule: &str,
-    id: Id,
-    state: State,
-    metrics: Option<&UiMetrics>,
-) -> Style {
-    resolve_with(context, rule, id, state, metrics, &[])
+pub(crate) fn resolve(context: &crate::gfx::Context, rule: &str, id: Id, state: State) -> Style {
+    resolve_with(context, rule, id, state, &[])
 }
 
 pub(crate) fn resolve_with(
@@ -1193,7 +1186,6 @@ pub(crate) fn resolve_with(
     rule: &str,
     id: Id,
     state: State,
-    metrics: Option<&UiMetrics>,
     modifiers: &[&str],
 ) -> Style {
     let sheet = sheet();
@@ -1214,11 +1206,11 @@ pub(crate) fn resolve_with(
     }
     base.font_size = font_size;
     for layer in &layers {
-        apply(&mut base, &layer.base, metrics);
+        apply(&mut base, &layer.base);
     }
     if !state.enabled {
         for layer in &layers {
-            apply(&mut base, &layer.disabled, metrics);
+            apply(&mut base, &layer.disabled);
         }
         return base;
     }
@@ -1250,7 +1242,7 @@ pub(crate) fn resolve_with(
         if t > 0.0 {
             let mut target = result;
             for layer in &layers {
-                apply(&mut target, patch(layer), metrics);
+                apply(&mut target, patch(layer));
             }
             target.selected = if key == "select" {
                 1.0
@@ -1270,15 +1262,15 @@ pub(crate) fn resolve_with(
         );
         if t > 0.0 {
             let mut target = result;
-            apply(&mut target, &variant.layer.base, metrics);
+            apply(&mut target, &variant.layer.base);
             if state.hovered {
-                apply(&mut target, &variant.layer.hover, metrics);
+                apply(&mut target, &variant.layer.hover);
             }
             result = mix(result, target, t);
         }
     }
     match rules.iter().rev().find_map(|r| r.animation.as_ref()) {
-        Some(animation) => animate(context, &sheet, animation, result, metrics),
+        Some(animation) => animate(context, &sheet, animation, result),
         None => result,
     }
 }
@@ -1288,7 +1280,6 @@ fn animate(
     sheet: &Sheet,
     animation: &Animation,
     rest: Style,
-    metrics: Option<&UiMetrics>,
 ) -> Style {
     let Some(frames) = sheet
         .keyframes
@@ -1314,7 +1305,7 @@ fn animate(
     }
     let at = |patch: &Patch| {
         let mut style = rest;
-        apply(&mut style, patch, metrics);
+        apply(&mut style, patch);
         style
     };
     let next = frames.iter().position(|(stop, _)| *stop >= phase);
@@ -1359,7 +1350,7 @@ mod tests {
 
     fn resolved(rule: &str, state: State) -> Style {
         let context = crate::gfx::Context::default();
-        resolve(&context, rule, Id::new("test"), state, None)
+        resolve(&context, rule, Id::new("test"), state)
     }
 
     #[test]
@@ -1381,8 +1372,8 @@ mod tests {
             Sheet::parse(r#"{"a":{"padding":"s12","gap":6,"opacity":0.5,"max-width":300}}"#)
                 .expect("parses");
         let mut style = Style::blank();
-        apply(&mut style, &sheet.rules["a"].layer.base, None);
-        assert_eq!(style.padding, Space::S12.px(&crate::metrics::active()));
+        apply(&mut style, &sheet.rules["a"].layer.base);
+        assert_eq!(style.padding, Space::S12.px());
         assert_eq!(style.gap, 6.0);
         assert_eq!(style.opacity, 0.5);
         assert_eq!(style.max_width, Some(300.0));
@@ -1463,7 +1454,7 @@ mod tests {
         .expect("parses");
         let mut style = Style::blank();
         for layer in layers(&sheet, "b", &[]) {
-            apply(&mut style, &layer.base, None);
+            apply(&mut style, &layer.base);
         }
         assert_eq!(style.fill, Color32::from_rgb(255, 0, 0));
         assert_eq!(style.padding, 12.0);
@@ -1478,7 +1469,7 @@ mod tests {
         let padding = |mods: &[&str]| {
             let mut style = Style::blank();
             for layer in layers(&sheet, "row", mods) {
-                apply(&mut style, &layer.base, None);
+                apply(&mut style, &layer.base);
             }
             (style.padding, style.gap)
         };
@@ -1494,7 +1485,7 @@ mod tests {
             Sheet::parse("bar { direction: row; align: center; gap: s8; }").expect("parses");
         let mut style = Style::blank();
         for layer in layers(&sheet, "bar", &[]) {
-            apply(&mut style, &layer.base, None);
+            apply(&mut style, &layer.base);
         }
         assert_eq!(style.direction, Some(Direction::Row));
         assert_eq!(style.align, Some(Alignment::Center));
@@ -1508,7 +1499,7 @@ mod tests {
         .expect("parses");
         let mut style = Style::blank();
         for layer in layers(&sheet, "bar", &[]) {
-            apply(&mut style, &layer.base, None);
+            apply(&mut style, &layer.base);
         }
         assert!(style.hidden);
         assert_eq!(style.justify, Some(Justify::SpaceBetween));
@@ -1524,7 +1515,7 @@ mod tests {
         let fill = |name: &str| {
             let mut style = Style::blank();
             for layer in layers(&sheet, name, &[]) {
-                apply(&mut style, &layer.base, None);
+                apply(&mut style, &layer.base);
             }
             style.fill_space
         };
@@ -1549,7 +1540,6 @@ mod tests {
                     enabled: true,
                     ..Default::default()
                 },
-                None,
             )
         });
         assert_eq!(child.text, text_primary());
@@ -1598,7 +1588,7 @@ mod tests {
         let sheet = Sheet::parse(DEFAULT_SHEET).expect("parses");
         let mut style = Style::blank();
         for layer in layers(&sheet, "hero-sizes", &[]) {
-            apply(&mut style, &layer.base, None);
+            apply(&mut style, &layer.base);
         }
         assert_eq!(style.width, Some(980.0));
         assert_eq!(style.scale, 1.65);
@@ -1622,7 +1612,7 @@ mod tests {
                     time: Some(1.0),
                     ..Default::default()
                 },
-                |_| half = Some(animate(&context, &sheet, animation, Style::blank(), None)),
+                |_| half = Some(animate(&context, &sheet, animation, Style::blank())),
             )
             .drop_without_applying_deltas();
         assert!((half.expect("ran").opacity - 0.5).abs() < 0.01);
@@ -1644,7 +1634,7 @@ mod tests {
         .unwrap();
         let rule = &sheet.rules["card"];
         let mut style = Style::blank();
-        apply(&mut style, &rule.layer.base, None);
+        apply(&mut style, &rule.layer.base);
         let gradient = style.gradient.expect("gradient");
         assert_eq!(gradient.len, 2);
         assert_eq!(gradient.angle, 180.0);

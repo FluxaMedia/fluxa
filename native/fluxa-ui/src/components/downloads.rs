@@ -3,26 +3,26 @@ use crate::Space;
 use crate::dp::Dp;
 use crate::{DownloadGroup, DownloadRow, DownloadStatus, format_bytes, format_duration, localized};
 
-pub fn download_status_height(metrics: UiMetrics) -> f32 {
-    if metrics.compact {
-        crate::vars::px("downloads-change-size") + Space::S8.px(&metrics)
+pub fn download_status_height() -> f32 {
+    if crate::metrics::view().compact() {
+        crate::vars::px("downloads-change-size") + Space::S8.px()
     } else {
         0.0
     }
 }
 
-pub fn download_sections_width(width: f32, _metrics: UiMetrics) -> f32 {
+pub fn download_sections_width(width: f32) -> f32 {
     width
 }
 
-fn padding(metrics: UiMetrics) -> f32 {
+fn padding() -> f32 {
     crate::vars::px("control-gap") * crate::vars::px("control-downloads-pad-ratio")
 }
 
 const SUBTITLE_LINES: usize = 2;
 
-fn download_grid(width: f32, metrics: UiMetrics) -> crate::PosterGrid {
-    let mut grid = crate::PosterGrid::new(width, &metrics);
+fn download_grid(width: f32) -> crate::PosterGrid {
+    let mut grid = crate::PosterGrid::new(width);
     let extra_lines = (SUBTITLE_LINES - 1) as f32;
     grid.card_height += extra_lines
         * crate::vars::px("screen-card-subtitle-size")
@@ -30,11 +30,11 @@ fn download_grid(width: f32, metrics: UiMetrics) -> crate::PosterGrid {
     grid
 }
 
-fn row_height(metrics: UiMetrics) -> f32 {
-    padding(metrics) * 2.0 + Dp::D64.px()
+fn row_height() -> f32 {
+    padding() * 2.0 + Dp::D64.px()
 }
 
-fn episode_grid(width: f32, metrics: UiMetrics) -> (usize, f32) {
+fn episode_grid(width: f32) -> (usize, f32) {
     let gap = crate::vars::px("control-gap");
     let columns = (((width + gap) / (crate::vars::px("control-downloads-card-min") + gap)).floor()
         as usize)
@@ -45,27 +45,22 @@ fn episode_grid(width: f32, metrics: UiMetrics) -> (usize, f32) {
     )
 }
 
-fn episode_height(card_width: f32, metrics: UiMetrics) -> f32 {
+fn episode_height(card_width: f32) -> f32 {
     card_width * crate::vars::px("control-downloads-aspect")
         + crate::vars::px("screen-card-title-size")
         + crate::vars::px("screen-card-subtitle-size") * 2.0
         + Dp::D28.px()
 }
 
-pub fn download_group_height(
-    group: &DownloadGroup,
-    width: f32,
-    metrics: UiMetrics,
-    list: bool,
-) -> f32 {
+pub fn download_group_height(group: &DownloadGroup, width: f32, list: bool) -> f32 {
     let gap = crate::vars::px("control-gap");
     let count = group.rows.len();
     if list {
-        return count as f32 * (row_height(metrics) + gap);
+        return count as f32 * (row_height() + gap);
     }
-    let (columns, card) = episode_grid(width, metrics);
+    let (columns, card) = episode_grid(width);
     count.div_ceil(columns) as f32
-        * (episode_height(card, metrics) + gap * crate::vars::px("control-downloads-row-gap-ratio"))
+        * (episode_height(card) + gap * crate::vars::px("control-downloads-row-gap-ratio"))
 }
 
 pub(crate) fn status_label(row: &DownloadRow, language: &str) -> String {
@@ -112,7 +107,7 @@ pub(crate) fn timing_label(row: &DownloadRow, language: &str) -> String {
     }
 }
 
-fn heading_height(metrics: UiMetrics) -> f32 {
+fn heading_height() -> f32 {
     crate::vars::px("screen-card-title-size")
         + 4.0
         + crate::vars::px("control-gap") * crate::vars::px("control-downloads-row-gap-ratio")
@@ -132,12 +127,12 @@ fn section_members(groups: &[DownloadGroup], done: bool) -> Vec<usize> {
         .collect()
 }
 
-pub fn download_sections_height(groups: &[DownloadGroup], width: f32, metrics: UiMetrics) -> f32 {
-    let grid = download_grid(width, metrics);
+pub fn download_sections_height(groups: &[DownloadGroup], width: f32) -> f32 {
+    let grid = download_grid(width);
     SECTIONS
         .iter()
         .map(|(_, done)| section_members(groups, *done).len())
         .filter(|count| *count > 0)
-        .map(|count| heading_height(metrics) + grid.height(count) + crate::vars::px("section-gap"))
+        .map(|count| heading_height() + grid.height(count) + crate::vars::px("section-gap"))
         .sum()
 }

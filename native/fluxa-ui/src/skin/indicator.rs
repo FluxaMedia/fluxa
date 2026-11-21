@@ -47,7 +47,6 @@ pub(super) fn paint_indicator(
     class: &str,
     slots: &[IndicatorSlot],
     dragged_x: Option<f32>,
-    metrics: &UiMetrics,
 ) {
     let Some(first) = slots.first() else {
         return;
@@ -81,7 +80,6 @@ pub(super) fn paint_indicator(
             enabled: true,
             selected: false,
         },
-        Some(metrics),
         &[],
     );
     let width = indicator_width(&rects, x);

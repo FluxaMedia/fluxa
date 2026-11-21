@@ -2,7 +2,7 @@ use super::*;
 use crate::components::{InputKind, texture_image};
 use crate::flex::{Align as FlexAlign, Insets, Justify as FlexJustify};
 use crate::gfx::Ui;
-use crate::kit::{self, Role, Type, UiKit, layout_items};
+use crate::kit::{self, Role, Type, layout_items};
 use crate::stylesheet::{Alignment, Justify as StyleJustify};
 use fluxa_skin::{Align, Justify, Resolved, ResolvedAction, truthy};
 use serde_json::Value;
@@ -67,7 +67,6 @@ pub(crate) fn field_kind(node: u64) -> Option<InputKind> {
 }
 
 struct Env<'a, A: HomeAssets> {
-    metrics: &'a UiMetrics,
     view: Cell<Vec2>,
     safe: Insets,
     assets: &'a RefCell<&'a mut A>,
@@ -240,8 +239,6 @@ fn draw_tree(
     opacity: f32,
     first_slot: u64,
 ) -> SkinFrame {
-    let metrics = metrics_for_assets(viewport, assets);
-    crate::kit::provide(context, metrics);
     let screen = Rect::from_min_max(Pos2::ZERO, Pos2::new(viewport.width, viewport.height));
     if opaque {
         let painter = context.layer_painter(crate::gfx::LayerId::background());
@@ -259,7 +256,6 @@ fn draw_tree(
     let inner = RefCell::new(Vec::new());
     let positions = positions_of(tree);
     let env = Env {
-        metrics: &metrics,
         view: Cell::new(Vec2::new(viewport.width, viewport.height)),
         safe,
         assets: &assets,
@@ -544,7 +540,6 @@ fn is_float(node: &Resolved) -> bool {
 }
 
 fn icon<'a, A: HomeAssets>(node: &Resolved, env: &'a Env<'a, A>) -> kit::Item<'a> {
-    let metrics = env.metrics;
     let name = prop(node, "name").into_owned();
     let size = node
         .props
@@ -571,11 +566,11 @@ fn icon<'a, A: HomeAssets>(node: &Resolved, env: &'a Env<'a, A>) -> kit::Item<'a
                 if style.text_declared {
                     style.text
                 } else {
-                    metrics.text_primary
+                    crate::metrics::theme().text_primary
                 }
             })
         })
-        .unwrap_or(metrics.text_primary);
+        .unwrap_or(crate::metrics::theme().text_primary);
     let assets = env.assets;
     let keys = ancestor_keys(env);
     let logo = prop(node, "logo").into_owned();
@@ -626,7 +621,7 @@ fn icon<'a, A: HomeAssets>(node: &Resolved, env: &'a Env<'a, A>) -> kit::Item<'a
     })
 }
 
-fn expanded_width(base: f32, ease: f32, metrics: &UiMetrics) -> f32 {
+fn expanded_width(base: f32, ease: f32) -> f32 {
     base * (1.0 + (crate::vars::px("screen-poster-expand-aspect") * 1.5 - 1.0) * ease)
 }
 
@@ -670,8 +665,8 @@ fn children<'a, A: HomeAssets>(
                 (Some(base), true) => {
                     let mut sized = child.clone();
                     let base = base as f32;
-                    let full = expanded_width(base, 1.0, env.metrics);
-                    sized.width = Some(expanded_width(base, ease, env.metrics));
+                    let full = expanded_width(base, 1.0);
+                    sized.width = Some(expanded_width(base, ease));
                     sized.height = child.height.or(Some(base * 1.5));
                     sized
                         .props
@@ -861,7 +856,6 @@ fn prop<'a>(node: &'a Resolved, key: &str) -> std::borrow::Cow<'a, str> {
 }
 
 fn input<'a, A: HomeAssets>(ui: &mut Ui, node: &Resolved, env: &'a Env<'a, A>) -> kit::Item<'a> {
-    let metrics = env.metrics;
     let field = prop(node, "key").into_owned();
     let hint = prop(node, "placeholder").into_owned();
     let value = prop(node, "value").into_owned();
@@ -896,12 +890,11 @@ fn input<'a, A: HomeAssets>(ui: &mut Ui, node: &Resolved, env: &'a Env<'a, A>) -
                 &hint,
                 width,
                 crate::vars::px("screen-control-height") + 4.0,
-                *metrics,
             )
         } else if let (InputKind::Multiline, Some(height)) = (kind, tall) {
-            crate::components::text_area(ui, &mut text, &hint, Vec2::new(width, height), *metrics)
+            crate::components::text_area(ui, &mut text, &hint, Vec2::new(width, height))
         } else {
-            crate::components::text_input(ui, &mut text, &hint, width, kind, *metrics)
+            crate::components::text_input(ui, &mut text, &hint, width, kind)
         };
         let Some(node) = target.filter(|_| !kit::probing()) else {
             return;

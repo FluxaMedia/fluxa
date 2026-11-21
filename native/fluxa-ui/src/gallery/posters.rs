@@ -176,7 +176,7 @@ fn overlays(sample: &Sample, language: &str) -> PosterOverlays {
     }
 }
 
-pub(super) fn draw(context: &crate::gfx::Context, viewport: Viewport, metrics: UiMetrics) {
+pub(super) fn draw(context: &crate::gfx::Context, viewport: Viewport) {
     let mut enrichment = Enrichment::default();
     enrichment.add_mdblist(&[
         serde_json::json!({
@@ -201,14 +201,14 @@ pub(super) fn draw(context: &crate::gfx::Context, viewport: Viewport, metrics: U
     ]);
     set_poster_enrichment(context, std::sync::Arc::new(enrichment));
     let columns = if viewport.width < 600.0 { 2 } else { 4 };
-    let gap = Space::S16.px(&metrics);
+    let gap = Space::S16.px();
     let width = ((viewport.width - gap * (columns as f32 + 1.0)) / columns as f32).min(220.0);
     let height = width * 1.5;
     let painter = context.layer_painter(crate::gfx::LayerId::new(
         crate::gfx::Order::Foreground,
         Id::new("fluxa-gallery-posters"),
     ));
-    let radius = Space::S12.px(&metrics);
+    let radius = Space::S12.px();
     let cells: Vec<_> = SAMPLES
         .chunks(columns)
         .enumerate()

@@ -624,13 +624,7 @@ fn changed_file(
 }
 
 pub(crate) fn reload_tokens() {
-    static TOKENS: std::sync::Mutex<Option<std::time::SystemTime>> = std::sync::Mutex::new(None);
     static STYLES: std::sync::Mutex<Option<std::time::SystemTime>> = std::sync::Mutex::new(None);
-    if let Some(path) = changed_file("FLUXA_PREVIEW_TOKENS", &TOKENS)
-        && let Err(error) = fluxa_theme::theme::reload_shared_ui_tokens_from_path(&path)
-    {
-        host_log(format!("tokens not reloaded: {error:?}"));
-    }
     if let Some(path) = changed_file("FLUXA_PREVIEW_STYLES", &STYLES) {
         let loaded = std::fs::read_to_string(&path)
             .map_err(|error| error.to_string())

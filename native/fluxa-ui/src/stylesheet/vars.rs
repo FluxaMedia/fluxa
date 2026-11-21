@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use std::sync::{Arc, Mutex, RwLock};
 
 const METRICS: &str = include_str!("../../../../shared/contracts/ui-metrics.css");
+const THEME: &str = include_str!("../../../../shared/contracts/ui-theme.css");
 
 struct Layer {
     queries: Vec<Query>,
@@ -41,7 +42,7 @@ fn build(texts: &[&str]) -> Result<Table, String> {
 }
 
 pub(crate) fn load(extra: &str) -> Result<(), String> {
-    let table = build(&[METRICS, extra])?;
+    let table = build(&[METRICS, THEME, extra])?;
     if let Ok(mut slot) = TABLE.write() {
         *slot = Some(Arc::new(table));
     }
@@ -53,7 +54,7 @@ fn table() -> Arc<Table> {
     if let Some(table) = TABLE.read().ok().and_then(|slot| slot.clone()) {
         return table;
     }
-    let table = Arc::new(build(&[METRICS]).expect("bundled ui-metrics"));
+    let table = Arc::new(build(&[METRICS, THEME]).expect("bundled ui-metrics"));
     if let Ok(mut slot) = TABLE.write() {
         *slot = Some(table.clone());
     }
@@ -81,6 +82,9 @@ fn resolved() -> Arc<HashMap<String, String, crate::fast::Build>> {
             }
         }
     }
+    for (name, value) in fluxa_theme::user::active_vars() {
+        values.insert(name, value);
+    }
     let values = Arc::new(values);
     *slot = Some(Resolved {
         generation,
@@ -88,6 +92,21 @@ fn resolved() -> Arc<HashMap<String, String, crate::fast::Build>> {
         values: values.clone(),
     });
     values
+}
+
+pub(crate) fn generation() -> u64 {
+    GENERATION.load(std::sync::atomic::Ordering::Relaxed)
+}
+
+pub(crate) fn color(name: &str) -> Option<crate::gfx::Color32> {
+    let value = raw(name)?;
+    let color = fluxa_theme::theme::parse_hex_color(name, value.trim()).ok()?;
+    Some(crate::gfx::Color32::from_rgba_unmultiplied(
+        (color.r * 255.0).round() as u8,
+        (color.g * 255.0).round() as u8,
+        (color.b * 255.0).round() as u8,
+        (color.a * 255.0).round() as u8,
+    ))
 }
 
 pub(crate) fn raw(name: &str) -> Option<String> {

@@ -157,10 +157,13 @@ pub(super) fn image<'a, A: HomeAssets>(
     let share = prop(node, "share").parse::<f32>().ok();
     let (width, share_final) = match (share, EXPAND.get()) {
         (Some(share), Some((ease, Some(base)))) => (
-            expanded_width(base as f32, ease, env.metrics) * share,
-            Some(expanded_width(base as f32, 1.0, env.metrics) * share),
+            expanded_width(base as f32, ease) * share,
+            Some(expanded_width(base as f32, 1.0) * share),
         ),
-        _ => (node.width.unwrap_or(env.metrics.poster_card_width), None),
+        _ => (
+            node.width.unwrap_or(crate::metrics::theme().poster_width),
+            None,
+        ),
     };
     let size = if node.fill {
         Vec2::ZERO
@@ -172,7 +175,6 @@ pub(super) fn image<'a, A: HomeAssets>(
     let start = prop(node, "position") == "start";
     let reveal = prop(node, "reveal").parse::<f32>().ok();
     let motion = prop(node, "motion").into_owned();
-    let metrics = env.metrics;
     let keys = ancestor_keys(env);
     let overlay_card = prop(node, "overlayCard").into_owned();
     let logo_of = prop(node, "logoOf").into_owned();
@@ -295,15 +297,15 @@ pub(super) fn image<'a, A: HomeAssets>(
                 ui.painter(),
                 rect,
                 rank,
-                metrics.accent,
-                metrics.background,
+                crate::metrics::theme().accent,
+                crate::metrics::theme().background,
             );
             crate::poster_overlay::paint_overlay(
                 ui.painter(),
                 rect,
                 rank,
-                metrics.accent,
-                metrics.background,
+                crate::metrics::theme().accent,
+                crate::metrics::theme().background,
             );
         }
     })

@@ -620,7 +620,6 @@ pub(super) fn ensure_focused_visible(state: &mut RendererState) {
         fluxa_ui::screen_scroll_pending(fluxa_ui::gfx::Context::from_backend(&gpu.egui_context))
     });
     let grow = if viewport.is_tv() {
-        let metrics = fluxa_ui::UiMetrics::for_viewport(viewport);
         node.bounds.height * (fluxa_ui::metric("focused-scale") - 1.0) * 0.5
             + fluxa_ui::metric("focus-ring-expand")
     } else {

@@ -13,7 +13,7 @@ pub(super) struct CalendarGrid {
 }
 
 impl CalendarGrid {
-    pub fn new(viewport: Viewport, metrics: UiMetrics, calendar: &CalendarModel) -> Self {
+    pub fn new(viewport: Viewport, calendar: &CalendarModel) -> Self {
         let margin = crate::vars::px("screen-margin");
         let top = crate::vars::px("content-header-top");
         let header = crate::vars::px("screen-title-size") * 1.25

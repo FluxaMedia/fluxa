@@ -7,7 +7,6 @@ pub(crate) fn focus_ring(
     viewport: Viewport,
     in_player: bool,
     scope: u64,
-    metrics: UiMetrics,
 ) {
     use crate::*;
     let context = painter.ctx().clone();
@@ -44,7 +43,7 @@ pub(crate) fn focus_ring(
         } else {
             crate::vars::px("focus-ring-radius")
         };
-        let (rect, radius) = slide(&context, state_id, node, scope, rect, radius, metrics);
+        let (rect, radius) = slide(&context, state_id, node, scope, rect, radius);
         if let Some(glow) = skinned.and_then(|style| style.shadow)
             && glow.color.a() > 0
         {
@@ -92,7 +91,6 @@ fn slide(
     scope: u64,
     rect: Rect,
     radius: f32,
-    metrics: UiMetrics,
 ) -> (Rect, f32) {
     let now = context.input(|input| input.time());
     let previous = context
@@ -243,7 +241,7 @@ mod tests {
         let first = Rect::from_min_size(Pos2::new(100.0, 400.0), Vec2::new(200.0, 300.0));
         let second = Rect::from_min_size(Pos2::new(700.0, 400.0), Vec2::new(200.0, 300.0));
         let targets = [(1, first), (2, second)];
-        crate::UiMetrics::for_viewport(viewport);
+        crate::metrics::enter(viewport);
         let expand = crate::metric("focus-ring-expand");
         let at_first = shown_after(&context, 1.0, &targets, 1, 7, viewport);
         assert_eq!(at_first, first.expand(expand));

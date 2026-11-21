@@ -68,7 +68,7 @@ pub(crate) use ticket::*;
 pub use toggle::*;
 
 use super::{
-    ArtworkPriority, HomeAssets, HomeCard, Shade, UiMetrics, Viewport, accent, artwork_target_size,
+    ArtworkPriority, HomeAssets, HomeCard, Shade, Viewport, accent, artwork_target_size,
     badge_fill, button_height, cover_uv, danger_color, draw_text, full_uv, ink, radius, shade,
     size, stroke, text_primary, tone, truncate_to_width,
 };

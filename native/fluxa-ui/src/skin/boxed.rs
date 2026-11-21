@@ -103,7 +103,6 @@ pub(super) fn boxed<'a, A: HomeAssets>(
         return item;
     }
     let class = class;
-    let metrics = env.metrics;
     let key = node.key.clone();
     item.painted_shared(move |ui, rect| {
         if kit::probing() {
@@ -213,7 +212,6 @@ pub(super) fn boxed<'a, A: HomeAssets>(
                         enabled: !disabled,
                         selected,
                     },
-                    Some(metrics),
                     &modifiers,
                 )
             });
@@ -243,7 +241,7 @@ pub(super) fn boxed<'a, A: HomeAssets>(
             }
         }
         if !indicator.is_empty() && selectable {
-            paint_indicator(ui, &key, &indicator, &found, dragged_x, metrics);
+            paint_indicator(ui, &key, &indicator, &found, dragged_x);
         }
         if !popover.is_empty() && !floats.is_empty() && !kit::probing() {
             crate::gfx::Popup::from_toggle_button_response(&response)

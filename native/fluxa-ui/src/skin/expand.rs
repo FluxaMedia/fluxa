@@ -81,7 +81,6 @@ pub(super) fn expand_ease(
 pub(super) fn expanded_targets(
     node: &Resolved,
     base: f32,
-    metrics: &UiMetrics,
     art: &mut Vec<(String, [u32; 2])>,
     logos: &mut Vec<(String, [u32; 2])>,
 ) {
@@ -92,20 +91,20 @@ pub(super) fn expanded_targets(
             let size = Vec2::new(
                 child
                     .width
-                    .unwrap_or_else(|| expanded_width(base, 1.0, metrics) * share),
+                    .unwrap_or_else(|| expanded_width(base, 1.0) * share),
                 child.height.unwrap_or(base * 1.5),
             );
             logos.push((logo.into_owned(), crate::artwork_target_size(size, 1.0)));
         } else if child.kind == "image" && child.props.get("expandedOnly").is_some_and(truthy) {
             if let Some(url) = child.src.clone().filter(|url| !url.is_empty()) {
                 let size = Vec2::new(
-                    expanded_width(base, 1.0, metrics),
+                    expanded_width(base, 1.0),
                     child.height.unwrap_or(base * 1.5),
                 );
                 art.push((url, crate::artwork_target_size(size, 1.0)));
             }
         }
-        expanded_targets(child, base, metrics, art, logos);
+        expanded_targets(child, base, art, logos);
     }
 }
 
@@ -115,7 +114,7 @@ pub(super) fn expand_ready<A: HomeAssets>(node: &Resolved, env: &Env<'_, A>) -> 
     };
     let mut art = Vec::new();
     let mut logos = Vec::new();
-    expanded_targets(node, base, env.metrics, &mut art, &mut logos);
+    expanded_targets(node, base, &mut art, &mut logos);
     let mut assets = env.assets.borrow_mut();
     let mut ready = true;
     for (url, target) in &art {
@@ -162,7 +161,6 @@ pub(super) fn state_scale<A: HomeAssets>(ui: &Ui, node: &Resolved, env: &Env<'_,
             enabled: true,
             ..Default::default()
         },
-        Some(env.metrics),
         &modifiers,
     )
     .scale

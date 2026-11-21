@@ -102,6 +102,9 @@ impl Query {
                 other => Err(format!("{key}: unknown input {other}")),
             };
         }
+        if let Some(theme) = body.strip_prefix("theme:") {
+            return Ok(Query::Theme(theme.to_owned()));
+        }
         match body {
             "mobile" | "desktop" | "tv" => Ok(Query::Platform(body.to_owned())),
             "compact" | "medium" | "expanded" => Ok(Query::Window(body.to_owned())),

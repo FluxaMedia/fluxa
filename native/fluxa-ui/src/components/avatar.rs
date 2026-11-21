@@ -26,9 +26,8 @@ pub(crate) fn avatar(
     radius: f32,
     _name: &str,
     url: Option<&str>,
-    metrics: UiMetrics,
 ) {
-    avatar_sized(painter, assets, center, radius, radius, _name, url, metrics);
+    avatar_sized(painter, assets, center, radius, radius, _name, url);
 }
 
 pub(crate) fn avatar_sized(
@@ -39,7 +38,6 @@ pub(crate) fn avatar_sized(
     texture_radius: f32,
     _name: &str,
     url: Option<&str>,
-    _metrics: UiMetrics,
 ) {
     if dom_avatar(painter, assets, center, radius, url) {
         return;

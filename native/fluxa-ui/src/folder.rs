@@ -9,8 +9,8 @@ struct FolderGeometry {
     content_top: f32,
 }
 
-fn folder_geometry(viewport: Viewport, metrics: UiMetrics, folder: &FolderModel) -> FolderGeometry {
-    let page = PageLayout::new(viewport, metrics, false);
+fn folder_geometry(viewport: Viewport, folder: &FolderModel) -> FolderGeometry {
+    let page = PageLayout::new(viewport, false);
     let header_height = HEADER_ART;
     let show_tabs = folder.view_mode == FolderViewMode::TabbedGrid && folder.tabs.len() > 1;
     let mut y = page.top + header_height + crate::vars::px("section-gap");
@@ -37,23 +37,23 @@ fn rows_home(folder: &FolderModel) -> HomeModel {
     }
 }
 
-fn folder_content_height(metrics: UiMetrics, folder: &FolderModel, tab: usize, width: f32) -> f32 {
+fn folder_content_height(folder: &FolderModel, tab: usize, width: f32) -> f32 {
     if folder.view_mode == FolderViewMode::TabbedGrid {
-        let grid = PosterGrid::new(width, &metrics);
+        let grid = PosterGrid::new(width);
         return grid.height(folder.cards(tab).len().min(FOLDER_CARD_LIMIT));
     }
     let home = rows_home(folder);
-    home_shelves(metrics, &home, 0.0)
+    home_shelves(&home, 0.0)
         .last()
-        .map_or(0.0, |shelf| shelf.top + shelf.height() + shelf_gap(metrics))
+        .map_or(0.0, |shelf| shelf.top + shelf.height() + shelf_gap())
 }
 
 const FOLDER_CARD_LIMIT: usize = 600;
 
 pub fn folder_scroll_max(viewport: Viewport, folder: &FolderModel, tab: usize) -> f32 {
-    let metrics = UiMetrics::for_viewport(viewport);
-    let geometry = folder_geometry(viewport, metrics, folder);
-    let content = folder_content_height(metrics, folder, tab, geometry.page.width);
+    crate::metrics::enter(viewport);
+    let geometry = folder_geometry(viewport, folder);
+    let content = folder_content_height(folder, tab, geometry.page.width);
     (geometry.content_top + content + crate::vars::px("section-gap")
         - (viewport.height - mobile_scroll_reserve(viewport)))
     .max(0.0)

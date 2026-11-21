@@ -1,6 +1,5 @@
 #![recursion_limit = "256"]
 use crate::gfx::{Align2, Color32, FontId, Id, Pos2, Rect, RichText, Sense, TextureId, Vec2};
-use fluxa_theme::theme::active_snapshot;
 use serde::{Deserialize, Serialize};
 use std::{
     collections::HashMap,
@@ -203,7 +202,6 @@ pub fn draw_focus(
         viewport,
         in_player,
         scope,
-        UiMetrics::for_viewport(viewport),
     );
 }
 

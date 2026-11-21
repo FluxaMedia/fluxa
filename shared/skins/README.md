@@ -32,7 +32,6 @@ midnight/
   style.css             theme stylesheet, layered over the default one
   constants.json        named numbers used from layouts
   includes.json         reusable layout fragments
-  tokens.json           optional theme tokens (colors, sizes)
   screens/home.json     one file per replaced screen
   languages/en.json     optional string overrides, one file per language
 ```
@@ -52,7 +51,6 @@ Every file is limited to 1 MiB. Paths in the manifest must be relative and stay 
   "canvas": { "tv": 960 },
   "constants": "constants.json",
   "theme": "style.css",
-  "tokens": "tokens.json",
   "languages": { "en": "languages/en.json" },
   "screens": { "home": "screens/home.json" },
   "includes": ["includes.json"]
@@ -68,7 +66,6 @@ Every file is limited to 1 MiB. Paths in the manifest must be relative and stay 
 | `canvas` | logical width the skin is designed for per form factor, for example the TV layout at 960 |
 | `constants` | JSON file of named numbers |
 | `theme` | stylesheet file |
-| `tokens` | JSON file overriding theme tokens, validated against `shared/contracts/theme-override.schema.json` |
 | `languages` | map from language code to a JSON file of strings |
 | `screens` | map from screen name to its layout file |
 | `includes` | files of reusable fragments |

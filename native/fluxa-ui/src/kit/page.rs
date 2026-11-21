@@ -40,8 +40,7 @@ fn body_at<R>(
     scrolls: bool,
     add: impl FnOnce(&mut Ui) -> R,
 ) -> R {
-    let metrics = UiMetrics::for_viewport(viewport);
-    provide(context, metrics);
+    crate::metrics::enter(viewport);
     let rect = Rect::from_min_max(
         Pos2::new(0.0, top),
         Pos2::new(viewport.width, viewport.height),

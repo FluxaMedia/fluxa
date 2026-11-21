@@ -202,7 +202,7 @@ fn lift_above_keyboard(ui: &Ui, response: &Response, rect: Rect) {
         before != Some(inset)
     });
     if changed || response.gained_focus() {
-        let reach = Vec2::new(0.0, inset + Space::S16.px(&crate::metrics::active()));
+        let reach = Vec2::new(0.0, inset + Space::S16.px());
         ui.scroll_to_rect(Rect::from_min_max(rect.min, rect.max + reach), None);
     }
 }
@@ -289,7 +289,7 @@ fn record_focus(
     );
 }
 
-fn input_look(ui: &Ui, metrics: &UiMetrics, focused: bool) -> crate::stylesheet::Style {
+fn input_look(ui: &Ui, focused: bool) -> crate::stylesheet::Style {
     crate::stylesheet::resolve(
         ui.ctx(),
         "input",
@@ -299,17 +299,16 @@ fn input_look(ui: &Ui, metrics: &UiMetrics, focused: bool) -> crate::stylesheet:
             enabled: true,
             ..Default::default()
         },
-        Some(metrics),
     )
 }
 
-fn input_stroke(ui: &Ui, metrics: &UiMetrics, focused: bool) -> crate::gfx::Stroke {
-    let look = input_look(ui, metrics, focused);
+fn input_stroke(ui: &Ui, focused: bool) -> crate::gfx::Stroke {
+    let look = input_look(ui, focused);
     crate::gfx::Stroke::new(look.stroke, look.border)
 }
 
-fn input_fill(ui: &Ui, metrics: &UiMetrics) -> Color32 {
-    input_look(ui, metrics, false).fill
+fn input_fill(ui: &Ui) -> Color32 {
+    input_look(ui, false).fill
 }
 
 pub(crate) fn search_field(
@@ -318,14 +317,13 @@ pub(crate) fn search_field(
     hint: &str,
     width: f32,
     height: f32,
-    metrics: UiMetrics,
 ) -> Response {
     let radius = height * 0.5;
     let corner = height * crate::vars::px("pill-ratio");
     let (rect, _) = ui.allocate_exact_size(Vec2::new(width, height), Sense::hover());
     ui.painter()
-        .rect_filled(rect, corner, metrics.ink(tone::faint()));
-    let icon_color = metrics.ink(tone::muted());
+        .rect_filled(rect, corner, crate::metrics::ink(tone::faint()));
+    let icon_color = crate::metrics::ink(tone::muted());
     let placed = flex::row([
         flex::slot(Dp::D16.px()).id(0),
         flex::fill().id(1).height(height),
@@ -369,8 +367,8 @@ pub(crate) fn search_field(
                 crate::vars::px("screen-body-size") + 1.0,
             ))
             .vertical_align(crate::gfx::Align::Center)
-            .hint_text(RichText::new(hint).color(metrics.text_muted))
-            .text_color(metrics.text_primary)
+            .hint_text(RichText::new(hint).color(crate::metrics::theme().text_muted))
+            .text_color(crate::metrics::theme().text_primary)
             .margin(Vec2::ZERO),
     );
     focus_on_hit(ui, &hit, id, len);
@@ -396,7 +394,7 @@ pub(crate) fn search_field(
             crate::fonts::regular(crate::vars::px("screen-body-size") + 1.0),
         );
     }
-    let stroke = input_stroke(ui, &metrics, response.has_focus());
+    let stroke = input_stroke(ui, response.has_focus());
     ui.painter()
         .rect_stroke(rect, corner, stroke, crate::gfx::StrokeKind::Inside);
     response
@@ -466,7 +464,6 @@ pub(crate) fn text_input(
     hint: &str,
     width: f32,
     kind: InputKind,
-    metrics: UiMetrics,
 ) -> Response {
     text_edit(
         ui,
@@ -476,17 +473,10 @@ pub(crate) fn text_input(
         crate::vars::px("text-body"),
         kind,
         0.0,
-        metrics,
     )
 }
 
-pub(crate) fn text_area(
-    ui: &mut Ui,
-    value: &mut String,
-    hint: &str,
-    size: Vec2,
-    metrics: UiMetrics,
-) -> Response {
+pub(crate) fn text_area(ui: &mut Ui, value: &mut String, hint: &str, size: Vec2) -> Response {
     text_edit(
         ui,
         value,
@@ -495,7 +485,6 @@ pub(crate) fn text_area(
         crate::vars::px("text-body"),
         InputKind::Multiline,
         0.0,
-        metrics,
     )
 }
 
@@ -519,7 +508,6 @@ pub(crate) fn code_input_styled(
     value: &mut String,
     length: usize,
     width: f32,
-    metrics: UiMetrics,
     look: CodeLook,
 ) -> CodeInput {
     let height = Dp::D56.px();
@@ -579,22 +567,25 @@ pub(crate) fn code_input_styled(
     let corner = height * crate::vars::px("pill-ratio");
     let painter = ui.painter();
     if !boxes {
-        painter.rect_filled(rect, corner, input_fill(ui, &metrics));
-        let border = input_stroke(ui, &metrics, focused);
+        painter.rect_filled(rect, corner, input_fill(ui));
+        let border = input_stroke(ui, focused);
         painter.rect_stroke(rect, corner, border, crate::gfx::StrokeKind::Inside);
     }
 
     let button = flex::anchored(
         frame.find(1).unwrap_or(rect),
         Align2::CENTER_CENTER,
-        Vec2::splat(height - Space::S6.px(&metrics) * 2.0),
+        Vec2::splat(height - Space::S6.px() * 2.0),
         0.0,
     );
     let go = ui.interact(button, id.with("go"), Sense::click());
     let (fill, ink) = if complete {
         (Color32::WHITE, Color32::BLACK)
     } else {
-        (metrics.border, metrics.text_muted)
+        (
+            crate::metrics::theme().border,
+            crate::metrics::theme().text_muted,
+        )
     };
     let painter = ui.painter();
     painter.circle_filled(button.center(), button.width() * 0.5, fill);
@@ -680,7 +671,7 @@ pub(crate) fn code_input_styled(
                     Align2::CENTER_CENTER,
                     character,
                     font.clone(),
-                    metrics.text_primary,
+                    crate::metrics::theme().text_primary,
                 );
             }
             None if focused && index == count => {
@@ -696,7 +687,11 @@ pub(crate) fn code_input_styled(
                 }
             }
             None => {
-                painter.circle_filled(center, Dp::D3.px(), metrics.text_muted.gamma_multiply(0.6));
+                painter.circle_filled(
+                    center,
+                    Dp::D3.px(),
+                    crate::metrics::theme().text_muted.gamma_multiply(0.6),
+                );
             }
         }
     }
@@ -710,7 +705,7 @@ pub(crate) fn code_input_styled(
     );
     painter.line_segment(
         [dash.left_center(), dash.right_center()],
-        crate::gfx::Stroke::new(2.0, metrics.text_muted.gamma_multiply(0.7)),
+        crate::gfx::Stroke::new(2.0, crate::metrics::theme().text_muted.gamma_multiply(0.7)),
     );
     if focused {
         ui.ctx()
@@ -737,13 +732,11 @@ fn text_edit(
     font_size: f32,
     kind: InputKind,
     trailing: f32,
-    metrics: UiMetrics,
 ) -> Response {
     let radius = radius::control();
     let (rect, _) = ui.allocate_exact_size(size, Sense::hover());
-    ui.painter()
-        .rect_filled(rect, radius, input_fill(ui, &metrics));
-    let side = Space::S14.px(&metrics);
+    ui.painter().rect_filled(rect, radius, input_fill(ui));
+    let side = Space::S14.px();
     let placed = flex::row([
         flex::fill().id(0).height(rect.height()),
         flex::slot(trailing).id(1),
@@ -794,8 +787,8 @@ fn text_edit(
             } else {
                 crate::gfx::Align::Center
             })
-            .hint_text(RichText::new(hint).color(metrics.text_muted))
-            .text_color(metrics.text_primary)
+            .hint_text(RichText::new(hint).color(crate::metrics::theme().text_muted))
+            .text_color(crate::metrics::theme().text_primary)
             .margin(Vec2::ZERO),
     );
     focus_on_hit(ui, &hit, id, len);
@@ -818,7 +811,7 @@ fn text_edit(
             crate::fonts::regular(font_size),
         );
     }
-    let stroke = input_stroke(ui, &metrics, response.has_focus());
+    let stroke = input_stroke(ui, response.has_focus());
     ui.painter()
         .rect_stroke(rect, radius, stroke, crate::gfx::StrokeKind::Inside);
     response

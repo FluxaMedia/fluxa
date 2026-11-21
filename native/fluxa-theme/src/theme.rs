@@ -1,208 +1,27 @@
-//! Shared Fluxa theme/token contract.
-//!
-//! `shared/contracts/ui-tokens.json` is the source of truth for Web, Compose,
-//! and native Rust. The renderer deliberately consumes the same document
-//! instead of keeping a second set of Rust-only design constants.
-
 use std::{
     fmt,
-    path::Path,
     sync::{
-        Arc, OnceLock, RwLock,
+        RwLock,
         atomic::{AtomicU64, Ordering},
     },
 };
 
-use serde::Deserialize;
-
 use crate::Color;
 
-const SHARED_TOKENS_JSON: &str = include_str!("../../../shared/contracts/ui-tokens.json");
+pub const BUILTIN_THEMES: [&str; 3] = ["fluxa-dark", "amoled", "midnight-blue"];
 
-#[derive(Clone, Debug, Deserialize, PartialEq)]
-pub struct UiTokens {
-    #[serde(rename = "schemaVersion")]
-    pub schema_version: u32,
-    pub colors: BaseColors,
-    pub shape: BaseShape,
-    pub spacing: BaseSpacing,
-    pub auth: serde_json::Value,
-    pub typography: BaseTypography,
-    pub layout: serde_json::Value,
-    pub themes: Vec<ThemePack>,
-}
+pub const DEFAULT_THEME: &str = "fluxa-dark";
 
-#[derive(Clone, Debug, Deserialize, PartialEq)]
-pub struct BaseColors {
-    pub background: String,
-    pub surface: String,
-    #[serde(rename = "surfaceRaised")]
-    pub surface_raised: String,
-    #[serde(rename = "textPrimary")]
-    pub text_primary: String,
-    #[serde(rename = "textSecondary")]
-    pub text_secondary: String,
-    #[serde(rename = "textMuted")]
-    pub text_muted: String,
-    pub border: String,
-    #[serde(rename = "borderStrong")]
-    pub border_strong: String,
-    pub focus: String,
-}
-
-#[derive(Clone, Debug, Deserialize, PartialEq)]
-pub struct BaseShape {
-    #[serde(rename = "authCard")]
-    pub auth_card: f32,
-    pub control: f32,
-    pub segmented: f32,
-    pub tab: f32,
-}
-
-#[derive(Clone, Debug, Deserialize, PartialEq)]
-pub struct BaseSpacing {
-    pub screen: f32,
-    #[serde(rename = "authSection")]
-    pub auth_section: f32,
-    #[serde(rename = "authCardPadding")]
-    pub auth_card_padding: f32,
-    pub control: f32,
-    pub divider: f32,
-}
-
-#[derive(Clone, Debug, Deserialize, PartialEq)]
-pub struct BaseTypography {
-    #[serde(rename = "authTitle")]
-    pub auth_title: f32,
-    #[serde(rename = "authSubtitle")]
-    pub auth_subtitle: f32,
-    #[serde(rename = "authControl")]
-    pub auth_control: f32,
-    #[serde(rename = "authCaption")]
-    pub auth_caption: f32,
-}
-
-#[derive(Clone, Debug, Deserialize, PartialEq)]
-pub struct ThemePack {
-    #[serde(rename = "schemaVersion")]
-    pub schema_version: u32,
-    pub id: String,
-    #[serde(rename = "nameKey")]
-    pub name_key: String,
-    #[serde(default)]
-    pub name: Option<String>,
-    pub colors: ThemeColors,
-    pub typography: ThemeTypography,
-    pub shape: ThemeShape,
-    pub spacing: ThemeSpacing,
-    pub motion: ThemeMotion,
-    pub layouts: ThemeLayouts,
-}
-
-#[derive(Clone, Debug, Deserialize, PartialEq)]
-pub struct ThemeColors {
-    pub background: String,
-    #[serde(rename = "backgroundElevated")]
-    pub background_elevated: String,
-    pub surface: String,
-    #[serde(rename = "surfaceRaised")]
-    pub surface_raised: String,
-    pub navigation: String,
-    #[serde(rename = "textPrimary")]
-    pub text_primary: String,
-    #[serde(rename = "textSecondary")]
-    pub text_secondary: String,
-    #[serde(rename = "textMuted")]
-    pub text_muted: String,
-    pub border: String,
-    #[serde(rename = "borderStrong")]
-    pub border_strong: String,
-    pub accent: String,
-    #[serde(rename = "accentForeground")]
-    pub accent_foreground: String,
-    pub success: String,
-    pub warning: String,
-    pub error: String,
-    pub info: String,
-    pub focus: String,
-    pub scrim: String,
-    #[serde(rename = "buttonPrimary", default)]
-    pub button_primary: Option<String>,
-    #[serde(rename = "buttonPrimaryText", default)]
-    pub button_primary_text: Option<String>,
-    #[serde(rename = "cardBackground", default)]
-    pub card_background: Option<String>,
-    #[serde(rename = "inputBackground", default)]
-    pub input_background: Option<String>,
-    #[serde(rename = "inputBorder", default)]
-    pub input_border: Option<String>,
-    #[serde(rename = "inputBorderFocus", default)]
-    pub input_border_focus: Option<String>,
-}
-
-#[derive(Clone, Debug, Deserialize, PartialEq)]
-pub struct ThemeTypography {
-    #[serde(rename = "displayFont")]
-    pub display_font: String,
-    #[serde(rename = "bodyFont")]
-    pub body_font: String,
-    #[serde(rename = "titleWeight")]
-    pub title_weight: u16,
-    #[serde(rename = "bodyWeight")]
-    pub body_weight: u16,
-}
-
-#[derive(Clone, Debug, Deserialize, PartialEq)]
-pub struct ThemeShape {
-    #[serde(rename = "cardRadius")]
-    pub card_radius: f32,
-    #[serde(rename = "controlRadius")]
-    pub control_radius: f32,
-    #[serde(rename = "dialogRadius")]
-    pub dialog_radius: f32,
-}
-
-#[derive(Clone, Debug, Deserialize, PartialEq)]
-pub struct ThemeSpacing {
-    #[serde(rename = "screenPadding")]
-    pub screen_padding: f32,
-    #[serde(rename = "sectionGap")]
-    pub section_gap: f32,
-    #[serde(rename = "controlGap")]
-    pub control_gap: f32,
-}
-
-#[derive(Clone, Debug, Deserialize, PartialEq)]
-pub struct ThemeMotion {
-    pub enabled: bool,
-    #[serde(rename = "fastMs")]
-    pub fast_ms: u64,
-    #[serde(rename = "normalMs")]
-    pub normal_ms: u64,
-    #[serde(rename = "slowMs")]
-    pub slow_ms: u64,
-}
-
-#[derive(Clone, Debug, Deserialize, PartialEq)]
-pub struct ThemeLayouts {
-    pub home: String,
-    pub detail: String,
-    pub library: String,
-    pub navigation: String,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum ThemeError {
     InvalidSource(String),
-    MissingTheme(String),
     InvalidColor { token: String, value: String },
 }
 
 impl fmt::Display for ThemeError {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::InvalidSource(error) => write!(formatter, "invalid shared UI tokens: {error}"),
-            Self::MissingTheme(id) => write!(formatter, "shared theme not found: {id}"),
+            Self::InvalidSource(error) => write!(formatter, "invalid theme: {error}"),
             Self::InvalidColor { token, value } => {
                 write!(formatter, "invalid color token {token}: {value}")
             }
@@ -212,55 +31,17 @@ impl fmt::Display for ThemeError {
 
 impl std::error::Error for ThemeError {}
 
-static TOKENS: OnceLock<Result<UiTokens, ThemeError>> = OnceLock::new();
-static LIVE_TOKENS: OnceLock<RwLock<Option<UiTokens>>> = OnceLock::new();
-
-fn live_tokens() -> &'static RwLock<Option<UiTokens>> {
-    LIVE_TOKENS.get_or_init(|| RwLock::new(None))
-}
-
-/// Parse and cache the repository's shared token document.
-pub fn shared_ui_tokens() -> Result<&'static UiTokens, ThemeError> {
-    TOKENS
-        .get_or_init(|| {
-            serde_json::from_str(SHARED_TOKENS_JSON)
-                .map_err(|error| ThemeError::InvalidSource(error.to_string()))
-        })
-        .as_ref()
-        .map_err(Clone::clone)
-}
-
-pub fn theme(id: &str) -> Result<&'static ThemePack, ThemeError> {
-    shared_ui_tokens()?
-        .themes
-        .iter()
-        .find(|theme| theme.id == id)
-        .ok_or_else(|| ThemeError::MissingTheme(id.to_owned()))
-}
-
-/// Return the active token document, including an optional development-time
-/// override loaded from disk. Production callers continue to use the
-/// compile-time contract; desktop development can replace only the token
-/// document without rebuilding or reopening the window.
-pub fn active_shared_ui_tokens() -> Result<UiTokens, ThemeError> {
-    let mut tokens = match live_tokens().read().ok().and_then(|tokens| tokens.clone()) {
-        Some(tokens) => tokens,
-        None => shared_ui_tokens()?.clone(),
-    };
-    crate::user::apply_user_tokens(&mut tokens);
-    Ok(tokens)
-}
-
-pub struct ActiveSnapshot {
-    pub tokens: UiTokens,
-    pub theme: ThemePack,
-}
-
 static EPOCH: AtomicU64 = AtomicU64::new(0);
 static SELECTED: RwLock<Option<(String, String)>> = RwLock::new(None);
 static CHOICES: RwLock<Option<&'static [&'static str]>> = RwLock::new(None);
 
-pub const DEFAULT_THEME: &str = "fluxa-dark";
+pub fn is_builtin(id: &str) -> bool {
+    BUILTIN_THEMES.contains(&id)
+}
+
+pub fn name_key(id: &str) -> String {
+    format!("theme.{}", id.replace('-', "_"))
+}
 
 pub fn selected_theme_key() -> String {
     SELECTED
@@ -284,7 +65,7 @@ pub fn set_selected_theme(key: &str) {
     }
     let base = match crate::user::pack_base(key) {
         Some(base) => base,
-        None if theme(key).is_ok() => key.to_owned(),
+        None if is_builtin(key) => key.to_owned(),
         None => return,
     };
     if let Ok(mut selected) = SELECTED.write() {
@@ -302,15 +83,7 @@ pub fn choice_keys() -> &'static [&'static str] {
 }
 
 pub(crate) fn refresh_choices() -> &'static [&'static str] {
-    let mut keys: Vec<&'static str> = shared_ui_tokens()
-        .map(|tokens| {
-            tokens
-                .themes
-                .iter()
-                .map(|theme| theme.id.as_str())
-                .collect()
-        })
-        .unwrap_or_default();
+    let mut keys: Vec<&'static str> = BUILTIN_THEMES.to_vec();
     keys.extend(
         crate::user::pack_keys()
             .into_iter()
@@ -322,7 +95,6 @@ pub(crate) fn refresh_choices() -> &'static [&'static str] {
     }
     keys
 }
-static SNAPSHOT: RwLock<Option<(u64, String, Arc<ActiveSnapshot>)>> = RwLock::new(None);
 
 pub fn active_epoch() -> u64 {
     EPOCH.load(Ordering::Acquire)
@@ -332,111 +104,7 @@ pub fn invalidate_active() {
     EPOCH.fetch_add(1, Ordering::AcqRel);
 }
 
-pub fn active_snapshot(id: &str) -> Result<Arc<ActiveSnapshot>, ThemeError> {
-    let epoch = EPOCH.load(Ordering::Acquire);
-    if let Ok(cached) = SNAPSHOT.read()
-        && let Some((cached_epoch, cached_id, snapshot)) = cached.as_ref()
-        && *cached_epoch == epoch
-        && cached_id == id
-    {
-        return Ok(Arc::clone(snapshot));
-    }
-    let snapshot = Arc::new(ActiveSnapshot {
-        tokens: active_shared_ui_tokens()?,
-        theme: active_theme(id)?,
-    });
-    if let Ok(mut cached) = SNAPSHOT.write() {
-        *cached = Some((epoch, id.to_owned(), Arc::clone(&snapshot)));
-    }
-    Ok(snapshot)
-}
-
-pub fn active_theme(id: &str) -> Result<ThemePack, ThemeError> {
-    let mut theme = active_shared_ui_tokens()?
-        .themes
-        .into_iter()
-        .find(|theme| theme.id == id)
-        .ok_or_else(|| ThemeError::MissingTheme(id.to_owned()))?;
-    crate::user::apply_user_theme(&mut theme);
-    Ok(theme)
-}
-
-/// Replace the development-time token override with a JSON file from disk.
-/// Invalid files are rejected without disturbing the last valid theme.
-pub fn reload_shared_ui_tokens_from_path(path: impl AsRef<Path>) -> Result<(), ThemeError> {
-    let path = path.as_ref();
-    let source = std::fs::read_to_string(path)
-        .map_err(|error| ThemeError::InvalidSource(format!("{}: {error}", path.display())))?;
-    let tokens = serde_json::from_str::<UiTokens>(&source)
-        .map_err(|error| ThemeError::InvalidSource(error.to_string()))?;
-    *live_tokens()
-        .write()
-        .map_err(|_| ThemeError::InvalidSource("token reload lock poisoned".to_owned()))? =
-        Some(tokens);
-    invalidate_active();
-    Ok(())
-}
-
-pub fn set_live_tokens(source: Option<&str>) -> Result<(), ThemeError> {
-    let tokens = source
-        .map(|source| {
-            serde_json::from_str::<UiTokens>(source)
-                .map_err(|error| ThemeError::InvalidSource(error.to_string()))
-        })
-        .transpose()?;
-    *live_tokens()
-        .write()
-        .map_err(|_| ThemeError::InvalidSource("token lock poisoned".to_owned()))? = tokens;
-    invalidate_active();
-    Ok(())
-}
-
-impl ThemePack {
-    pub fn color(&self, token: &str) -> Result<Color, ThemeError> {
-        let value = match token {
-            "background" => &self.colors.background,
-            "backgroundElevated" => &self.colors.background_elevated,
-            "surface" => &self.colors.surface,
-            "surfaceRaised" => &self.colors.surface_raised,
-            "navigation" => &self.colors.navigation,
-            "textPrimary" => &self.colors.text_primary,
-            "textSecondary" => &self.colors.text_secondary,
-            "textMuted" => &self.colors.text_muted,
-            "border" => &self.colors.border,
-            "borderStrong" => &self.colors.border_strong,
-            "accent" => &self.colors.accent,
-            "accentForeground" => &self.colors.accent_foreground,
-            "success" => &self.colors.success,
-            "warning" => &self.colors.warning,
-            "error" => &self.colors.error,
-            "info" => &self.colors.info,
-            "focus" => &self.colors.focus,
-            "scrim" => &self.colors.scrim,
-            "buttonPrimary" => optional(token, &self.colors.button_primary)?,
-            "buttonPrimaryText" => optional(token, &self.colors.button_primary_text)?,
-            "cardBackground" => optional(token, &self.colors.card_background)?,
-            "inputBackground" => optional(token, &self.colors.input_background)?,
-            "inputBorder" => optional(token, &self.colors.input_border)?,
-            "inputBorderFocus" => optional(token, &self.colors.input_border_focus)?,
-            _ => {
-                return Err(ThemeError::InvalidColor {
-                    token: token.to_owned(),
-                    value: "unknown token".to_owned(),
-                });
-            }
-        };
-        parse_hex_color(token, value)
-    }
-}
-
-fn optional<'a>(token: &str, value: &'a Option<String>) -> Result<&'a String, ThemeError> {
-    value.as_ref().ok_or_else(|| ThemeError::InvalidColor {
-        token: token.to_owned(),
-        value: "not set".to_owned(),
-    })
-}
-
-fn parse_hex_color(token: &str, value: &str) -> Result<Color, ThemeError> {
+pub fn parse_hex_color(token: &str, value: &str) -> Result<Color, ThemeError> {
     let raw = value.strip_prefix('#').unwrap_or(value);
     let parse = |text: &str| u8::from_str_radix(text, 16).ok();
     let (r, g, b, a) = match raw.len() {
@@ -473,17 +141,6 @@ mod tests {
     use super::*;
 
     #[test]
-    fn shared_source_contains_all_builtin_themes() {
-        let tokens = shared_ui_tokens().expect("shared token source must parse");
-        assert_eq!(tokens.schema_version, 3);
-        assert_eq!(tokens.themes.len(), 3);
-        assert_eq!(
-            theme("midnight-blue").expect("theme").layouts.home,
-            "shelves"
-        );
-    }
-
-    #[test]
     fn selecting_a_theme_ignores_unknown_ids() {
         let _guard = crate::GLOBAL_STATE
             .lock()
@@ -500,6 +157,10 @@ mod tests {
     fn hex_tokens_convert_to_unit_rgb() {
         let color = parse_hex_color("accent", "#E85D3F").expect("color");
         assert_eq!(color, Color::rgb(232.0 / 255.0, 93.0 / 255.0, 63.0 / 255.0));
-        assert!(theme("fluxa-dark").expect("theme").color("accent").is_ok());
+    }
+
+    #[test]
+    fn name_keys_follow_the_translation_scheme() {
+        assert_eq!(name_key("midnight-blue"), "theme.midnight_blue");
     }
 }

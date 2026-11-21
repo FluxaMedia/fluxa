@@ -141,7 +141,7 @@ fn media_key(part: &str) -> Result<String, String> {
     };
     let value = value.trim().trim_end_matches("px");
     match feature.trim() {
-        "min-width" | "max-width" | "min-height" | "max-height" | "input" => {
+        "min-width" | "max-width" | "min-height" | "max-height" | "input" | "theme" => {
             Ok(format!("{}:{}", feature.trim(), value))
         }
         "platform" | "window" | "size" => Ok(value.to_owned()),

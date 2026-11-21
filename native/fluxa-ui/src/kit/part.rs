@@ -49,13 +49,7 @@ impl Part {
         }
     }
 
-    fn paint(
-        &self,
-        painter: &Painter,
-        rect: Rect,
-        assets: &mut impl HomeAssets,
-        metrics: UiMetrics,
-    ) {
+    fn paint(&self, painter: &Painter, rect: Rect, assets: &mut impl HomeAssets) {
         match self {
             Self::Text { text, font, color } => {
                 flex::paint_text(painter, rect, text, font, *color, Align2::CENTER_CENTER)
@@ -74,7 +68,6 @@ impl Part {
                 *radius,
                 name,
                 url.as_deref(),
-                metrics,
             ),
         }
     }

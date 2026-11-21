@@ -319,7 +319,7 @@ fn grid_column_width_from_css_fits_as_many_columns_as_the_width_allows() {
         .collect();
     lefts.sort_unstable();
     lefts.dedup();
-    let metrics = UiMetrics::for_viewport(Viewport::new(1280, 800, UiFormFactor::Desktop));
+    crate::metrics::enter(Viewport::new(1280, 800, UiFormFactor::Desktop));
     let inner = 1280.0
         - crate::vars::px("gutter") * 2.0
         - crate::sidebar::side_inset(1280.0, UiFormFactor::Desktop);

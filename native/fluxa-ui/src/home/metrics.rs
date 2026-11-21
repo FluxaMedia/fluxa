@@ -1,9 +1,5 @@
 use super::*;
 
-pub fn metrics_for_assets(viewport: Viewport, _assets: &impl HomeAssets) -> UiMetrics {
-    UiMetrics::for_viewport(viewport)
-}
-
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum ArtworkPriority {
     Hero,
@@ -42,17 +38,17 @@ pub fn artwork_request_url(url: &str, target_size: [u32; 2]) -> String {
     format!("{}{variant}/{path}", &url[..path_start])
 }
 
-pub(crate) fn home_row_dimensions(metrics: UiMetrics, kind: HomeRowKind) -> (f32, f32, f32) {
+pub(crate) fn home_row_dimensions(kind: HomeRowKind) -> (f32, f32, f32) {
     match kind {
         HomeRowKind::Continue => (
-            metrics.home_continue_card_width,
-            metrics.home_continue_card_height,
-            metrics.home_continue_card_height,
+            crate::metrics::theme().continue_width,
+            crate::metrics::theme().continue_height,
+            crate::metrics::theme().continue_height,
         ),
         HomeRowKind::Poster => (
-            metrics.poster_card_width,
-            metrics.poster_card_height,
-            metrics.poster_card_height
+            crate::metrics::theme().poster_width,
+            crate::metrics::theme().poster_height,
+            crate::metrics::theme().poster_height
                 + crate::vars::px("control-gap")
                 + crate::vars::px("screen-card-title-size")
                 + crate::vars::px("screen-card-subtitle-size")
@@ -68,7 +64,7 @@ pub(crate) fn home_row_dimensions(metrics: UiMetrics, kind: HomeRowKind) -> (f32
     }
 }
 
-pub(crate) fn home_collection_card_dimensions(metrics: UiMetrics, card: &HomeCard) -> (f32, f32) {
+pub(crate) fn home_collection_card_dimensions(card: &HomeCard) -> (f32, f32) {
     let (width, height) = match card
         .collection_shape
         .as_deref()
@@ -92,15 +88,11 @@ pub(crate) fn home_collection_card_dimensions(metrics: UiMetrics, card: &HomeCar
     (width, height)
 }
 
-pub(crate) fn home_card_dimensions(
-    metrics: UiMetrics,
-    card: &HomeCard,
-    kind: HomeRowKind,
-) -> (f32, f32) {
+pub(crate) fn home_card_dimensions(card: &HomeCard, kind: HomeRowKind) -> (f32, f32) {
     if kind == HomeRowKind::Collection {
-        return home_collection_card_dimensions(metrics, card);
+        return home_collection_card_dimensions(card);
     }
-    let (width, height, _) = home_row_dimensions(metrics, kind);
+    let (width, height, _) = home_row_dimensions(kind);
     if kind != HomeRowKind::Poster || card.is_landscape() {
         return (width, height);
     }
@@ -115,35 +107,27 @@ pub(crate) fn home_card_lead(title: &str, kind: HomeRowKind, index: usize, heigh
     poster_overlay::lead_width(height, poster_overlay::rank_for(title, kind, index))
 }
 
-pub(crate) fn home_row_body_height(
-    metrics: UiMetrics,
-    cards: &[HomeCard],
-    kind: HomeRowKind,
-) -> f32 {
+pub(crate) fn home_row_body_height(cards: &[HomeCard], kind: HomeRowKind) -> f32 {
     if kind != HomeRowKind::Collection {
-        return home_row_dimensions(metrics, kind).2;
+        return home_row_dimensions(kind).2;
     }
     let max_tile_height = cards
         .iter()
-        .map(|card| home_collection_card_dimensions(metrics, card))
+        .map(|card| home_collection_card_dimensions(card))
         .map(|(_, height)| height)
         .fold(0.0_f32, f32::max);
     max_tile_height + crate::vars::px("control-gap") + crate::vars::px("screen-card-title-size")
 }
 
-pub(crate) fn home_metrics(viewport: Viewport) -> UiMetrics {
-    UiMetrics::for_viewport(viewport)
-}
-
 /// Height occupied by a shelf heading and the gap between it and its cards.
 /// Keep this in the shared geometry calculation: omitting it made each next
 /// shelf start while the previous shelf's cards were still on screen.
-pub(crate) fn home_row_heading_height(metrics: UiMetrics) -> f32 {
+pub(crate) fn home_row_heading_height() -> f32 {
     crate::vars::px("row-heading-size") * 1.25 + crate::vars::px("control-gap")
 }
 
 pub(crate) fn home_hero_height(viewport: Viewport) -> f32 {
-    let metrics = UiMetrics::for_viewport(viewport);
+    crate::metrics::enter(viewport);
     let base_height = if viewport.is_compact() {
         if viewport.width > viewport.height * crate::vars::px("screen-hero-landscape-switch") {
             (viewport.width * crate::vars::px("screen-hero-landscape-ratio"))
@@ -172,7 +156,7 @@ pub(crate) fn home_hero_pinned(viewport: Viewport, home: &HomeModel) -> bool {
 
 pub(crate) fn home_hero_height_for(viewport: Viewport, home: &HomeModel) -> f32 {
     if home_hero_pinned(viewport, home) {
-        let metrics = UiMetrics::for_viewport(viewport);
+        crate::metrics::enter(viewport);
         if viewport.is_tv() {
             return viewport.height * crate::vars::px("screen-hero-tv-height-ratio");
         }
@@ -187,11 +171,11 @@ pub(crate) fn home_hero_height_for(viewport: Viewport, home: &HomeModel) -> f32 
 /// its heading and the heading height.
 pub fn home_pinned_rows(viewport: Viewport, home: &HomeModel) -> Option<(f32, f32)> {
     home_hero_pinned(viewport, home).then(|| {
-        let metrics = home_metrics(viewport);
+        crate::metrics::enter(viewport);
         let hero_height = home_hero_height_for(viewport, home);
         (
-            home_row_start(viewport, metrics, hero_height, true),
-            home_row_heading_height(metrics),
+            home_row_start(viewport, hero_height, true),
+            home_row_heading_height(),
         )
     })
 }
@@ -204,7 +188,7 @@ pub(crate) struct HomeFlow {
     pub rows_top: f32,
 }
 
-pub(crate) fn home_flow(viewport: Viewport, metrics: UiMetrics, home: &HomeModel) -> HomeFlow {
+pub(crate) fn home_flow(viewport: Viewport, home: &HomeModel) -> HomeFlow {
     let hero_height = home_hero_height_for(viewport, home);
     let lead = if home_hero_pinned(viewport, home) {
         0.0
@@ -213,12 +197,7 @@ pub(crate) fn home_flow(viewport: Viewport, metrics: UiMetrics, home: &HomeModel
     } + super::category_bar_space(viewport, home);
     let mut column = crate::flow::Column::from(0.0);
     column.place(lead);
-    let hero_top = column.place(home_row_start(
-        viewport,
-        metrics,
-        hero_height,
-        home_shows_hero(home),
-    ));
+    let hero_top = column.place(home_row_start(viewport, hero_height, home_shows_hero(home)));
     HomeFlow {
         hero_top,
         rows_top: column.end(),
@@ -254,25 +233,24 @@ impl Shelf<'_> {
     }
 }
 
-pub(crate) fn shelf_gap(metrics: UiMetrics) -> f32 {
+pub(crate) fn shelf_gap() -> f32 {
     crate::vars::px("section-gap") + crate::vars::px("vertical-spacing")
 }
 
 pub(crate) fn home_shelves<'a>(
-    metrics: UiMetrics,
     home: &'a HomeModel,
     top: f32,
 ) -> impl Iterator<Item = Shelf<'a>> + 'a {
-    let heading = home_row_heading_height(metrics);
+    let heading = home_row_heading_height();
     let mut column = crate::flow::Column::from(top);
     let mut first_card = 0;
     home.content_rows_with_kind()
         .enumerate()
         .map(move |(index, (title, cards, kind))| {
-            let body = home_row_body_height(metrics, cards, kind);
+            let body = home_row_body_height(cards, kind);
             let shelf = Shelf {
                 index,
-                top: column.place(heading + body + shelf_gap(metrics)),
+                top: column.place(heading + body + shelf_gap()),
                 heading,
                 body,
                 first_card,
@@ -285,12 +263,7 @@ pub(crate) fn home_shelves<'a>(
         })
 }
 
-pub(crate) fn home_row_start(
-    viewport: Viewport,
-    metrics: UiMetrics,
-    hero_height: f32,
-    show_hero: bool,
-) -> f32 {
+pub(crate) fn home_row_start(viewport: Viewport, hero_height: f32, show_hero: bool) -> f32 {
     if !show_hero {
         return crate::vars::px("page-padding") / 2.0;
     }

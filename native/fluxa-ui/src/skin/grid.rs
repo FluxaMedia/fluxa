@@ -5,7 +5,6 @@ pub(super) fn grid<'a, A: HomeAssets>(
     node: &Resolved,
     env: &'a Env<'a, A>,
 ) -> kit::Item<'a> {
-    let metrics = env.metrics;
     let own = node
         .width
         .or(node.width_vw.map(|share| share * env.view.get().x));
@@ -41,7 +40,7 @@ pub(super) fn grid<'a, A: HomeAssets>(
             (cell, gap)
         }
         (None, None) => {
-            let sizes = crate::layout::PosterGrid::new(inner, metrics);
+            let sizes = crate::layout::PosterGrid::new(inner);
             (sizes.card_width, sizes.gap)
         }
     };

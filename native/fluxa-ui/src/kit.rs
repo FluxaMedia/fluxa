@@ -23,25 +23,6 @@ pub(crate) use part::{Part, Scene};
 pub(crate) use solve::{Flow, Slot, solve};
 pub(crate) use view::view;
 
-const THEME_KEY: &str = "fluxa-kit-theme";
-
-pub(crate) fn provide(context: &crate::gfx::Context, metrics: UiMetrics) {
-    context.data_mut(|data| data.insert_temp(Id::new(THEME_KEY), Arc::new(metrics)));
-}
-
-pub(crate) trait UiKit {
-    fn tokens(&self) -> Arc<UiMetrics>;
-}
-
-impl UiMetrics {}
-
-impl UiKit for Ui {
-    fn tokens(&self) -> Arc<UiMetrics> {
-        self.data(|data| data.get_temp::<Arc<UiMetrics>>(Id::new(THEME_KEY)))
-            .expect("kit::provide must run before kit components")
-    }
-}
-
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum Type {
     Headline,
@@ -53,7 +34,7 @@ pub(crate) enum Type {
 }
 
 impl Type {
-    pub(crate) fn size(self, metrics: &UiMetrics) -> f32 {
+    pub(crate) fn size(self) -> f32 {
         match self {
             Type::Headline => crate::vars::px("text-title") * 1.6,
             Type::Title => crate::vars::px("text-title"),
@@ -80,11 +61,11 @@ pub(crate) enum Role {
 }
 
 impl Role {
-    pub(crate) fn color(self, metrics: &UiMetrics) -> Color32 {
+    pub(crate) fn color(self) -> Color32 {
         match self {
-            Role::Primary => metrics.text_primary,
-            Role::Secondary => metrics.text_secondary,
-            Role::Muted => metrics.text_muted,
+            Role::Primary => crate::metrics::theme().text_primary,
+            Role::Secondary => crate::metrics::theme().text_secondary,
+            Role::Muted => crate::metrics::theme().text_muted,
         }
     }
 }
@@ -147,29 +128,27 @@ impl Text {
         ui: &Ui,
         wrap_width: f32,
     ) -> (std::sync::Arc<crate::gfx::text::Galley>, Color32) {
-        let theme = ui.tokens();
         let weight = if self.bold {
             Weight::Bold
         } else {
             self.ty.weight()
         };
-        let font = weight.font(self.size.unwrap_or_else(|| self.ty.size(&theme)));
-        let color = self.color.unwrap_or_else(|| self.role.color(&theme));
+        let font = weight.font(self.size.unwrap_or_else(|| self.ty.size()));
+        let color = self.color.unwrap_or_else(|| self.role.color());
         let job =
             crate::gfx::text::LayoutJob::simple(self.content.clone(), font, color, wrap_width);
         (ui.ctx().fonts_mut(|fonts| fonts.layout_job(job)), color)
     }
 
     pub fn show(self, ui: &mut Ui) -> Response {
-        let theme = ui.tokens();
         let weight = if self.bold {
             Weight::Bold
         } else {
             self.ty.weight()
         };
         let mut rich = RichText::new(self.content)
-            .font(weight.font(self.size.unwrap_or_else(|| self.ty.size(&theme))))
-            .color(self.color.unwrap_or_else(|| self.role.color(&theme)));
+            .font(weight.font(self.size.unwrap_or_else(|| self.ty.size())))
+            .color(self.color.unwrap_or_else(|| self.role.color()));
         if self.badge {
             rich = rich.background_color(crate::stylesheet::color("track"));
         }

@@ -17,7 +17,7 @@ pub(crate) struct Bar {
 }
 
 fn avatar_center(viewport: Viewport, slot: Rect) -> Pos2 {
-    let near = Space::S8.px(&crate::metrics::active());
+    let near = Space::S8.px();
     if viewport.is_compact() {
         if labels_below() {
             slot.center() - Vec2::new(0.0, near)
@@ -30,7 +30,7 @@ fn avatar_center(viewport: Viewport, slot: Rect) -> Pos2 {
     }
 }
 
-pub(crate) fn layout(viewport: Viewport, metrics: UiMetrics, profile_name: &str) -> Bar {
+pub(crate) fn layout(viewport: Viewport, profile_name: &str) -> Bar {
     let nodes = nav_nodes();
     let pad = Insets::all(nav_bar_padding());
     let (rect, placed) = if viewport.is_compact() {
@@ -46,8 +46,8 @@ pub(crate) fn layout(viewport: Viewport, metrics: UiMetrics, profile_name: &str)
     } else {
         let cells: Vec<crate::flex::Node> = nav_entries()
             .iter()
-            .map(|(_, label)| metrics.navigation_item_width(label))
-            .chain([metrics.navigation_profile_width(profile_name)])
+            .map(|(_, label)| crate::metrics::navigation_item_width(label))
+            .chain([crate::metrics::navigation_profile_width(profile_name)])
             .enumerate()
             .map(|(index, width)| crate::flex::leaf(Vec2::new(width, nav_item_height())).id(index))
             .collect();
@@ -56,7 +56,7 @@ pub(crate) fn layout(viewport: Viewport, metrics: UiMetrics, profile_name: &str)
             .padding(pad)
             .align(crate::flex::Align::Start);
         let size = row.outer_size();
-        let margin = Space::S12.px(&metrics);
+        let margin = Space::S12.px();
         let lane = crate::gfx::rect_at(
             Pos2::new(0.0, nav_bar_top() + viewport.nav_lead),
             Vec2::new(viewport.width.max(size.x + margin), size.y),
@@ -100,8 +100,8 @@ pub(crate) fn slot_center(bar: &Bar, x: f32) -> f32 {
     nearest(bar, x).rect.center().x
 }
 
-pub(crate) fn focus_rects(viewport: Viewport, metrics: UiMetrics) -> Vec<(u64, Rect)> {
-    let bar = layout(viewport, metrics, &drawn_profile());
+pub(crate) fn focus_rects(viewport: Viewport) -> Vec<(u64, Rect)> {
+    let bar = layout(viewport, &drawn_profile());
     let mut rects: Vec<(u64, Rect)> = bar
         .slots
         .iter()
@@ -117,16 +117,16 @@ pub fn nav_bar_rect(viewport: Viewport) -> Option<Rect> {
     if viewport.side_inset > 0.0 {
         return None;
     }
-    let metrics = UiMetrics::for_viewport(viewport);
-    Some(layout(viewport, metrics, &drawn_profile()).rect)
+    crate::metrics::enter(viewport);
+    Some(layout(viewport, &drawn_profile()).rect)
 }
 
 pub fn nav_node_at(viewport: Viewport, position: Pos2) -> u64 {
-    let metrics = UiMetrics::for_viewport(viewport);
-    node_at(&layout(viewport, metrics, &drawn_profile()), position)
+    crate::metrics::enter(viewport);
+    node_at(&layout(viewport, &drawn_profile()), position)
 }
 
 pub fn nav_slot_center(viewport: Viewport, x: f32) -> f32 {
-    let metrics = UiMetrics::for_viewport(viewport);
-    slot_center(&layout(viewport, metrics, &drawn_profile()), x)
+    crate::metrics::enter(viewport);
+    slot_center(&layout(viewport, &drawn_profile()), x)
 }

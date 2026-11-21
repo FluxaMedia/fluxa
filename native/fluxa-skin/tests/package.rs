@@ -196,30 +196,6 @@ fn unknown_canvas_name_is_rejected() {
 }
 
 #[test]
-fn token_document_is_carried_with_the_skin() {
-    let dir = workspace("skin-tokens");
-    write(
-        &dir,
-        "manifest.json",
-        json!({"schemaVersion": 1, "id": "owned", "name": "Owned", "version": "1.0.0",
-               "tokens": "tokens.json"}),
-    );
-    write(
-        &dir,
-        "tokens.json",
-        json!({"colors": {"background": "#000000"}}),
-    );
-    let skin = load_skin(&dir).unwrap();
-    assert!(
-        skin.tokens()
-            .is_some_and(|source| source.contains("#000000"))
-    );
-    write(&dir, "tokens.json", json!([]));
-    fs::write(dir.join("tokens.json"), "not json").unwrap();
-    assert!(load_skin(&dir).is_err());
-}
-
-#[test]
 fn zip_with_a_top_level_folder_loads() {
     use std::io::Write;
     let dir = workspace("skin-zip");

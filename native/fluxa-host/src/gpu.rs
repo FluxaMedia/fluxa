@@ -726,9 +726,15 @@ impl Gpu {
             config.present_mode,
             capabilities.present_modes
         ));
-        let background = fluxa_theme::theme::active_theme(&fluxa_theme::theme::selected_theme_id())
-            .and_then(|theme| theme.color("background"))
-            .ok();
+        let background = {
+            let [r, g, b, a] = fluxa_ui::background().to_srgba_unmultiplied();
+            Some(fluxa_theme::Color::rgba(
+                f32::from(r) / 255.0,
+                f32::from(g) / 255.0,
+                f32::from(b) / 255.0,
+                f32::from(a) / 255.0,
+            ))
+        };
         let clear = background
             .ok_or(())
             .map(|color| wgpu::Color {

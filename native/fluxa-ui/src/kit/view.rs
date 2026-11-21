@@ -196,7 +196,6 @@ impl View {
     }
 
     pub fn show<R>(self, ui: &mut Ui, add: impl FnOnce(&mut Ui) -> R) -> Shown<R> {
-        let tokens = ui.tokens();
         let rest = self.class.map(|rule| {
             crate::stylesheet::resolve_with(
                 ui.ctx(),
@@ -206,18 +205,17 @@ impl View {
                     enabled: true,
                     ..Default::default()
                 },
-                None,
                 &self.modifiers,
             )
         });
         let pad = self
             .padding
-            .map(|space| space.px(&tokens))
+            .map(|space| space.px())
             .or(rest.map(|style| style.padding))
             .unwrap_or(0.0);
         let gap = self
             .gap
-            .map(|space| space.px(&tokens))
+            .map(|space| space.px())
             .or(rest.map(|style| style.gap))
             .unwrap_or(0.0);
         let available = ui.available_width();
@@ -340,13 +338,12 @@ impl View {
                     enabled: true,
                     ..Default::default()
                 },
-                None,
             )
         });
         let fill = match (self.surface, styled) {
             (_, Some(style)) => Some(style.fill),
             (Surface::Clear, None) => None,
-            (Surface::Raised, None) => Some(tokens.surface_raised),
+            (Surface::Raised, None) => Some(crate::metrics::theme().surface_raised),
         };
         let radius = match styled {
             Some(style) => style.radius.of(paint.height()),
@@ -395,8 +392,7 @@ mod tests {
     fn frame(add: impl FnOnce(&mut Ui, &mut Vec<Rect>) + 'static) -> (Vec<Rect>, Vec<(u64, Rect)>) {
         let context = crate::gfx::Context::default();
         context.set_fonts(crate::fonts::definitions());
-        let metrics = UiMetrics::for_viewport(Viewport::new(400, 300, UiFormFactor::Desktop));
-        provide(&context, metrics);
+        crate::metrics::enter(Viewport::new(400, 300, UiFormFactor::Desktop));
         let input = crate::gfx::RawInput {
             screen_rect: Some(Rect::from_min_max(Pos2::ZERO, Pos2::new(400.0, 300.0))),
             ..Default::default()
@@ -422,8 +418,7 @@ mod tests {
     fn hugging_view_shrinks_to_its_content_after_one_frame() {
         let context = crate::gfx::Context::default();
         context.set_fonts(crate::fonts::definitions());
-        let metrics = UiMetrics::for_viewport(Viewport::new(400, 300, UiFormFactor::Desktop));
-        provide(&context, metrics);
+        crate::metrics::enter(Viewport::new(400, 300, UiFormFactor::Desktop));
         let mut widths = Vec::new();
         for _ in 0..3 {
             let input = crate::gfx::RawInput {
@@ -472,8 +467,8 @@ mod tests {
             });
             rects.push(shown.response.rect);
         });
-        let tokens = UiMetrics::for_viewport(Viewport::new(400, 300, UiFormFactor::Desktop));
-        let pad = Space::S16.px(&tokens);
+        crate::metrics::enter(Viewport::new(400, 300, UiFormFactor::Desktop));
+        let pad = Space::S16.px();
         assert!((rects[0].height() - (20.0 + pad * 2.0)).abs() < 0.5);
     }
 
@@ -499,9 +494,9 @@ mod tests {
             });
             rects.push(shown.response.rect);
         });
-        let tokens = UiMetrics::for_viewport(Viewport::new(400, 300, UiFormFactor::Desktop));
-        let pad = Space::S16.px(&tokens);
-        let gap = Space::S8.px(&tokens);
+        crate::metrics::enter(Viewport::new(400, 300, UiFormFactor::Desktop));
+        let pad = Space::S16.px();
+        let gap = Space::S8.px();
         assert!((rects[1].top() - rects[0].bottom() - gap).abs() < 0.5);
         assert!((rects[2].height() - (20.0 + gap + pad * 2.0)).abs() < 0.5);
     }
@@ -514,8 +509,8 @@ mod tests {
             });
             rects.push(shown.response.rect);
         });
-        let tokens = UiMetrics::for_viewport(Viewport::new(400, 300, UiFormFactor::Desktop));
-        assert!((rects[0].height() - (10.0 + Space::S4.px(&tokens) * 2.0)).abs() < 0.5);
+        crate::metrics::enter(Viewport::new(400, 300, UiFormFactor::Desktop));
+        assert!((rects[0].height() - (10.0 + Space::S4.px() * 2.0)).abs() < 0.5);
     }
 
     #[test]
@@ -548,8 +543,8 @@ mod tests {
             );
             rects.extend(seen.into_inner());
         });
-        let tokens = UiMetrics::for_viewport(Viewport::new(400, 300, UiFormFactor::Desktop));
-        let gap = Space::S8.px(&tokens);
+        crate::metrics::enter(Viewport::new(400, 300, UiFormFactor::Desktop));
+        let gap = Space::S8.px();
         assert!(rects[1].left() - rects[0].right() > 2.0 * gap, "{rects:?}");
         assert_eq!(rects[0].height(), 10.0);
         assert_eq!(rects[1].width(), 30.0);
