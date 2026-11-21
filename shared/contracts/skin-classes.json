@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
   "classes": [
     {
       "name": "about-card",
@@ -261,6 +261,13 @@
       "since": 1
     },
     {
+      "name": "compact-only",
+      "element": "column fixed grid input scroll spacer text",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
       "name": "continue",
       "element": "stack",
       "meaning": "Continue-watching tile",
@@ -301,6 +308,13 @@
       "meaning": "Empty calendar cell outside the month",
       "stability": "internal",
       "since": 1
+    },
+    {
+      "name": "desktop-only",
+      "element": "column fixed row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
     },
     {
       "name": "divider",
@@ -436,6 +450,13 @@
       "since": 1
     },
     {
+      "name": "fill-space",
+      "element": "column image input row stack",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
       "name": "focus-ring",
       "element": "",
       "meaning": "Outline drawn around the focused element",
@@ -448,6 +469,524 @@
       "meaning": "Card that groups form fields",
       "stability": "internal",
       "since": 1
+    },
+    {
+      "name": "gap0",
+      "element": "column row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "gap0-items-stretch",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "gap10",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "gap10-grow1",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "gap10-pad0-0-64-64-items-start-justify-end",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "gap10-pad0-12-0-18",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "gap10-pad0-16-items-center",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "gap10-pad0-28-justify-center",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "gap10-pad14-18",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "gap12",
+      "element": "column page row scroll",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "gap12-items-center-justify-center",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "gap12-items-center-justify-space-between",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "gap12-items-stretch",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "gap12-pad0-12-0-18",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "gap12-pad0-16-24-16-items-stretch",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "gap12-pad0-18",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "gap12-pad12-18",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "gap12-pad14-16",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "gap12-pad16",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "gap12-pad16-0-24-0",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "gap12-pad20-0-0-0-items-stretch",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "gap12-pad20-items-stretch",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "gap12-pad6-0-items-center",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "gap14",
+      "element": "page",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "gap14-items-center",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "gap14-items-stretch",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "gap14-pad0-12-0-18",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "gap14-pad24-items-center-justify-center",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "gap14-pad8-0-items-center",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "gap16",
+      "element": "column row scroll",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "gap16-items-center",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "gap16-items-center-justify-center",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "gap16-items-stretch",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "gap16-pad0-20-20-20-items-stretch",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "gap18-pad40-16-96-16-items-stretch",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "gap2-items-stretch",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "gap2-pad12",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "gap20",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "gap20-items-center",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "gap20-items-start",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "gap20-items-stretch",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "gap20-pad0-24-24",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "gap22-items-stretch",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "gap24",
+      "element": "page",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "gap24-pad8-0",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "gap3-grow1",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "gap4-grow1",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "gap4-items-end",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "gap4-items-stretch",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "gap4-pad12-18-items-stretch",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "gap4-pad12-items-stretch-justify-end",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "gap4-pad6-items-center",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "gap4-pad8",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "gap48-pad40-48-items-center",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "gap6",
+      "element": "column row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "gap6-grow1",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "gap6-items-center",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "gap6-pad0-18-justify-center",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "gap6-pad0-20-items-start",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "gap6-pad60-0-20-0-items-stretch-justify-end",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "gap8",
+      "element": "column grid row scroll",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "gap8-grow1",
+      "element": "scroll",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "gap8-items-center",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "gap8-pad0-24-items-center",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "gap8-pad0-24-items-center-justify-center",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "gap8-pad0-28-justify-center",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "gap8-pad10-14-items-center",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "gap8-pad12-0-0-0",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "gap8-pad12-18",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "gap8-pad16",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "gap8-pad20-items-start-justify-end",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "gap8-pad4-10-items-center",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "gap8-pad48-16-96-16-items-stretch",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "gap8-pad6-8-6-8-items-center",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
     },
     {
       "name": "gauge-fill",
@@ -469,6 +1008,13 @@
       "meaning": "Heading above a group of items",
       "stability": "stable",
       "since": 1
+    },
+    {
+      "name": "grow1",
+      "element": "column row scroll text",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
     },
     {
       "name": "guide-cell",
@@ -497,6 +1043,209 @@
       "meaning": "Now-playing marker in the live TV guide",
       "stability": "internal",
       "since": 1
+    },
+    {
+      "name": "h10",
+      "element": "spacer",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "h100vh-gap0-items-stretch-justify-start",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "h112",
+      "element": "spacer",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "h240",
+      "element": "stack",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "h3",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "h300",
+      "element": "stack",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "h32",
+      "element": "spacer",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "h32-pad0-14-justify-center",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "h34-pad0-16-items-center-justify-center",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "h34-pad0-16-justify-center",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "h36-pad0-18-justify-center",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "h36-pad0-20-justify-center",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "h4",
+      "element": "spacer",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "h40-justify-center-grow1",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "h42vh",
+      "element": "scroll",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "h44-gap8-pad0-20-justify-center",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "h44-pad0-24-justify-center",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "h48",
+      "element": "spacer",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "h520",
+      "element": "input",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "h64",
+      "element": "image",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "h64-gap0",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "h64-gap2-pad10",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "h68vh",
+      "element": "stack",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "h70vh-gap28-items-center-justify-center",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "h84",
+      "element": "image",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "h88",
+      "element": "stack",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "h88-gap14-pad14-18",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "h88vh",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "h96",
+      "element": "image spacer",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
     },
     {
       "name": "hero",
@@ -560,6 +1309,62 @@
       "meaning": "Layout helper: 380 wide text input",
       "stability": "internal",
       "since": 1
+    },
+    {
+      "name": "items-center-justify-space-between",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "items-end-justify-end",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "items-start",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "items-stretch",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "items-stretch-justify-end",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "justify-center",
+      "element": "column row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "justify-center-grow1",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "justify-end",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
     },
     {
       "name": "keycap",
@@ -716,32 +1521,270 @@
       "since": 1
     },
     {
-      "name": "only-desktop",
-      "element": "column fixed row",
-      "meaning": "Visible only on the desktop form",
-      "stability": "stable",
-      "since": 1
+      "name": "pad0-0-0-48",
+      "element": "stack",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
     },
     {
-      "name": "only-desktop-tv",
-      "element": "column grid input row spacer text",
-      "meaning": "Visible only on desktop and TV forms",
-      "stability": "stable",
-      "since": 1
+      "name": "pad0-10-items-center-justify-center",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
     },
     {
-      "name": "only-mobile",
-      "element": "column fixed grid input scroll spacer text",
-      "meaning": "Visible only on the mobile form",
-      "stability": "stable",
-      "since": 1
+      "name": "pad0-14-justify-center",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
     },
     {
-      "name": "only-tv",
-      "element": "fixed row",
-      "meaning": "Visible only on the TV form",
-      "stability": "stable",
-      "since": 1
+      "name": "pad0-16",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "pad0-16-justify-center",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "pad0-18",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "pad0-18-justify-center",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "pad0-18-justify-center-grow1",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "pad0-20-items-stretch",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "pad0-24-0-24-items-start-justify-start",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "pad0-24-justify-center",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "pad0-24-justify-center-grow1",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "pad0-28-justify-center",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "pad0-40-justify-center",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "pad0-8-10-8-items-end-justify-space-between",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "pad0-8-8-8",
+      "element": "text",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "pad10-12-4-12",
+      "element": "text",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "pad10-12-6-12",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "pad10-16-10-16-items-center",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "pad10-18",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "pad12-0-0-0",
+      "element": "text",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "pad12-8-2-8",
+      "element": "text",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "pad12-items-start",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "pad12-justify-center",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "pad2-8",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "pad3-8",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "pad4",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "pad6-0",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "pad6-10-6-10-items-center",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "pad6-12",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "pad8-0",
+      "element": "text",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "pad8-14",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "pad8-16",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "pad8-16-items-center",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "pad8-4",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "pad8-items-end-justify-start",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "pad8-items-start",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "pad84-24-0-24-items-start-justify-start",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
     },
     {
       "name": "page-hint",
@@ -1325,11 +2368,438 @@
       "since": 1
     },
     {
+      "name": "tv-only",
+      "element": "fixed row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
       "name": "version-chip",
       "element": "text",
       "meaning": "App version tag",
       "stability": "internal",
       "since": 1
+    },
+    {
+      "name": "w10-h10",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "w100vw-gap2-items-stretch",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "w100vw-gap8-pad0-24",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "w100vw-h100vh",
+      "element": "column scroll",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "w100vw-h100vh-gap10-pad0-24-96-24-items-end-justify-end",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "w100vw-h100vh-gap14-pad0-24-0-24-items-center",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "w100vw-h100vh-gap14-pad48-0-0-0-items-center",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "w100vw-h100vh-gap28-items-center-justify-center",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "w100vw-h100vh-gap28-pad72-0-0-0-items-center",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "w100vw-h100vh-gap8-pad0-24-20-24-items-stretch-justify-end",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "w100vw-h100vh-items-center-justify-center",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "w100vw-h100vh-pad0-24-28-24-items-center-justify-end",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "w100vw-h100vh-pad0-64-56-64-items-end-justify-end",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "w100vw-h100vh-pad0-items-stretch-justify-end",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "w100vw-h100vh-pad16-16-104-16-items-end-justify-end",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "w100vw-h100vh-pad16-items-start-justify-end",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "w100vw-h100vh-pad16-items-stretch-justify-end",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "w100vw-h100vh-pad20-24-items-start-justify-start",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "w100vw-h100vh-pad20-24-items-stretch-justify-start",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "w100vw-h100vh-pad48-0-0-0-items-center",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "w100vw-h100vh-pad72-24-0-0-items-start-justify-end",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "w100vw-h100vh-pad72-24-items-start-justify-start",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "w100vw-h64-gap0-pad24-24-0-24-items-start-justify-end",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "w100vw-pad12-12-0-0-justify-end",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "w120-gap6-items-center",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "w140-gap6",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "w140-h210",
+      "element": "image",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "w140-h40",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "w140-pad10-18",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "w160-h90",
+      "element": "image",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "w180",
+      "element": "text",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "w180-h20",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "w200-h4",
+      "element": "stack",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "w22-h22",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "w24-h24-items-center-justify-center",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "w240-h3",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "w240-h40-pad0-24-justify-center",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "w260-gap8-items-stretch",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "w260-h32",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "w276-gap4-pad0-4-4-4",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "w276-h155",
+      "element": "image stack",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "w280-gap0-items-stretch",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "w296-gap10-pad10",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "w296-gap6",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "w296-h166",
+      "element": "image",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "w320",
+      "element": "input",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "w40-h40",
+      "element": "image",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "w420",
+      "element": "input",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "w420-h16",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "w440-gap0-items-stretch",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "w440-gap0-pad36-36-32-items-stretch",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "w46-h28-pad3-3-3-3-items-center",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "w48-h48",
+      "element": "image",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "w520",
+      "element": "input",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "w56-h56",
+      "element": "image",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "w560",
+      "element": "text",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "w560-gap12-items-start",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "w620",
+      "element": "text",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "w88vw",
+      "element": "grid",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
+    },
+    {
+      "name": "w96-h54",
+      "element": "image",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
     },
     {
       "name": "warning-box",
@@ -1442,7 +2912,39 @@
       "meaning": "Wide card shape modifier",
       "stability": "stable",
       "since": 1
+    },
+    {
+      "name": "wide-only",
+      "element": "column grid include input row spacer text",
+      "meaning": "",
+      "stability": "internal",
+      "since": 2
     }
   ],
-  "removed": []
+  "removed": [
+    {
+      "name": "only-desktop",
+      "since": 1,
+      "removedIn": 2,
+      "replacement": "@media rules in style.css"
+    },
+    {
+      "name": "only-desktop-tv",
+      "since": 1,
+      "removedIn": 2,
+      "replacement": "@media rules in style.css"
+    },
+    {
+      "name": "only-mobile",
+      "since": 1,
+      "removedIn": 2,
+      "replacement": "@media rules in style.css"
+    },
+    {
+      "name": "only-tv",
+      "since": 1,
+      "removedIn": 2,
+      "replacement": "@media rules in style.css"
+    }
+  ]
 }
