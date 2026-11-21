@@ -120,8 +120,8 @@ pub(crate) fn glass_shape(rect: Rect, radius: f32, fill: Color32) -> crate::gfx:
         callback: std::sync::Arc::new(Glass {
             radius,
             tint,
-            refraction: crate::metrics::active().glass_refraction.of(rect.height()),
-            bevel: crate::metrics::active().glass_bevel.of(radius),
+            refraction: crate::vars::scaled("glass-refraction", rect.height()),
+            bevel: crate::vars::scaled("glass-bevel", radius),
             rim: 1.0,
             frost: -1.0,
         }),

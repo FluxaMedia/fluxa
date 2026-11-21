@@ -350,7 +350,7 @@ impl View {
         };
         let radius = match styled {
             Some(style) => style.radius.of(paint.height()),
-            None if self.rounded => tokens.card_radius,
+            None if self.rounded => crate::vars::px("card-radius"),
             None => 0.0,
         };
         let mut shapes = Vec::new();

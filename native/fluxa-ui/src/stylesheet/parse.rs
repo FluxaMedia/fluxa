@@ -353,7 +353,7 @@ pub(super) fn parse_patch(rule: &str, value: &Value) -> Result<Patch, String> {
         stroke: match value.get("stroke") {
             Some(Value::String(text)) => Some(match text.as_str() {
                 "hairline" => stroke::hairline(),
-                "theme.input.focus" => crate::metrics::active().input_focus_width,
+                "theme.input.focus" => crate::vars::px("input-focus-width"),
                 other => return Err(format!("{rule}.stroke: unknown width {other}")),
             }),
             Some(Value::Number(number)) => number.as_f64().map(|width| width as f32),

@@ -621,7 +621,8 @@ pub(super) fn ensure_focused_visible(state: &mut RendererState) {
     });
     let grow = if viewport.is_tv() {
         let metrics = fluxa_ui::UiMetrics::for_viewport(viewport);
-        node.bounds.height * (fluxa_ui::metric("focused-scale") - 1.0) * 0.5 + fluxa_ui::metric("focus-ring-expand")
+        node.bounds.height * (fluxa_ui::metric("focused-scale") - 1.0) * 0.5
+            + fluxa_ui::metric("focus-ring-expand")
     } else {
         0.0
     };
@@ -631,7 +632,7 @@ pub(super) fn ensure_focused_visible(state: &mut RendererState) {
         && focused >= NODE_CARD_BASE
     {
         let scale = if viewport.is_tv() {
-            fluxa_ui::UiMetrics::for_viewport(viewport).focused_scale
+            fluxa_ui::metric("focused-scale")
         } else {
             1.0
         };

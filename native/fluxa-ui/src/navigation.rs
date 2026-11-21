@@ -36,13 +36,13 @@ pub(crate) fn drawn_profile() -> String {
 }
 
 pub(crate) fn nav_bar_top() -> f32 {
-    crate::metrics::active().nav_bar_top
+    crate::vars::px("nav-bar-top")
 }
 pub(crate) fn nav_item_height() -> f32 {
-    crate::metrics::active().nav_item_height
+    crate::vars::px("nav-item-height")
 }
 pub(crate) fn nav_bar_padding() -> f32 {
-    crate::metrics::active().nav_bar_padding
+    crate::vars::px("nav-bar-padding")
 }
 
 pub fn nav_bar_bottom(viewport: Viewport) -> f32 {
@@ -52,10 +52,10 @@ pub fn nav_bar_bottom(viewport: Viewport) -> f32 {
     nav_bar_top() + viewport.nav_lead + nav_item_height() + nav_bar_padding() * 2.0
 }
 pub(crate) fn nav_pill_gap() -> f32 {
-    crate::metrics::active().nav_item_gap
+    crate::vars::px("nav-item-gap")
 }
 pub(crate) fn nav_avatar_radius() -> f32 {
-    crate::metrics::active().nav_avatar_radius
+    crate::vars::px("nav-avatar-radius")
 }
 
 pub(crate) fn estimated_navigation_text_width(text: &str, size: f32) -> f32 {

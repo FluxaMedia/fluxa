@@ -55,12 +55,12 @@ pub(crate) enum Type {
 impl Type {
     pub(crate) fn size(self, metrics: &UiMetrics) -> f32 {
         match self {
-            Type::Headline => metrics.text.title * 1.6,
-            Type::Title => metrics.text.title,
-            Type::Subtitle => metrics.text.subtitle,
-            Type::Body => metrics.text.body,
-            Type::Meta => metrics.text.meta,
-            Type::Label => metrics.text.label,
+            Type::Headline => crate::vars::px("text-title") * 1.6,
+            Type::Title => crate::vars::px("text-title"),
+            Type::Subtitle => crate::vars::px("text-subtitle"),
+            Type::Body => crate::vars::px("text-body"),
+            Type::Meta => crate::vars::px("text-meta"),
+            Type::Label => crate::vars::px("text-label"),
         }
     }
 

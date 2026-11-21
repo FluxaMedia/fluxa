@@ -63,7 +63,9 @@ fn table() -> Arc<Table> {
 fn resolved() -> Arc<HashMap<String, String, crate::fast::Build>> {
     let generation = GENERATION.load(std::sync::atomic::Ordering::Relaxed);
     let key = crate::metrics::active_key();
-    let mut slot = RESOLVED.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+    let mut slot = RESOLVED
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
     if let Some(hit) = slot.as_ref()
         && hit.generation == generation
         && hit.key == key

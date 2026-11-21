@@ -243,13 +243,9 @@ pub fn draw_player_with(
     let (rect, side) = match player.watch.as_ref().filter(|_| !player.passthrough) {
         Some(_) => {
             let width = if viewport.form_factor == UiFormFactor::Tv {
-                UiMetrics::for_viewport(viewport)
-                    .player_panel_wide
-                    .of(rect.width())
+                crate::vars::scaled("player-panel-wide", rect.width())
             } else {
-                UiMetrics::for_viewport(viewport)
-                    .player_panel_narrow
-                    .of(rect.width())
+                crate::vars::scaled("player-panel-narrow", rect.width())
             };
             let (left, right) = rect.split_left_right_at_x(rect.right() - width);
             let surface = UiMetrics::for_viewport(viewport).surface;

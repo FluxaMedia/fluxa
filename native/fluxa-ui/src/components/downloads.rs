@@ -24,8 +24,9 @@ const SUBTITLE_LINES: usize = 2;
 fn download_grid(width: f32, metrics: UiMetrics) -> crate::PosterGrid {
     let mut grid = crate::PosterGrid::new(width, &metrics);
     let extra_lines = (SUBTITLE_LINES - 1) as f32;
-    grid.card_height +=
-        extra_lines * crate::vars::px("screen-card-subtitle-size") * crate::vars::px("control-downloads-line-ratio");
+    grid.card_height += extra_lines
+        * crate::vars::px("screen-card-subtitle-size")
+        * crate::vars::px("control-downloads-line-ratio");
     grid
 }
 
@@ -35,8 +36,9 @@ fn row_height(metrics: UiMetrics) -> f32 {
 
 fn episode_grid(width: f32, metrics: UiMetrics) -> (usize, f32) {
     let gap = crate::vars::px("control-gap");
-    let columns =
-        (((width + gap) / (crate::vars::px("control-downloads-card-min") + gap)).floor() as usize).max(1);
+    let columns = (((width + gap) / (crate::vars::px("control-downloads-card-min") + gap)).floor()
+        as usize)
+        .max(1);
     (
         columns,
         (width - gap * (columns - 1) as f32) / columns as f32,

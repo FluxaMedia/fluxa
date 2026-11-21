@@ -321,11 +321,11 @@ pub(super) fn hover_float<'a, A: HomeAssets>(
         return;
     }
     let popover = if compact {
-        env.metrics.card_popover_min
+        "card-popover-min"
     } else {
-        env.metrics.card_popover_max
+        "card-popover-max"
     };
-    let width = popover.of(rect.width());
+    let width = crate::vars::scaled(popover, rect.width());
     let area = crate::gfx::Area::new(Id::new(("skin-hover-area", key)))
         .order(crate::gfx::Order::Tooltip)
         .fixed_pos(rect.center())

@@ -407,7 +407,7 @@ pub(super) fn score_band(
     let size = fit(
         painter,
         &mut meta,
-        crate::poster_overlay::sizes().meta_bar.of(height),
+        crate::vars::scaled("poster-sizes-meta-bar", height),
         band.width() * 0.94,
     );
     let width = meta_width(painter, &meta, size);
@@ -431,9 +431,7 @@ pub(super) fn score_clean(
     let size = fit(
         painter,
         &mut meta,
-        crate::poster_overlay::sizes()
-            .meta_text
-            .of(rect.width() * overlays.scale),
+        crate::vars::scaled("poster-sizes-meta-text", rect.width() * overlays.scale),
         rect.width() * 0.92,
     );
     let width = meta_width(painter, &meta, size);

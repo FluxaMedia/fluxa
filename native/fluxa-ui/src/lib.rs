@@ -92,8 +92,8 @@ pub use skin::{
     take_video_request,
 };
 use style::*;
-pub use stylesheet::{reload_styles, reload_styles_with};
 pub(crate) use stylesheet::vars;
+pub use stylesheet::{reload_styles, reload_styles_with};
 pub fn metric(name: &str) -> f32 {
     vars::px(name)
 }

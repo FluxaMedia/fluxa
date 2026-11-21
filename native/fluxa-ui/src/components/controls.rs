@@ -4,11 +4,13 @@ use crate::flex::{Align, Insets, Weight, column, fill, leaf, paint_text, row, te
 use crate::{IconSize, Radius, Space};
 
 pub(crate) fn chip(ui: &mut Ui, label: &str, selected: bool, metrics: UiMetrics) -> Response {
-    let font = Weight::Medium.font(metrics.text.label);
+    let font = Weight::Medium.font(crate::vars::px("text-label"));
     let tree = row([text(ui.painter(), label, &font).id(0)])
         .align(Align::Center)
         .padding(Insets::xy(Space::S12.px(&metrics), Space::S6.px(&metrics)))
-        .min_height(crate::vars::px("icon-button-size") * crate::vars::px("control-chip-height-ratio"));
+        .min_height(
+            crate::vars::px("icon-button-size") * crate::vars::px("control-chip-height-ratio"),
+        );
     let (rect, response) = ui.allocate_exact_size(tree.outer_size(), Sense::click());
     let slot = tree.solve(rect).find(0).unwrap_or(rect);
     let style = crate::stylesheet::resolve(
@@ -39,7 +41,7 @@ pub(crate) fn segmented(
     selected: usize,
     metrics: UiMetrics,
 ) -> Option<usize> {
-    let font = Weight::Medium.font(metrics.text.label);
+    let font = Weight::Medium.font(crate::vars::px("text-label"));
     let height = crate::vars::px("screen-control-height");
     let width = ui
         .available_width()
@@ -110,7 +112,7 @@ pub(crate) fn stepper(
     can_increase: bool,
     metrics: UiMetrics,
 ) -> Option<i32> {
-    let font = Weight::Bold.font(metrics.text.body);
+    let font = Weight::Bold.font(crate::vars::px("text-body"));
     let button = crate::vars::px("screen-control-height");
     let value_width = crate::flex::text_size(ui.painter(), value_label, &font)
         .x
@@ -194,9 +196,9 @@ pub(crate) struct ListRow<'a> {
 }
 
 pub(crate) fn list_row(ui: &mut Ui, row_data: ListRow, metrics: UiMetrics) -> Response {
-    let title_font = Weight::Medium.font(metrics.text.body);
-    let sub_font = Weight::Regular.font(metrics.text.label);
-    let value_font = Weight::Regular.font(metrics.text.body);
+    let title_font = Weight::Medium.font(crate::vars::px("text-body"));
+    let sub_font = Weight::Regular.font(crate::vars::px("text-label"));
+    let value_font = Weight::Regular.font(crate::vars::px("text-body"));
     let icon = IconSize::Md.px(&metrics);
     let trailing_size = match &row_data.trailing {
         Trailing::Value(value) => {
@@ -215,7 +217,7 @@ pub(crate) fn list_row(ui: &mut Ui, row_data: ListRow, metrics: UiMetrics) -> Re
     let mut lines = vec![
         leaf(Vec2::new(
             0.0,
-            metrics.text.body * crate::vars::px("control-row-line-ratio"),
+            crate::vars::px("text-body") * crate::vars::px("control-row-line-ratio"),
         ))
         .id(1),
     ];
@@ -223,7 +225,7 @@ pub(crate) fn list_row(ui: &mut Ui, row_data: ListRow, metrics: UiMetrics) -> Re
         lines.push(
             leaf(Vec2::new(
                 0.0,
-                metrics.text.label * crate::vars::px("control-row-line-ratio"),
+                crate::vars::px("text-label") * crate::vars::px("control-row-line-ratio"),
             ))
             .id(2),
         );
@@ -433,8 +435,9 @@ mod tests {
         let context = crate::gfx::Context::default();
         let metrics = metrics();
         let mut delta = None;
-        let plus =
-            crate::vars::px("screen-control-height") * 2.0 + 4.0 * 2.0 + crate::vars::px("screen-control-height") * 0.5;
+        let plus = crate::vars::px("screen-control-height") * 2.0
+            + 4.0 * 2.0
+            + crate::vars::px("screen-control-height") * 0.5;
         click_at(&context, Pos2::new(plus + 8.0, 12.0), |ui| {
             delta = delta.or(stepper(ui, Id::new("step"), "3", true, true, metrics));
         });

@@ -9,7 +9,11 @@ pub(super) fn grid<'a, A: HomeAssets>(
     let own = node
         .width
         .or(node.width_vw.map(|share| share * env.view.get().x));
-    let margin = if own.is_some() { 0.0 } else { crate::vars::px("gutter") };
+    let margin = if own.is_some() {
+        0.0
+    } else {
+        crate::vars::px("gutter")
+    };
     let inner = own.unwrap_or(env.view.get().x - crate::vars::px("gutter") * 2.0);
     let columns = node
         .props

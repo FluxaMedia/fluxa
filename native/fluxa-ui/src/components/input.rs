@@ -365,7 +365,9 @@ pub(crate) fn search_field(
         id,
         crate::gfx::TextEdit::singleline(query)
             .frame(crate::gfx::Frame::NONE)
-            .font(crate::fonts::regular(crate::vars::px("screen-body-size") + 1.0))
+            .font(crate::fonts::regular(
+                crate::vars::px("screen-body-size") + 1.0,
+            ))
             .vertical_align(crate::gfx::Align::Center)
             .hint_text(RichText::new(hint).color(metrics.text_muted))
             .text_color(metrics.text_primary)
@@ -471,7 +473,7 @@ pub(crate) fn text_input(
         value,
         hint,
         Vec2::new(width, button_height()),
-        metrics.text.body,
+        crate::vars::px("text-body"),
         kind,
         0.0,
         metrics,
@@ -490,7 +492,7 @@ pub(crate) fn text_area(
         value,
         hint,
         size,
-        metrics.text.body,
+        crate::vars::px("text-body"),
         InputKind::Multiline,
         0.0,
         metrics,
@@ -540,12 +542,16 @@ pub(crate) fn code_input_styled(
     let hit = field_hit(ui, rect, id);
     let output = put_edit(
         ui,
-        row_rect(ui, field, crate::fonts::regular(metrics.text.body)),
+        row_rect(
+            ui,
+            field,
+            crate::fonts::regular(crate::vars::px("text-body")),
+        ),
         id,
         crate::gfx::TextEdit::singleline(value)
             .frame(crate::gfx::Frame::NONE)
             .char_limit(length)
-            .font(crate::fonts::regular(metrics.text.body))
+            .font(crate::fonts::regular(crate::vars::px("text-body")))
             .text_color(Color32::TRANSPARENT)
             .margin(Vec2::ZERO),
     );
@@ -641,13 +647,19 @@ pub(crate) fn code_input_styled(
             let cell = flex::anchored(
                 cell_slot,
                 Align2::CENTER_CENTER,
-                Vec2::new(cell_width, crate::vars::scaled("input-cell-height", cell_width)),
+                Vec2::new(
+                    cell_width,
+                    crate::vars::scaled("input-cell-height", cell_width),
+                ),
                 0.0,
             );
             let current = focused && index == count;
             painter.rect_filled(cell, Dp::D12.px(), Color32::from_white_alpha(13));
             let edge = if current {
-                crate::gfx::Stroke::new(crate::vars::px("control-code-edge"), Color32::from_white_alpha(170))
+                crate::gfx::Stroke::new(
+                    crate::vars::px("control-code-edge"),
+                    Color32::from_white_alpha(170),
+                )
             } else {
                 crate::gfx::Stroke::new(stroke::hairline(), Color32::from_white_alpha(26))
             };

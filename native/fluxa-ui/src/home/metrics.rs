@@ -61,7 +61,9 @@ pub(crate) fn home_row_dimensions(metrics: UiMetrics, kind: HomeRowKind) -> (f32
         HomeRowKind::Collection => (
             crate::vars::px("collection-poster-width"),
             crate::vars::px("collection-poster-height"),
-            crate::vars::px("collection-poster-height") + crate::vars::px("control-gap") + crate::vars::px("screen-card-title-size"),
+            crate::vars::px("collection-poster-height")
+                + crate::vars::px("control-gap")
+                + crate::vars::px("screen-card-title-size"),
         ),
     }
 }

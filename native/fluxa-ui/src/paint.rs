@@ -135,7 +135,7 @@ pub(crate) fn paint_ambient(painter: &crate::gfx::Painter, screen: Rect, assets:
                 assets.background(),
                 screen,
                 cover_uv(size, screen),
-                Color32::from_gray(255 - crate::metrics::active().background_dim),
+                Color32::from_gray(255 - crate::vars::byte("background-dim")),
             );
         }
         None => {

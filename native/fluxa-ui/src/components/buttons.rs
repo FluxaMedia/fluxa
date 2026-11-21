@@ -91,10 +91,16 @@ pub(crate) fn button_core(
     });
     if enabled && response.has_focus() {
         let (expand, width) = match metrics {
-            Some(look) => (look.focus_ring_expand, look.focus_ring_width),
+            Some(look) => (
+                crate::vars::px("focus-ring-expand"),
+                crate::vars::px("focus-ring-width"),
+            ),
             None => {
                 let look = crate::metrics::active();
-                (look.focus_ring_expand, look.focus_ring_width)
+                (
+                    crate::vars::px("focus-ring-expand"),
+                    crate::vars::px("focus-ring-width"),
+                )
             }
         };
         painter.rect_stroke(

@@ -51,7 +51,7 @@ const SWATCHES: [Color32; 6] = [
 ];
 
 fn heading<'a>(ui: &mut crate::gfx::Ui, text: &'a str, metrics: &UiMetrics) -> kit::Item<'a> {
-    let size = metrics.text.subtitle;
+    let size = crate::vars::px("text-subtitle");
     let color = metrics.text_muted;
     layout_items::column(vec![
         layout_items::gap(Space::S8.px(metrics)),
@@ -313,7 +313,7 @@ pub fn draw_gallery(
         metrics,
         |ui| {
             let title = RichText::new("Playback")
-                .size(metrics.text.title)
+                .size(crate::vars::px("text-title"))
                 .strong()
                 .color(text_primary());
             let buttons = labels
@@ -346,7 +346,7 @@ pub fn draw_gallery(
         |ui| {
             ui.label(
                 RichText::new("Details")
-                    .size(metrics.text.title)
+                    .size(crate::vars::px("text-title"))
                     .strong()
                     .color(text_primary()),
             );

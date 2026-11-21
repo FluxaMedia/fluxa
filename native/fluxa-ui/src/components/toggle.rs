@@ -35,9 +35,7 @@ pub(crate) fn toggle(
         crate::gfx::Stroke::new(look.stroke, look.border),
         crate::gfx::StrokeKind::Inside,
     );
-    let radius = metrics
-        .settings_toggle_knob_radius
-        .min(track.height() * 0.5 - 2.0);
+    let radius = crate::vars::px("settings-toggle-knob-radius").min(track.height() * 0.5 - 2.0);
     let travel = track.width() - (radius + 2.0) * 2.0;
     let stretch = (t * (1.0 - t) * 4.0) * radius * 0.5;
     let x = track.left() + radius + 2.0 + travel * t;

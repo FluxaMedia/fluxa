@@ -243,7 +243,8 @@ mod tests {
         let first = Rect::from_min_size(Pos2::new(100.0, 400.0), Vec2::new(200.0, 300.0));
         let second = Rect::from_min_size(Pos2::new(700.0, 400.0), Vec2::new(200.0, 300.0));
         let targets = [(1, first), (2, second)];
-        let expand = crate::UiMetrics::for_viewport(viewport).focus_ring_expand;
+        crate::UiMetrics::for_viewport(viewport);
+        let expand = crate::metric("focus-ring-expand");
         let at_first = shown_after(&context, 1.0, &targets, 1, 7, viewport);
         assert_eq!(at_first, first.expand(expand));
         let started = shown_after(&context, 2.0, &targets, 2, 7, viewport);

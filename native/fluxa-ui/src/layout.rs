@@ -75,7 +75,8 @@ impl PageLayout {
                 top + title_height + crate::vars::px("section-gap"),
             )
         };
-        let second_row_top = second_row.then_some(filters_top + control + crate::vars::px("control-gap"));
+        let second_row_top =
+            second_row.then_some(filters_top + control + crate::vars::px("control-gap"));
         let content_top =
             second_row_top.unwrap_or(filters_top) + control + crate::vars::px("section-gap") * 1.5;
         Self {
@@ -245,7 +246,8 @@ pub(crate) fn discover_blocks<'a>(
             pending: false,
         }];
     }
-    let header = crate::vars::px("screen-section-title-size") + crate::vars::px("control-gap") * 2.0;
+    let header =
+        crate::vars::px("screen-section-title-size") + crate::vars::px("control-gap") * 2.0;
     let mut top = 0.0;
     let mut blocks: Vec<_> = discover
         .sections
@@ -300,7 +302,8 @@ pub fn calendar_scroll_max(viewport: Viewport, calendar: &CalendarModel) -> f32 
         .map(|day| {
             150.0
                 + calendar.entries_for_day(day).count().min(10) as f32
-                    * (crate::vars::px("horizontal-card-height") * 0.34 + crate::vars::px("control-gap"))
+                    * (crate::vars::px("horizontal-card-height") * 0.34
+                        + crate::vars::px("control-gap"))
         })
         .unwrap_or(0.0);
     (grid.bottom() + panel_height - (viewport.height - mobile_scroll_reserve(viewport))).max(0.0)

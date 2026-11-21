@@ -202,7 +202,9 @@ pub(super) fn image<'a, A: HomeAssets>(
         };
         let radius = styled
             .as_ref()
-            .map_or(crate::vars::px("card-radius"), |style| style.radius.of(rect.height()))
+            .map_or(crate::vars::px("card-radius"), |style| {
+                style.radius.of(rect.height())
+            })
             .min(rect.width().min(rect.height()) * 0.5);
         let fill = styled
             .as_ref()

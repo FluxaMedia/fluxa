@@ -54,8 +54,9 @@ pub fn home_layout(viewport: Viewport, home: &HomeModel) -> HomeLayout {
     let hero_height = home_hero_height_for(viewport, home);
     let flow = home_flow(viewport, metrics, home);
     if show_hero && home.item_id.is_some() && !home_hero_pinned(viewport, home) {
-        let play_y =
-            flow.hero_top + hero_height - crate::vars::px("home-hero-bottom-inset") - home.scroll_offset;
+        let play_y = flow.hero_top + hero_height
+            - crate::vars::px("home-hero-bottom-inset")
+            - home.scroll_offset;
         let play = hero::play_rect(
             compact,
             metrics,

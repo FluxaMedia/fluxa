@@ -244,9 +244,9 @@ pub(crate) enum Corner {
 impl Corner {
     pub(crate) fn of(self, height: f32) -> f32 {
         match self {
-            Corner::Pill => height * crate::metrics::active().pill_ratio,
-            Corner::Card => crate::metrics::active().card_radius,
-            Corner::Dialog => crate::metrics::active().dialog_radius,
+            Corner::Pill => height * crate::vars::px("pill-ratio"),
+            Corner::Card => crate::vars::px("card-radius"),
+            Corner::Dialog => crate::vars::px("dialog-radius"),
             Corner::Px(px) => px,
         }
     }
@@ -344,15 +344,15 @@ enum Query {
 
 impl Query {
     fn matches(&self) -> bool {
-        let metrics = crate::metrics::active();
+        let metrics = crate::metrics::view();
         match self {
             Query::Platform(name) => metrics.platform == name,
             Query::Input(name) => crate::metrics::input() == name,
             Query::Window(name) => metrics.window_class == name,
-            Query::MinWidth(width) => metrics.viewport_width >= *width,
-            Query::MaxWidth(width) => metrics.viewport_width <= *width,
-            Query::MinHeight(height) => metrics.viewport_height >= *height,
-            Query::MaxHeight(height) => metrics.viewport_height <= *height,
+            Query::MinWidth(width) => metrics.width >= *width,
+            Query::MaxWidth(width) => metrics.width <= *width,
+            Query::MinHeight(height) => metrics.height >= *height,
+            Query::MaxHeight(height) => metrics.height <= *height,
         }
     }
 }
@@ -698,9 +698,9 @@ fn resolve_paint(paint: &Paint, metrics: Option<&UiMetrics>) -> Color32 {
         Paint::Named(name, factor) => {
             let color = match name.as_str() {
                 "background" => background(),
-                "theme.settings.description" => ink(crate::metrics::active().settings_swatch_alpha),
+                "theme.settings.description" => ink(crate::vars::byte("settings-swatch-alpha")),
                 "theme.settings.description.compact" => {
-                    ink(crate::metrics::active().settings_swatch_alpha_compact)
+                    ink(crate::vars::byte("settings-swatch-alpha-compact"))
                 }
                 "theme.surface" => crate::metrics::active().surface,
                 "theme.border" => crate::metrics::active().border,
@@ -720,7 +720,7 @@ fn resolve_paint(paint: &Paint, metrics: Option<&UiMetrics>) -> Color32 {
                 "theme.button.primary" => crate::metrics::active().button_primary,
                 "theme.button.primary.text" => crate::metrics::active().button_primary_text,
                 "theme.button.border" => {
-                    Color32::from_white_alpha(crate::metrics::active().button_border)
+                    Color32::from_white_alpha(crate::vars::byte("button-border"))
                 }
                 "text.primary" => text_primary(),
                 "accent" => accent(),

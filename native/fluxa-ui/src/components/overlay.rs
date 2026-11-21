@@ -55,7 +55,13 @@ pub(crate) fn bottom_sheet(
     ) else {
         return false;
     };
-    let mut dismissed = scrim(context, id, screen, crate::vars::byte("scrim-alpha"), &frame);
+    let mut dismissed = scrim(
+        context,
+        id,
+        screen,
+        crate::vars::byte("scrim-alpha"),
+        &frame,
+    );
     let width = if viewport.is_compact() {
         viewport.width
     } else {
@@ -122,7 +128,13 @@ pub(crate) fn side_drawer(
     ) else {
         return false;
     };
-    let mut dismissed = scrim(context, id, screen, crate::vars::byte("scrim-alpha"), &frame);
+    let mut dismissed = scrim(
+        context,
+        id,
+        screen,
+        crate::vars::byte("scrim-alpha"),
+        &frame,
+    );
     let pad = Space::S20.px(&metrics);
     crate::gfx::Area::new(Id::new(id))
         .order(crate::gfx::Order::Foreground)

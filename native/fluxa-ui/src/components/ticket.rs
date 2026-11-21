@@ -18,11 +18,11 @@ const TEAR_SECONDS: f32 = 0.55;
 const SETTLE_SECONDS: f32 = 1.9;
 
 pub(crate) fn ticket_height(width: f32) -> f32 {
-    stage_height(width) + crate::metrics::active().surface_ticket_stub
+    stage_height(width) + crate::vars::px("surface-ticket-stub")
 }
 
 fn stage_height(width: f32) -> f32 {
-    crate::metrics::active().ticket_width.of(width)
+    crate::vars::scaled("ticket-width", width)
 }
 
 fn ease(t: f32) -> f32 {
@@ -557,7 +557,9 @@ pub(crate) fn watch_ticket(
     match ticket.room.as_deref() {
         None => {
             let field = crate::flex::row([crate::flex::leaf(Vec2::new(
-                row_rect.width().min(crate::vars::px("surface-ticket-field-max-width")),
+                row_rect
+                    .width()
+                    .min(crate::vars::px("surface-ticket-field-max-width")),
                 Dp::D56.px(),
             ))
             .id(1)])

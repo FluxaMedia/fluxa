@@ -83,7 +83,10 @@ impl HeroStyle {
         let (rise, height) = if self.centered {
             (Dp::D96.px(), crate::vars::px("button-height"))
         } else {
-            (crate::vars::px("screen-hero-desktop-play-rise"), Dp::D48.px())
+            (
+                crate::vars::px("screen-hero-desktop-play-rise"),
+                Dp::D48.px(),
+            )
         };
         play_rect(self.centered, metrics, width, margin, -rise, height)
     }
@@ -92,10 +95,7 @@ impl HeroStyle {
         if self.centered {
             self.width
         } else {
-            crate::metrics::active()
-                .home_hero_width
-                .of(self.width)
-                .min(self.width)
+            crate::vars::scaled("home-hero-width", self.width).min(self.width)
         }
     }
 }
@@ -108,8 +108,9 @@ pub(super) fn play_rect(
     top: f32,
     height: f32,
 ) -> Rect {
-    let wide = (crate::vars::px("horizontal-card-width") * crate::vars::px("screen-hero-play-card-ratio"))
-        .max(crate::vars::px("screen-hero-play-min-width"));
+    let wide = (crate::vars::px("horizontal-card-width")
+        * crate::vars::px("screen-hero-play-card-ratio"))
+    .max(crate::vars::px("screen-hero-play-min-width"));
     let size = Vec2::new(
         if centered {
             crate::vars::px("screen-hero-play-compact-width")

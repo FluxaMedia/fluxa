@@ -246,6 +246,13 @@
   --text-body: 16px;
   --text-meta: 14px;
   --text-label: 13px;
+  --poster-visible-cards: 7;
+  --poster-card-min: 140px;
+  --poster-card-max: 200px;
+  --continue-visible-cards: 6.2;
+  --continue-card-min: 240px;
+  --continue-card-max: 340px;
+  --horizontal-card-base: 220px;
 }
 
 @media (size: compact) {
@@ -291,6 +298,13 @@
     --text-body: 14.5px;
     --text-meta: 13px;
     --text-label: 12px;
+    --poster-visible-cards: 2.6;
+    --poster-card-min: 110px;
+    --poster-card-max: 170px;
+    --continue-visible-cards: 1.6;
+    --continue-card-min: 180px;
+    --continue-card-max: 240px;
+    --horizontal-card-base: 196px;
   }
 }
 
@@ -304,6 +318,7 @@
     --catalog-title-size: 26px;
     --horizontal-spacing: 16px;
     --vertical-spacing: 20px;
+    --horizontal-card-base: 210px;
   }
 }
 
@@ -339,5 +354,12 @@
     --text-body: 19px;
     --text-meta: 17px;
     --text-label: 15px;
+    --poster-visible-cards: 6;
+    --poster-card-min: 120px;
+    --poster-card-max: 180px;
+    --continue-visible-cards: 6.5;
+    --continue-card-min: 240px;
+    --continue-card-max: 320px;
+    --horizontal-card-base: 260px;
   }
 }

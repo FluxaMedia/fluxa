@@ -585,34 +585,33 @@ fn core_snapshot_projection_maps_detail_and_settings() {
 }
 
 #[test]
-fn responsive_metrics_are_loaded_from_shared_token_contract() {
+fn responsive_metrics_come_from_the_metrics_sheet() {
     let desktop = UiMetrics::for_viewport(Viewport::new(1920, 1080, UiFormFactor::Desktop));
-    let mobile = UiMetrics::for_viewport(Viewport::new(390, 844, UiFormFactor::Mobile));
-    let tv = UiMetrics::for_viewport(Viewport::new(1920, 1080, UiFormFactor::Tv));
-
     assert_eq!(desktop.accent, Color32::WHITE);
-    assert_eq!(desktop.page_padding, 24.0);
-    assert_eq!(desktop.horizontal_card_width, 300.0);
+    assert_eq!(crate::metric("page-padding"), 24.0);
+    assert_eq!(crate::metric("horizontal-card-width"), 300.0);
     assert_eq!(desktop.poster_card_width, 200.0);
     assert_eq!(desktop.poster_card_height, 300.0);
+    assert_eq!(crate::metric("poster-height-ratio"), 1.5);
+    assert_eq!(crate::metric("library-search-reserved-width"), 150.0);
+    assert_eq!(crate::metric("focus-ring-width"), 2.5);
+    assert_eq!(crate::metric("settings-nav-width"), 268.0);
+    assert_eq!(crate::metric("settings-content-offset"), 300.0);
+    assert_eq!(crate::metric("settings-row-height"), 52.0);
+
     let narrow = UiMetrics::for_viewport(Viewport::new(1100, 800, UiFormFactor::Desktop));
     assert!((140.0..200.0).contains(&narrow.poster_card_width));
+
+    let mobile = UiMetrics::for_viewport(Viewport::new(390, 844, UiFormFactor::Mobile));
     assert_eq!(mobile.poster_card_height, mobile.poster_card_width * 1.5);
-    assert_eq!(mobile.page_padding, 16.0);
-    assert_eq!(mobile.horizontal_card_width, 244.0);
-    assert_eq!(tv.horizontal_card_width, 356.0);
-    assert_eq!(desktop.poster_height_ratio, 1.5);
-    assert_eq!(desktop.library_search_reserved_width, 150.0);
-    assert_eq!(desktop.calendar_panel_width_tv, 440.0);
-    assert_eq!(desktop.focus_ring_width, 2.5);
-    assert_eq!(desktop.settings_extended_line_spacing_tv, 42.0);
-    assert_eq!(desktop.settings_nav_width, 268.0);
-    assert_eq!(desktop.settings_content_offset, 300.0);
-    assert_eq!(desktop.settings_content_max_width_desktop, 720.0);
-    assert_eq!(desktop.settings_row_height, 52.0);
-    assert_eq!(desktop.settings_row_label_size_desktop, 18.0);
-    assert_eq!(mobile.settings_nav_width, 196.0);
-    assert_eq!(mobile.settings_row_height, 46.0);
+    assert_eq!(crate::metric("page-padding"), 16.0);
+    assert_eq!(crate::metric("horizontal-card-width"), 244.0);
+    assert_eq!(crate::metric("settings-nav-width"), 196.0);
+    assert_eq!(crate::metric("settings-row-height"), 46.0);
+
+    UiMetrics::for_viewport(Viewport::new(1920, 1080, UiFormFactor::Tv));
+    assert_eq!(crate::metric("horizontal-card-width"), 356.0);
+    assert_eq!(crate::metric("calendar-panel-width-tv"), 440.0);
 }
 
 #[test]
@@ -1302,7 +1301,10 @@ fn dump_metrics_matrix() {
             let var = field.replace('_', "-");
             if let Some(raw) = crate::stylesheet::vars::raw(&var) {
                 let got: f32 = raw.trim_end_matches("px").parse().unwrap();
-                assert!((got - expected).abs() < 1e-4, "{name} {field}: {got} vs {expected}");
+                assert!(
+                    (got - expected).abs() < 1e-4,
+                    "{name} {field}: {got} vs {expected}"
+                );
                 checked += 1;
             }
         }

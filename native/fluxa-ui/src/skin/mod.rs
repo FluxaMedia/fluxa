@@ -550,7 +550,9 @@ fn icon<'a, A: HomeAssets>(node: &Resolved, env: &'a Env<'a, A>) -> kit::Item<'a
         .props
         .get("size")
         .and_then(|value| value.as_f64())
-        .map_or(crate::vars::px("icon-button-size") * 0.5, |size| size as f32);
+        .map_or(crate::vars::px("icon-button-size") * 0.5, |size| {
+            size as f32
+        });
     let chain: Vec<(std::sync::Arc<str>, u8)> = env
         .ancestors
         .borrow()

@@ -219,7 +219,7 @@ pub(super) fn drive(
     field: Rect,
     value: &str,
 ) -> Option<Rect> {
-    let size = crate::metrics::active().touch_handle;
+    let size = crate::vars::px("touch-handle");
     if size <= 0.0 {
         return None;
     }
