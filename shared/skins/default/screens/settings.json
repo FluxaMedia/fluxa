@@ -35,7 +35,7 @@
         }
       ],
       "when": "prefs.open",
-      "class": "only-mobile gap18-pad40-16-96-16-items-stretch"
+      "class": "compact-only gap18-pad40-16-96-16-items-stretch"
     },
     {
       "type": "column",
@@ -108,7 +108,7 @@
           "class": "column-gap6-items-stretch"
         }
       ],
-      "class": "only-mobile gap8-pad48-16-96-16-items-stretch"
+      "class": "compact-only gap8-pad48-16-96-16-items-stretch"
     },
     {
       "type": "row",
@@ -145,17 +145,14 @@
           "class": "settings-page"
         }
       ],
-      "class": "only-desktop-tv h100vh-gap0-items-stretch-justify-start"
+      "class": "wide-only h100vh-gap0-items-stretch-justify-start"
     },
     {
       "type": "fixed",
       "children": [
         {
           "include": "navbar",
-          "form": [
-            "desktop",
-            "tv"
-          ]
+          "class": "wide-only"
         },
         {
           "type": "column",
@@ -164,7 +161,7 @@
               "include": "navbar"
             }
           ],
-          "class": "column-w100vw-h100vh-pad0-0-16-0-items-center-justify-end only-mobile"
+          "class": "column-w100vw-h100vh-pad0-0-16-0-items-center-justify-end compact-only"
         }
       ]
     }

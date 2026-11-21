@@ -3,7 +3,7 @@
   "children": [
     {
       "type": "column",
-      "class": "menu-scrim only-desktop-tv fill-space",
+      "class": "menu-scrim wide-only fill-space",
       "action": {
         "name": "node",
         "args": {
@@ -25,11 +25,11 @@
           ]
         }
       ],
-      "class": "column-w100vw-h100vh-items-center-justify-center only-desktop-tv"
+      "class": "column-w100vw-h100vh-items-center-justify-center wide-only"
     },
     {
       "type": "column",
-      "class": "player-black only-mobile",
+      "class": "player-black compact-only",
       "children": [
         {
           "include": "sources_body"

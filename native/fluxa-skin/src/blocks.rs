@@ -390,13 +390,13 @@ mod tests {
                 text: "{item.label}";
                 action: ext.agenda.toggle(index: item.index);
             }
-            @media (form: tv) { .a { gap: 8px; } }"#,
+            @media (tv) { .a { gap: 8px; } }"#,
         )
         .unwrap();
         assert_eq!(blocks.elements.len(), 2);
         assert_eq!(blocks.pages[0].label.as_deref(), Some("Agenda"));
         assert!(blocks.css.contains(".a { gap: 4px; }"));
-        assert!(blocks.css.contains("@media (form: tv)"));
+        assert!(blocks.css.contains("@media (tv)"));
         assert!(!blocks.css.contains("@element"));
         let toggle = blocks.elements[1].node.action.as_ref().unwrap();
         assert_eq!(toggle.name, "ext.agenda.toggle");

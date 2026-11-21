@@ -143,10 +143,7 @@
       "children": [
         {
           "include": "navbar",
-          "form": [
-            "desktop",
-            "tv"
-          ]
+          "class": "wide-only"
         },
         {
           "type": "column",
@@ -155,7 +152,7 @@
               "include": "navbar"
             }
           ],
-          "class": "column-w100vw-h100vh-pad0-0-16-0-items-center-justify-end only-mobile"
+          "class": "column-w100vw-h100vh-pad0-0-16-0-items-center-justify-end compact-only"
         }
       ]
     }

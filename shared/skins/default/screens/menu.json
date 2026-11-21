@@ -70,7 +70,7 @@
               ]
             }
           ],
-          "class": "only-desktop"
+          "class": "desktop-only"
         },
         {
           "type": "fixed",
@@ -131,7 +131,7 @@
               ]
             }
           ],
-          "class": "only-mobile"
+          "class": "compact-only"
         },
         {
           "type": "fixed",
@@ -188,7 +188,7 @@
               ]
             }
           ],
-          "class": "only-tv"
+          "class": "tv-only"
         }
       ],
       "class": "stack-w100vw-h100vh"

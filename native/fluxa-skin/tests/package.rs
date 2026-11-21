@@ -58,7 +58,7 @@ fn skin_loads_and_resolves_against_data() {
         {"id": "tt2", "itemType": "series", "title": "Two", "artworkUrl": null}
     ]}});
     let tree = skin
-        .resolve("home", &data, FormFactor::Tv, &mut Default::default())
+        .resolve("home", &data, &mut Default::default())
         .unwrap()
         .unwrap();
     let column = &tree[0];
@@ -70,7 +70,7 @@ fn skin_loads_and_resolves_against_data() {
         json!("series")
     );
     assert!(
-        skin.resolve("player", &data, FormFactor::Tv, &mut Default::default())
+        skin.resolve("player", &data, &mut Default::default())
             .is_none()
     );
 }
@@ -175,7 +175,7 @@ fn constants_canvas_and_manifest_name_are_read() {
     assert!(!skin.supports(FormFactor::Mobile));
     let data = json!({"const": skin.constants()});
     let tree = skin
-        .resolve("home", &data, FormFactor::Tv, &mut Default::default())
+        .resolve("home", &data, &mut Default::default())
         .unwrap()
         .unwrap();
     assert_eq!(tree[0].width, Some(300.0));

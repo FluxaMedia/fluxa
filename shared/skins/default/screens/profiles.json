@@ -3,7 +3,7 @@
   "children": [
     {
       "type": "column",
-      "class": "screen only-desktop-tv w100vw-h100vh-gap28-items-center-justify-center",
+      "class": "screen wide-only w100vw-h100vh-gap28-items-center-justify-center",
       "children": [
         {
           "type": "row",
@@ -100,7 +100,7 @@
     },
     {
       "type": "column",
-      "class": "screen only-mobile w100vw-h100vh-gap28-pad72-0-0-0-items-center",
+      "class": "screen compact-only w100vw-h100vh-gap28-pad72-0-0-0-items-center",
       "children": [
         {
           "type": "row",
@@ -262,12 +262,12 @@
                   "type": "text",
                   "text": "{profiles.form.name}",
                   "style": "subtitle",
-                  "class": "text-grow1 only-desktop-tv"
+                  "class": "text-grow1 wide-only"
                 },
                 {
                   "type": "column",
                   "children": [],
-                  "class": "only-mobile grow1"
+                  "class": "compact-only grow1"
                 },
                 {
                   "type": "text",
@@ -635,7 +635,7 @@
                         }
                       }
                     ],
-                    "class": "only-desktop-tv"
+                    "class": "wide-only"
                   },
                   {
                     "type": "grid",
@@ -674,7 +674,7 @@
                         }
                       }
                     ],
-                    "class": "only-mobile w88vw"
+                    "class": "compact-only w88vw"
                   }
                 ],
                 "class": "column-gap8-items-stretch"

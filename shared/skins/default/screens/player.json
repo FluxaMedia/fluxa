@@ -1227,7 +1227,7 @@
                   }
                 }
               ],
-              "class": "only-desktop-tv gap20-items-start"
+              "class": "wide-only gap20-items-start"
             },
             {
               "type": "column",
@@ -1501,7 +1501,7 @@
                   }
                 }
               ],
-              "class": "column-items-stretch only-mobile"
+              "class": "column-items-stretch compact-only"
             }
           ]
         }
@@ -1862,7 +1862,7 @@
           ]
         }
       ],
-      "class": "only-mobile w100vw-h100vh-pad0-items-stretch-justify-end"
+      "class": "compact-only w100vw-h100vh-pad0-items-stretch-justify-end"
     },
     {
       "type": "row",

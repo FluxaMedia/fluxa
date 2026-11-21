@@ -18,6 +18,8 @@ scenes=(
   "tv-menu tv settings/0 1920 1080 FLUXA_PREVIEW_MENU=navSidebarMode"
   "desktop-watch desktop player 1280 720 FLUXA_PREVIEW_WATCH=panel"
   "phone-player-tracks mobile player/tracks 844 390"
+  "tablet-gallery mobile gallery 768 1024"
+  "tablet-sheet mobile gallery/sheet 768 1024"
   "desktop-player-chapters desktop player/chapters 1280 720"
   "desktop-player-sync desktop player/sync-open 1280 720"
   "tv-player-speed tv player/speed 1920 1080"

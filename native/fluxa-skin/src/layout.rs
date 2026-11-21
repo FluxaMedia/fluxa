@@ -48,7 +48,6 @@ pub struct Node {
     #[serde(rename = "type")]
     pub kind: String,
     pub when: Option<String>,
-    pub form: Vec<FormFactor>,
     pub include: Option<String>,
     pub with: BTreeMap<String, String>,
     pub each: Option<String>,

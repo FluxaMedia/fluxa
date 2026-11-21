@@ -62,17 +62,17 @@ fn field_edits_land_in_the_named_field() {
 }
 
 fn shown_on(node: &fluxa_skin::Resolved, form: FormFactor) -> bool {
-    let name = match form {
-        FormFactor::Desktop => "desktop",
-        FormFactor::Mobile => "mobile",
-        FormFactor::Tv => "tv",
-    };
     node.class
         .as_deref()
         .unwrap_or_default()
         .split_whitespace()
-        .filter_map(|class| class.strip_prefix("only-"))
-        .all(|forms| forms.split('-').any(|only| only == name))
+        .all(|class| match class {
+            "compact-only" => form == FormFactor::Mobile,
+            "wide-only" => form != FormFactor::Mobile,
+            "desktop-only" => form == FormFactor::Desktop,
+            "tv-only" => form == FormFactor::Tv,
+            _ => true,
+        })
 }
 
 fn count_actions(
@@ -107,7 +107,7 @@ fn default_menu_lists_every_item_on_each_form() {
     });
     for form in [FormFactor::Desktop, FormFactor::Mobile, FormFactor::Tv] {
         let tree = skin
-            .resolve("menu", &data, form, &mut Default::default())
+            .resolve("menu", &data, &mut Default::default())
             .unwrap()
             .unwrap();
         let mut picks = Vec::new();
@@ -164,7 +164,7 @@ fn player_panel_rows_activate_by_index() {
     });
     for form in [FormFactor::Desktop, FormFactor::Mobile, FormFactor::Tv] {
         let tree = skin
-            .resolve("player", &data, form, &mut Default::default())
+            .resolve("player", &data, &mut Default::default())
             .unwrap()
             .unwrap();
         let mut rows = Vec::new();
@@ -185,12 +185,7 @@ fn account_page_routes_service_buttons_to_legacy_nodes() {
         "prefs": fluxa_ui::settings_data(&settings, fluxa_ui::UiFormFactor::Desktop),
     });
     let tree = skin
-        .resolve(
-            "settings",
-            &data,
-            FormFactor::Desktop,
-            &mut Default::default(),
-        )
+        .resolve("settings", &data, &mut Default::default())
         .unwrap()
         .unwrap();
     let mut nodes = Vec::new();
@@ -225,12 +220,7 @@ fn addon_cards_expose_row_actions_and_install_fill() {
         "prefs": fluxa_ui::settings_data(&settings, fluxa_ui::UiFormFactor::Desktop),
     });
     let tree = skin
-        .resolve(
-            "settings",
-            &data,
-            FormFactor::Desktop,
-            &mut Default::default(),
-        )
+        .resolve("settings", &data, &mut Default::default())
         .unwrap()
         .unwrap();
     let mut nodes = Vec::new();
@@ -265,12 +255,7 @@ fn plugin_and_server_pages_resolve() {
             "prefs": fluxa_ui::settings_data(&settings, fluxa_ui::UiFormFactor::Desktop),
         });
         let tree = skin
-            .resolve(
-                "settings",
-                &data,
-                FormFactor::Desktop,
-                &mut Default::default(),
-            )
+            .resolve("settings", &data, &mut Default::default())
             .unwrap()
             .unwrap();
         let mut nodes = Vec::new();
@@ -294,7 +279,7 @@ fn empty_home_offers_addons() {
         "home": {"heroSlides": [], "rows": [], "cards": [], "isLoading": false, "addonsPage": 5},
     });
     let tree = skin
-        .resolve("home", &data, FormFactor::Desktop, &mut Default::default())
+        .resolve("home", &data, &mut Default::default())
         .unwrap()
         .unwrap();
     let mut pages = Vec::new();
@@ -327,12 +312,7 @@ fn skip_next_and_warning_layers_resolve() {
         "player": fluxa_ui::player_data(&player),
     });
     let tree = skin
-        .resolve(
-            "player",
-            &data,
-            FormFactor::Desktop,
-            &mut Default::default(),
-        )
+        .resolve("player", &data, &mut Default::default())
         .unwrap()
         .unwrap();
     let mut ops = Vec::new();
@@ -376,7 +356,7 @@ fn toast_and_tip_screens_resolve() {
     });
     for screen in ["toast", "tip", "update", "window", "mini"] {
         let tree = skin
-            .resolve(screen, &data, FormFactor::Desktop, &mut Default::default())
+            .resolve(screen, &data, &mut Default::default())
             .unwrap()
             .unwrap();
         assert!(!tree.is_empty(), "{screen}");
@@ -394,12 +374,7 @@ fn report_and_addon_dialogs_route_to_legacy_nodes() {
     for dialog in [fluxa_ui::dialog_data(&settings)] {
         let data = json!({"dialog": dialog, "const": skin.constants()});
         let tree = skin
-            .resolve(
-                "dialog",
-                &data,
-                FormFactor::Desktop,
-                &mut Default::default(),
-            )
+            .resolve("dialog", &data, &mut Default::default())
             .unwrap()
             .unwrap();
         count_actions(&tree, "node", FormFactor::Desktop, &mut ids);
@@ -450,12 +425,7 @@ fn every_profile_mode_resolves() {
             "profiles": fluxa_ui::profiles_data(&model, fluxa_ui::UiFormFactor::Desktop),
         });
         let tree = skin
-            .resolve(
-                "profiles",
-                &data,
-                FormFactor::Desktop,
-                &mut Default::default(),
-            )
+            .resolve("profiles", &data, &mut Default::default())
             .unwrap()
             .unwrap();
         assert!(!tree.is_empty(), "step {step}");
@@ -499,7 +469,7 @@ fn watch_room_and_entry_resolve() {
         });
         for form in [FormFactor::Desktop, FormFactor::Mobile, FormFactor::Tv] {
             let tree = skin
-                .resolve("watch", &data, form, &mut Default::default())
+                .resolve("watch", &data, &mut Default::default())
                 .unwrap()
                 .unwrap();
             assert!(!tree.is_empty(), "{form:?}");
@@ -528,12 +498,7 @@ fn detail_modal_episodes_and_similar_carry_their_index() {
     let data =
         json!({"const": data["const"].clone(), "settings": {}, "detail": data["modal"].clone()});
     let tree = skin
-        .resolve(
-            "detail_modal",
-            &data,
-            FormFactor::Desktop,
-            &mut Default::default(),
-        )
+        .resolve("detail_modal", &data, &mut Default::default())
         .unwrap()
         .unwrap();
     let mut found = Vec::new();

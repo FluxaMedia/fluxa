@@ -169,11 +169,10 @@ impl Skin {
         &self,
         screen: &str,
         data: &Value,
-        form: FormFactor,
         cache: &mut ResolveCache,
     ) -> Option<Result<Vec<Resolved>, ResolveError>> {
         let root = self.screens.get(screen)?;
-        Some(resolve(root, &self.includes, data, form, cache))
+        Some(resolve(root, &self.includes, data, cache))
     }
 }
 
@@ -591,12 +590,7 @@ mod tests {
             {"label": "Mon"}, {"label": "Tue"}
         ]}}});
         let tree = skin
-            .resolve(
-                "calendar",
-                &data,
-                FormFactor::Desktop,
-                &mut ResolveCache::new(),
-            )
+            .resolve("calendar", &data, &mut ResolveCache::new())
             .unwrap()
             .unwrap();
         let labels: Vec<_> = tree[0]
@@ -668,12 +662,7 @@ mod tests {
         assert!(!skin.theme().unwrap().contains("@element"));
         let grafted = skin.grafted(&base);
         let tree = grafted
-            .resolve(
-                "home",
-                &serde_json::json!({}),
-                FormFactor::Desktop,
-                &mut ResolveCache::new(),
-            )
+            .resolve("home", &serde_json::json!({}), &mut ResolveCache::new())
             .unwrap()
             .unwrap();
         let texts: Vec<_> = tree[0]
@@ -687,7 +676,6 @@ mod tests {
             .resolve(
                 "page.agenda",
                 &serde_json::json!({}),
-                FormFactor::Desktop,
                 &mut ResolveCache::new(),
             )
             .unwrap()

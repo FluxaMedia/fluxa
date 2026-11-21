@@ -32,14 +32,9 @@ fn skin_from(node: serde_json::Value) -> Vec<Resolved> {
         ("style.css", ""),
     ])
     .unwrap();
-    skin.resolve(
-        "home",
-        &json!({}),
-        FormFactor::Desktop,
-        &mut Default::default(),
-    )
-    .unwrap()
-    .unwrap()
+    skin.resolve("home", &json!({}), &mut Default::default())
+        .unwrap()
+        .unwrap()
 }
 
 fn sample_tree(rows: usize, per_row: usize) -> Vec<Resolved> {
@@ -49,7 +44,7 @@ fn sample_tree(rows: usize, per_row: usize) -> Vec<Resolved> {
         .map(|row| json!({"title": format!("Row {row}"), "cards": (0..per_row).map(card).collect::<Vec<_>>()}))
         .collect();
     let data = json!({"home": {"title": "Welcome", "eyebrow": "Tonight", "rows": rows}});
-    skin.resolve("home", &data, FormFactor::Desktop, &mut Default::default())
+    skin.resolve("home", &data, &mut Default::default())
         .unwrap()
         .unwrap()
 }
@@ -213,7 +208,6 @@ fn styled_row_with_an_action_is_a_clickable_box() {
             &node,
             &Default::default(),
             &json!({}),
-            FormFactor::Desktop,
             &mut Default::default(),
         )
         .unwrap()
@@ -238,7 +232,7 @@ fn default_home_renders_navbar_hero_and_shelves() {
         "nav": crate::nav_data("home"),
     });
     let tree = skin
-        .resolve("home", &data, FormFactor::Desktop, &mut Default::default())
+        .resolve("home", &data, &mut Default::default())
         .unwrap()
         .unwrap();
     let (actions, targets) = render(&tree);
@@ -270,7 +264,6 @@ fn disabled_button_claims_no_target() {
             &node,
             &Default::default(),
             &json!({}),
-            FormFactor::Desktop,
             &mut Default::default(),
         )
         .unwrap()
@@ -292,7 +285,6 @@ fn form_controls_claim_targets_and_toggle_flips_the_value() {
             &node,
             &Default::default(),
             &json!({}),
-            FormFactor::Desktop,
             &mut Default::default(),
         )
         .unwrap()

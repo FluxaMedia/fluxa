@@ -206,7 +206,7 @@
         }
       ],
       "when": "!welcome.pairing",
-      "class": "only-desktop w440-gap0-pad36-36-32-items-stretch"
+      "class": "desktop-only w440-gap0-pad36-36-32-items-stretch"
     },
     {
       "type": "row",
@@ -366,7 +366,7 @@
           "class": "w440-gap0-items-stretch"
         }
       ],
-      "class": "only-tv gap48-pad40-48-items-center"
+      "class": "tv-only gap48-pad40-48-items-center"
     },
     {
       "type": "scroll",
@@ -576,7 +576,7 @@
         }
       ],
       "when": "!welcome.pairing",
-      "class": "only-mobile w100vw-h100vh"
+      "class": "compact-only w100vw-h100vh"
     }
   ]
 }

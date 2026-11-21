@@ -326,12 +326,7 @@ mod tests {
         wait(&|| snapshot()["agenda"]["items"][1]["done"] == true);
         let data = json!({"ext": snapshot()});
         let tree = skin
-            .resolve(
-                "page.agenda",
-                &data,
-                fluxa_skin::FormFactor::Desktop,
-                &mut fluxa_skin::ResolveCache::new(),
-            )
+            .resolve("page.agenda", &data, &mut fluxa_skin::ResolveCache::new())
             .unwrap()
             .unwrap();
         assert_eq!(tree[0].children.len(), 6);

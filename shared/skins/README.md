@@ -89,8 +89,7 @@ A node is exactly one of a primitive or component (`type`), an `include`, or an 
 | --- | --- |
 | `type` | `row`, `column`, `stack`, `scroll`, `spacer`, `text`, `page`, or a component: `image`, `icon`, `input`, `grid`, `pager`, `video`, `qr`, `fixed` |
 | `when` | expression; the node is dropped when it is false |
-| `form` | `["mobile", "desktop", "tv"]`; the node exists only on those form factors |
-| `include`, `with` | insert a fragment from `includes.json`; `with` binds its parameters |
+| `include`, `with`, `class` | insert a fragment from `includes.json`; `with` binds its parameters; `class` is added to the fragment's root |
 | `each`, `as`, `limit`, `template` | repeat `template` for every item of an array; `as` names the item (default `item`), `index` is always bound |
 | `text`, `src`, `i18n` | strings with `{expression}` bindings, or a language key |
 | `style`, `class` | named text styles and stylesheet classes |
@@ -139,7 +138,7 @@ Depth 24, 12000 resolved nodes per screen, 200 items per list unless `limit` say
 
 ## Form factors
 
-Desktop is the baseline. Differences for mobile and TV are stated with `form` on a node or with media rules in the stylesheet. The renderer still owns focus handling, overscan margins and minimum touch targets, so a skin cannot produce an unreachable control.
+Desktop is the baseline. Differences for narrow windows and TV are stated with media rules in the stylesheet (`.compact-only`, `.wide-only`, `.desktop-only` and `.tv-only` show a node on those sizes only). The renderer still owns focus handling, overscan margins and minimum touch targets, so a skin cannot produce an unreachable control.
 
 Follow the platform rules in `AGENTS.md` and `docs/design-language.md` (not tracked): mobile screens open as screens, not modals, TV is read from about 3 m with a D-pad, and desktop is dense with hover states.
 
@@ -172,7 +171,7 @@ Colors: `#rrggbb`, `rgba(r, g, b, a)`, or a theme name such as `background`, `th
 
 Gradients: `linear-gradient(to bottom, background*0 0%, background*0.9 100%)`, with 2 to 16 color stops.
 
-Media rules switch values per form factor: `@media (window: compact) { ... }`.
+Media rules switch values by size: `@media (size: compact)`, `(min-width: 900px)`, `(max-height: 479px)`, the TV flag `(tv)` and the last input used `(input: touch | pointer | focus)`. Separate queries with commas for "or": `@media (size: compact), (max-height: 479px) { ... }`.
 
 A rule that fails to parse is skipped and reported in the log (`style rule skipped: ...`); the rest of the stylesheet still applies. Start the app from a terminal with `FLUXA_SKIN` and watch the output while you work.
 

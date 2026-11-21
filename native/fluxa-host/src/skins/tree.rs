@@ -342,11 +342,6 @@ pub(crate) fn tree(
             data
         }
     };
-    let form = match home.form_factor {
-        UiFormFactorJson::Mobile => FormFactor::Mobile,
-        UiFormFactorJson::Desktop => FormFactor::Desktop,
-        UiFormFactorJson::Tv => FormFactor::Tv,
-    };
     let resolved = {
         let mut caches = RESOLVE.lock().ok()?;
         let cache = caches
@@ -360,7 +355,7 @@ pub(crate) fn tree(
         cache.0.data_stamp = base;
         cache.0.language = language.clone();
         cache.0.translate = Some(fluxa_ui::localized);
-        skin.resolve(screen, &data, form, &mut cache.0)?
+        skin.resolve(screen, &data, &mut cache.0)?
     };
     match resolved {
         Ok(tree) => {

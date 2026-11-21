@@ -365,7 +365,7 @@
           },
           {
             "type": "text",
-            "class": "synopsis only-desktop-tv w560",
+            "class": "synopsis wide-only w560",
             "text": "{slide.description}",
             "props": {
               "lines": 3
@@ -872,7 +872,7 @@
             }
           }
         ],
-        "class": "column-gap8-items-stretch only-desktop-tv"
+        "class": "column-gap8-items-stretch wide-only"
       },
       {
         "type": "column",
@@ -885,7 +885,7 @@
             }
           }
         ],
-        "class": "column-gap6-items-stretch only-mobile"
+        "class": "column-gap6-items-stretch compact-only"
       }
     ],
     "class": "column-gap10-items-stretch"
@@ -1032,7 +1032,7 @@
             }
           }
         ],
-        "class": "column-gap8-items-stretch only-desktop-tv"
+        "class": "column-gap8-items-stretch wide-only"
       },
       {
         "type": "column",
@@ -1045,7 +1045,7 @@
             }
           }
         ],
-        "class": "column-gap6-items-stretch only-mobile"
+        "class": "column-gap6-items-stretch compact-only"
       }
     ],
     "class": "column-gap6-items-stretch"
@@ -1317,7 +1317,7 @@
             }
           }
         ],
-        "class": "only-mobile pad84-24-0-24-items-start-justify-start fill-space"
+        "class": "compact-only pad84-24-0-24-items-start-justify-start fill-space"
       },
       {
         "type": "column",
@@ -1341,7 +1341,7 @@
             }
           }
         ],
-        "class": "only-desktop-tv pad0-24-0-24-items-start-justify-start fill-space"
+        "class": "wide-only pad0-24-0-24-items-start-justify-start fill-space"
       },
       {
         "type": "column",
@@ -1358,19 +1358,19 @@
             "type": "text",
             "text": "{detail.meta}",
             "style": "meta muted",
-            "class": "only-mobile"
+            "class": "compact-only"
           },
           {
             "type": "text",
             "text": "{detail.facts}",
             "style": "meta",
-            "class": "only-desktop-tv"
+            "class": "wide-only"
           },
           {
             "type": "text",
             "text": "{detail.genres}",
             "style": "meta muted",
-            "class": "only-desktop-tv"
+            "class": "wide-only"
           },
           {
             "type": "row",
@@ -1411,7 +1411,7 @@
           },
           {
             "type": "text",
-            "class": "synopsis only-desktop-tv w620",
+            "class": "synopsis wide-only w620",
             "text": "{detail.description}",
             "props": {
               "lines": 4
@@ -2266,7 +2266,7 @@
                   "value": "{fields.skinSource}",
                   "kind": "text"
                 },
-                "class": "only-desktop-tv w420"
+                "class": "wide-only w420"
               },
               {
                 "type": "input",
@@ -2276,7 +2276,7 @@
                   "value": "{fields.skinSource}",
                   "kind": "text"
                 },
-                "class": "input-grow1 only-mobile"
+                "class": "input-grow1 compact-only"
               },
               {
                 "type": "row",
@@ -2368,11 +2368,11 @@
       },
       {
         "type": "spacer",
-        "class": "only-desktop-tv h48"
+        "class": "wide-only h48"
       },
       {
         "type": "spacer",
-        "class": "only-mobile h112"
+        "class": "compact-only h112"
       }
     ],
     "class": "gap22-items-stretch"
@@ -2405,7 +2405,7 @@
               "value": "{input.value}",
               "kind": "{input.kind}"
             },
-            "class": "only-desktop-tv w420"
+            "class": "wide-only w420"
           },
           {
             "type": "input",
@@ -2415,7 +2415,7 @@
               "value": "{input.value}",
               "kind": "{input.kind}"
             },
-            "class": "input-grow1 only-mobile"
+            "class": "input-grow1 compact-only"
           },
           {
             "type": "row",
@@ -3243,7 +3243,7 @@
                 ]
               }
             ],
-            "class": "row-gap10-items-center only-desktop-tv"
+            "class": "row-gap10-items-center wide-only"
           },
           {
             "type": "column",
@@ -3301,7 +3301,7 @@
                 "class": "row-gap10-items-center"
               }
             ],
-            "class": "column-gap10-items-stretch only-mobile"
+            "class": "column-gap10-items-stretch compact-only"
           }
         ]
       },

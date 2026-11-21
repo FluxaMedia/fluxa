@@ -1,5 +1,5 @@
 use crate::expr::{Expr, Scope, Template, truthy};
-use crate::layout::{Align, FormFactor, Justify, MAX_DEPTH, Node, Pad, Size};
+use crate::layout::{Align, Justify, MAX_DEPTH, Node, Pad, Size};
 use serde_json::Value;
 use std::collections::BTreeMap;
 
@@ -125,7 +125,6 @@ pub fn resolve(
     root: &Node,
     includes: &BTreeMap<String, Node>,
     data: &Value,
-    form: FormFactor,
     cache: &mut ResolveCache,
 ) -> Result<Vec<Resolved>, ResolveError> {
     if cache.signature_stamp != cache.data_stamp {
@@ -134,7 +133,6 @@ pub fn resolve(
     }
     let mut resolver = Resolver {
         includes,
-        form,
         cache,
         scope: Scope::new(data),
         nodes: 0,
@@ -146,7 +144,6 @@ pub fn resolve(
 
 struct Resolver<'a> {
     includes: &'a BTreeMap<String, Node>,
-    form: FormFactor,
     cache: &'a mut ResolveCache,
     scope: Scope<'a>,
     nodes: usize,
@@ -167,9 +164,6 @@ impl Resolver<'_> {
         if self.nodes > MAX_NODES {
             return Err(ResolveError(format!("more than {MAX_NODES} nodes")));
         }
-        if !node.form.is_empty() && !node.form.contains(&self.form) {
-            return Ok(());
-        }
         if let Some(source) = &node.when
             && !truthy(&self.eval(source, key)?)
         {
@@ -189,9 +183,23 @@ impl Resolver<'_> {
                 self.scope.push(param, value);
                 bound.push(param);
             }
+            let from = out.len();
             let result = self.expand(target, &format!("{key}.{name}"), depth + 1, out);
             for _ in bound {
                 self.scope.pop();
+            }
+            if let Some(extra) = node
+                .class
+                .as_deref()
+                .and_then(Template::parse_shared)
+                .map(|template| template.render(&self.scope))
+            {
+                for resolved in &mut out[from..] {
+                    resolved.class = Some(match resolved.class.take() {
+                        Some(own) => format!("{own} {extra}"),
+                        None => extra.clone(),
+                    });
+                }
             }
             return result;
         }
@@ -435,10 +443,10 @@ mod tests {
     use super::*;
     use serde_json::json;
 
-    fn run(layout: Value, includes: Value, data: Value, form: FormFactor) -> Vec<Resolved> {
+    fn run(layout: Value, includes: Value, data: Value) -> Vec<Resolved> {
         let root: Node = serde_json::from_value(layout).unwrap();
         let includes: BTreeMap<String, Node> = serde_json::from_value(includes).unwrap();
-        resolve(&root, &includes, &data, form, &mut ResolveCache::default()).unwrap()
+        resolve(&root, &includes, &data, &mut ResolveCache::default()).unwrap()
     }
 
     #[test]
@@ -447,7 +455,6 @@ mod tests {
             json!({"each": "rows", "as": "row", "template": {"type": "text", "text": "{index}:{row.title}"}}),
             json!({}),
             json!({"rows": [{"title": "a"}, {"title": "b"}]}),
-            FormFactor::Desktop,
         );
         let texts: Vec<_> = out.iter().map(|n| n.text.clone().unwrap()).collect();
         assert_eq!(texts, ["0:a", "1:b"]);
@@ -455,20 +462,21 @@ mod tests {
     }
 
     #[test]
-    fn when_and_form_filter_nodes() {
+    fn when_filters_nodes() {
         let layout = json!({"type": "column", "children": [
             {"type": "text", "text": "shown", "when": "flag"},
             {"type": "text", "text": "hidden", "when": "!flag"},
-            {"type": "text", "text": "tv only", "form": ["tv"]},
-            {"type": "text", "text": "not tv", "form": ["mobile", "desktop"]}
+            {"include": "note", "class": "extra"}
         ]});
-        let out = run(layout, json!({}), json!({"flag": true}), FormFactor::Tv);
+        let includes = json!({"note": {"type": "text", "text": "included", "class": "own"}});
+        let out = run(layout, includes, json!({"flag": true}));
         let texts: Vec<_> = out[0]
             .children
             .iter()
             .map(|n| n.text.clone().unwrap())
             .collect();
-        assert_eq!(texts, ["shown", "tv only"]);
+        assert_eq!(texts, ["shown", "included"]);
+        assert_eq!(out[0].children[1].class.as_deref(), Some("own extra"));
     }
 
     #[test]
@@ -477,7 +485,6 @@ mod tests {
             json!({"include": "label", "with": {"name": "profile.name"}}),
             json!({"label": {"type": "text", "text": "Hi {name}"}}),
             json!({"profile": {"name": "Sam"}}),
-            FormFactor::Mobile,
         );
         assert_eq!(out[0].text.as_deref(), Some("Hi Sam"));
     }
@@ -488,7 +495,6 @@ mod tests {
             json!({"type": "button", "action": {"name": "set_setting", "args": {"key": "autoplay", "value": "{flag}"}}}),
             json!({}),
             json!({"flag": true}),
-            FormFactor::Desktop,
         );
         let action = out[0].action.as_ref().unwrap();
         assert_eq!(action.args["value"], json!(true));
@@ -500,16 +506,7 @@ mod tests {
         let root: Node = serde_json::from_value(json!({"include": "a"})).unwrap();
         let includes: BTreeMap<String, Node> =
             serde_json::from_value(json!({"a": {"include": "a"}})).unwrap();
-        assert!(
-            resolve(
-                &root,
-                &includes,
-                &json!({}),
-                FormFactor::Desktop,
-                &mut ResolveCache::default()
-            )
-            .is_err()
-        );
+        assert!(resolve(&root, &includes, &json!({}), &mut ResolveCache::default()).is_err());
     }
 
     #[test]
@@ -519,7 +516,6 @@ mod tests {
             json!({"each": "rows", "limit": 3, "template": {"type": "spacer"}}),
             json!({}),
             json!({"rows": rows}),
-            FormFactor::Desktop,
         );
         assert_eq!(out.len(), 3);
     }
@@ -535,7 +531,6 @@ mod tests {
             &root,
             &BTreeMap::new(),
             &json!({"rows": rows}),
-            FormFactor::Desktop,
             &mut ResolveCache::default(),
         );
         assert!(result.is_err());
@@ -550,14 +545,7 @@ mod tests {
         .unwrap();
         let mut cache = ResolveCache::default();
         cache.windows.insert("0".to_owned(), (2, 4));
-        let out = resolve(
-            &root,
-            &BTreeMap::new(),
-            &json!({"rows": rows}),
-            FormFactor::Desktop,
-            &mut cache,
-        )
-        .unwrap();
+        let out = resolve(&root, &BTreeMap::new(), &json!({"rows": rows}), &mut cache).unwrap();
         let kinds: Vec<_> = out.iter().map(|node| node.kind.as_str()).collect();
         assert_eq!(out.len(), 10);
         assert_eq!(kinds.iter().filter(|kind| **kind == "text").count(), 2);
@@ -579,7 +567,6 @@ mod tests {
                 &root,
                 &BTreeMap::new(),
                 &json!({"rows": [1, 2, 3], "total": total}),
-                FormFactor::Desktop,
                 cache,
             )
             .unwrap()
@@ -603,14 +590,7 @@ mod tests {
         }))
         .unwrap();
         let mut cache = ResolveCache::default();
-        let out = resolve(
-            &root,
-            &BTreeMap::new(),
-            &json!({"rows": rows}),
-            FormFactor::Desktop,
-            &mut cache,
-        )
-        .unwrap();
+        let out = resolve(&root, &BTreeMap::new(), &json!({"rows": rows}), &mut cache).unwrap();
         assert_eq!(out.len(), 600);
         assert_eq!(out.iter().filter(|node| node.kind == "far").count(), 596);
         let strip = &out[0].children;
@@ -623,7 +603,6 @@ mod tests {
             &root,
             &BTreeMap::new(),
             &json!({"rows": (0..600).map(|row| json!({"cards": (0..30).map(|card| json!(format!("{row}-{card}"))).collect::<Vec<_>>()})).collect::<Vec<_>>()}),
-            FormFactor::Desktop,
             &mut cache,
         )
         .unwrap();
