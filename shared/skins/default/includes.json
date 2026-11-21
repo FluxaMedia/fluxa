@@ -1,10 +1,7 @@
 {
   "navbar": {
     "type": "row",
-    "class": "navbar",
-    "gap": 4,
-    "padding": 6,
-    "align": "center",
+    "class": "navbar gap4-pad6-items-center",
     "props": {
       "group": "navbar",
       "indicator": "nav-pill",
@@ -16,10 +13,7 @@
         "as": "item",
         "template": {
           "type": "row",
-          "class": "{item.class}",
-          "padding": "10 14",
-          "gap": 8,
-          "align": "center",
+          "class": "{item.class} gap8-pad10-14-items-center",
           "action": {
             "name": "navigate",
             "args": {
@@ -62,10 +56,7 @@
         "as": "item",
         "template": {
           "type": "row",
-          "class": "{item.class}",
-          "padding": "10 14",
-          "gap": 8,
-          "align": "center",
+          "class": "{item.class} gap8-pad10-14-items-center",
           "action": {
             "name": "page",
             "args": {
@@ -137,10 +128,7 @@
             }
           }
         ],
-        "gap": 8,
-        "align": "center",
-        "class": "navbar-item",
-        "padding": "4 10",
+        "class": "navbar-item gap8-pad4-10-items-center",
         "props": {
           "selected": "{nav.profile.active}"
         }
@@ -149,8 +137,7 @@
   },
   "card": {
     "type": "column",
-    "class": "poster {card.collectionShape} {card.shape}",
-    "gap": 8,
+    "class": "poster {card.collectionShape} {card.shape} gap8",
     "action": {
       "name": "open_detail",
       "args": {
@@ -241,8 +228,7 @@
             "children": [
               {
                 "type": "image",
-                "class": "expanded-logo",
-                "height": 84,
+                "class": "expanded-logo h84",
                 "props": {
                   "fit": "contain",
                   "position": "start",
@@ -383,12 +369,11 @@
           },
           {
             "type": "text",
-            "class": "synopsis only-desktop-tv",
+            "class": "synopsis only-desktop-tv w560",
             "text": "{slide.description}",
             "props": {
               "lines": 3
-            },
-            "width": 560
+            }
           },
           {
             "type": "row",
@@ -398,10 +383,7 @@
                 "children": [
                   {
                     "type": "row",
-                    "class": "btn-primary",
-                    "padding": "0 28",
-                    "justify": "center",
-                    "gap": 8,
+                    "class": "btn-primary gap8-pad0-28-justify-center",
                     "fill": true,
                     "children": [
                       {
@@ -464,8 +446,7 @@
   },
   "shelf": {
     "type": "column",
-    "class": "shelf",
-    "gap": 8,
+    "class": "shelf gap8",
     "children": [
       {
         "type": "text",
@@ -483,7 +464,6 @@
       },
       {
         "type": "scroll",
-        "gap": 16,
         "children": [
           {
             "each": "row.cards",
@@ -495,14 +475,14 @@
               "include": "card"
             }
           }
-        ]
+        ],
+        "class": "gap16"
       }
     ]
   },
   "continue_shelf": {
     "type": "column",
-    "class": "shelf",
-    "gap": 8,
+    "class": "shelf gap8",
     "children": [
       {
         "type": "text",
@@ -512,7 +492,6 @@
       },
       {
         "type": "scroll",
-        "gap": 16,
         "children": [
           {
             "each": "home.cards",
@@ -522,24 +501,21 @@
               "include": "continue_card"
             }
           }
-        ]
+        ],
+        "class": "gap16"
       }
     ]
   },
   "skeleton_shelf": {
     "type": "column",
-    "class": "shelf",
-    "gap": 12,
+    "class": "shelf gap12",
     "children": [
       {
         "type": "column",
-        "class": "skeleton-bar",
-        "width": 180,
-        "height": 20
+        "class": "skeleton-bar w180-h20"
       },
       {
         "type": "row",
-        "gap": 16,
         "children": [
           {
             "type": "column",
@@ -573,15 +549,14 @@
             "type": "column",
             "class": "skeleton-card"
           }
-        ]
+        ],
+        "class": "gap16"
       }
     ]
   },
   "chip": {
     "type": "row",
-    "class": "chip",
-    "padding": "8 16",
-    "align": "center",
+    "class": "chip pad8-16-items-center",
     "action": {
       "name": "choose",
       "args": {
@@ -599,9 +574,7 @@
   },
   "chip_active": {
     "type": "row",
-    "class": "chip-active",
-    "padding": "8 16",
-    "align": "center",
+    "class": "chip-active pad8-16-items-center",
     "action": {
       "name": "choose",
       "args": {
@@ -619,8 +592,6 @@
   },
   "section_tabs": {
     "type": "row",
-    "gap": 20,
-    "align": "center",
     "children": [
       {
         "each": "sections",
@@ -630,7 +601,6 @@
           "children": [
             {
               "type": "row",
-              "padding": "8 4",
               "when": "chip.selected",
               "children": [
                 {
@@ -638,11 +608,11 @@
                   "text": "{chip.label}",
                   "style": "subtitle"
                 }
-              ]
+              ],
+              "class": "pad8-4"
             },
             {
               "type": "row",
-              "padding": "8 4",
               "when": "!chip.selected",
               "action": {
                 "name": "choose",
@@ -657,17 +627,18 @@
                   "text": "{chip.label}",
                   "style": "subtitle muted"
                 }
-              ]
+              ],
+              "class": "pad8-4"
             }
           ]
         }
       }
-    ]
+    ],
+    "class": "gap20-items-center"
   },
   "day_cell": {
     "type": "stack",
-    "class": "{cell.class}",
-    "height": 88,
+    "class": "{cell.class} h88",
     "action": {
       "name": "calendar_day",
       "args": {
@@ -684,14 +655,10 @@
       },
       {
         "type": "column",
-        "padding": 8,
-        "gap": 4,
         "children": [
           {
             "type": "row",
-            "class": "{cell.numClass}",
-            "align": "center",
-            "justify": "center",
+            "class": "{cell.numClass} w24-h24-items-center-justify-center",
             "when": "!cell.blank",
             "children": [
               {
@@ -699,9 +666,7 @@
                 "text": "{cell.day}",
                 "class": "{cell.numTextClass}"
               }
-            ],
-            "width": 24,
-            "height": 24
+            ]
           },
           {
             "type": "text",
@@ -712,7 +677,8 @@
             },
             "when": "cell.count > 0"
           }
-        ]
+        ],
+        "class": "gap4-pad8"
       }
     ]
   },
@@ -722,8 +688,6 @@
     "children": [
       {
         "type": "column",
-        "grow": 1,
-        "gap": 4,
         "children": [
           {
             "type": "text",
@@ -746,7 +710,8 @@
               "value": "row.percent"
             }
           }
-        ]
+        ],
+        "class": "gap4-grow1"
       },
       {
         "type": "row",
@@ -801,8 +766,6 @@
     "children": [
       {
         "type": "column",
-        "grow": 1,
-        "gap": 4,
         "children": [
           {
             "type": "text",
@@ -821,7 +784,8 @@
             },
             "when": "group.active"
           }
-        ]
+        ],
+        "class": "gap4-grow1"
       }
     ]
   },
@@ -830,24 +794,17 @@
     "children": [
       {
         "type": "row",
-        "class": "setting-row",
-        "gap": 12,
-        "padding": "0 18",
+        "class": "setting-row gap12-pad0-18",
         "when": "row.toggle",
         "children": [
           {
             "type": "text",
-            "class": "setting-label",
-            "text": "{row.label}",
-            "grow": 1
+            "class": "setting-label grow1",
+            "text": "{row.label}"
           },
           {
             "type": "row",
-            "class": "switch",
-            "width": 46,
-            "height": 28,
-            "padding": "3 3 3 3",
-            "align": "center",
+            "class": "switch w46-h28-pad3-3-3-3-items-center",
             "props": {
               "selected": "{row.on}"
             },
@@ -866,9 +823,7 @@
               },
               {
                 "type": "column",
-                "class": "knob",
-                "width": 22,
-                "height": 22
+                "class": "knob w22-h22"
               },
               {
                 "type": "spacer",
@@ -881,16 +836,13 @@
       },
       {
         "type": "row",
-        "class": "setting-row",
-        "gap": 12,
-        "padding": "0 12 0 18",
+        "class": "setting-row gap12-pad0-12-0-18",
         "when": "!row.toggle",
         "children": [
           {
             "type": "text",
-            "class": "setting-label",
-            "text": "{row.label}",
-            "grow": 1
+            "class": "setting-label grow1",
+            "text": "{row.label}"
           },
           {
             "include": "dropdown_setting",
@@ -957,9 +909,8 @@
       },
       {
         "type": "text",
-        "class": "side-label",
-        "text": "{cat.label}",
-        "grow": 1
+        "class": "side-label grow1",
+        "text": "{cat.label}"
       }
     ],
     "action": {
@@ -983,9 +934,8 @@
       },
       {
         "type": "text",
-        "class": "side-label",
-        "text": "{cat.label}",
-        "grow": 1
+        "class": "side-label grow1",
+        "text": "{cat.label}"
       }
     ],
     "action": {
@@ -1049,8 +999,6 @@
       },
       {
         "type": "column",
-        "gap": 3,
-        "grow": 1,
         "children": [
           {
             "type": "text",
@@ -1065,7 +1013,8 @@
               "lines": 1
             }
           }
-        ]
+        ],
+        "class": "gap3-grow1"
       },
       {
         "type": "icon",
@@ -1135,10 +1084,7 @@
   },
   "episode_card": {
     "type": "column",
-    "class": "episode {ep.state}",
-    "gap": 10,
-    "padding": 10,
-    "width": 296,
+    "class": "episode {ep.state} w296-gap10-pad10",
     "action": {
       "name": "detail",
       "args": {
@@ -1149,15 +1095,11 @@
     "children": [
       {
         "type": "stack",
-        "width": 276,
-        "height": 155,
         "children": [
           {
             "type": "image",
             "src": "{ep.thumb}",
-            "class": "episode-thumb",
-            "width": 276,
-            "height": 155,
+            "class": "episode-thumb w276-h155",
             "props": {
               "fit": "cover"
             }
@@ -1170,9 +1112,6 @@
           {
             "type": "column",
             "fill": true,
-            "justify": "start",
-            "align": "end",
-            "padding": 8,
             "when": "ep.watched",
             "children": [
               {
@@ -1195,19 +1134,15 @@
                   }
                 ]
               }
-            ]
+            ],
+            "class": "pad8-items-end-justify-start"
           },
           {
             "type": "column",
             "fill": true,
-            "justify": "end",
-            "align": "stretch",
             "children": [
               {
                 "type": "row",
-                "padding": "0 8 10 8",
-                "align": "end",
-                "justify": "space_between",
                 "children": [
                   {
                     "type": "row",
@@ -1226,7 +1161,8 @@
                     "class": "episode-time",
                     "when": "ep.runtime"
                   }
-                ]
+                ],
+                "class": "pad0-8-10-8-items-end-justify-space-between"
               },
               {
                 "include": "progress",
@@ -1235,15 +1171,14 @@
                 },
                 "when": "ep.progress > 0"
               }
-            ]
+            ],
+            "class": "items-stretch-justify-end"
           }
-        ]
+        ],
+        "class": "w276-h155"
       },
       {
         "type": "column",
-        "gap": 4,
-        "padding": "0 4 4 4",
-        "width": 276,
         "children": [
           {
             "type": "text",
@@ -1261,15 +1196,13 @@
               "lines": 2
             }
           }
-        ]
+        ],
+        "class": "w276-gap4-pad0-4-4-4"
       }
     ]
   },
   "cast_card": {
     "type": "column",
-    "gap": 6,
-    "align": "center",
-    "width": 120,
     "action": {
       "name": "detail",
       "args": {
@@ -1298,12 +1231,11 @@
         "text": "{person.role}",
         "style": "meta muted"
       }
-    ]
+    ],
+    "class": "w120-gap6-items-center"
   },
   "trailer_card": {
     "type": "column",
-    "gap": 6,
-    "width": 296,
     "action": {
       "name": "detail",
       "args": {
@@ -1315,40 +1247,38 @@
       {
         "type": "image",
         "src": "{trailer.thumb}",
-        "width": 296,
-        "height": 166,
         "props": {
           "fit": "cover"
-        }
+        },
+        "class": "w296-h166"
       },
       {
         "type": "text",
         "text": "{trailer.title}",
         "style": "meta"
       }
-    ]
+    ],
+    "class": "w296-gap6"
   },
   "info_row": {
     "type": "row",
-    "gap": 24,
-    "padding": "8 0",
     "children": [
       {
         "type": "text",
         "text": "{line.label}",
         "style": "meta muted",
-        "width": 180
+        "class": "w180"
       },
       {
         "type": "text",
         "text": "{line.value}",
         "style": "meta"
       }
-    ]
+    ],
+    "class": "gap24-pad8-0"
   },
   "detail_hero": {
     "type": "stack",
-    "height": "68vh",
     "children": [
       {
         "type": "image",
@@ -1380,9 +1310,6 @@
       },
       {
         "type": "column",
-        "padding": "84 24 0 24",
-        "align": "start",
-        "justify": "start",
         "children": [
           {
             "type": "row",
@@ -1404,13 +1331,10 @@
           }
         ],
         "fill": true,
-        "class": "only-mobile"
+        "class": "only-mobile pad84-24-0-24-items-start-justify-start"
       },
       {
         "type": "column",
-        "padding": "0 24 0 24",
-        "align": "start",
-        "justify": "start",
         "children": [
           {
             "type": "row",
@@ -1432,7 +1356,7 @@
           }
         ],
         "fill": true,
-        "class": "only-desktop-tv"
+        "class": "only-desktop-tv pad0-24-0-24-items-start-justify-start"
       },
       {
         "type": "column",
@@ -1502,12 +1426,11 @@
           },
           {
             "type": "text",
-            "class": "synopsis only-desktop-tv",
+            "class": "synopsis only-desktop-tv w620",
             "text": "{detail.description}",
             "props": {
               "lines": 4
-            },
-            "width": 620
+            }
           },
           {
             "type": "row",
@@ -1517,10 +1440,7 @@
                 "children": [
                   {
                     "type": "row",
-                    "class": "btn-primary",
-                    "padding": "0 28",
-                    "justify": "center",
-                    "gap": 8,
+                    "class": "btn-primary gap8-pad0-28-justify-center",
                     "fill": true,
                     "children": [
                       {
@@ -1644,7 +1564,8 @@
         ],
         "fill": true
       }
-    ]
+    ],
+    "class": "h68vh"
   },
   "profile_tile": {
     "type": "column",
@@ -1694,8 +1615,6 @@
     "children": [
       {
         "type": "column",
-        "gap": 8,
-        "align": "center",
         "action": {
           "name": "profiles",
           "args": {
@@ -1719,7 +1638,8 @@
             "text": "{item.name}",
             "style": "subtitle"
           }
-        ]
+        ],
+        "class": "gap8-items-center"
       },
       {
         "type": "row",
@@ -1769,9 +1689,7 @@
   },
   "folder_tab": {
     "type": "row",
-    "class": "chip",
-    "padding": "8 16",
-    "align": "center",
+    "class": "chip pad8-16-items-center",
     "action": {
       "name": "folder",
       "args": {
@@ -1789,9 +1707,7 @@
   },
   "folder_tab_active": {
     "type": "row",
-    "class": "chip-active",
-    "padding": "8 16",
-    "align": "center",
+    "class": "chip-active pad8-16-items-center",
     "action": {
       "name": "folder",
       "args": {
@@ -1809,8 +1725,6 @@
   },
   "progress": {
     "type": "stack",
-    "height": 4,
-    "width": 200,
     "children": [
       {
         "type": "column",
@@ -1825,7 +1739,8 @@
           "span": "{value}"
         }
       }
-    ]
+    ],
+    "class": "w200-h4"
   },
   "avatar": {
     "type": "stack",
@@ -1842,8 +1757,6 @@
       {
         "type": "column",
         "fill": true,
-        "justify": "end",
-        "align": "end",
         "when": "badge",
         "children": [
           {
@@ -1866,13 +1779,13 @@
               }
             ]
           }
-        ]
+        ],
+        "class": "items-end-justify-end"
       }
     ]
   },
   "title_logo": {
     "type": "column",
-    "align": "start",
     "children": [
       {
         "type": "image",
@@ -1891,7 +1804,8 @@
         "text": "{title}",
         "style": "headline"
       }
-    ]
+    ],
+    "class": "items-start"
   },
   "continue_card": {
     "type": "stack",
@@ -1918,14 +1832,11 @@
       {
         "type": "row",
         "fill": true,
-        "padding": 8,
-        "align": "start",
         "children": [
           {
             "type": "row",
             "when": "card.episodes",
-            "class": "card-badge",
-            "padding": 4,
+            "class": "card-badge pad4",
             "children": [
               {
                 "type": "text",
@@ -1941,8 +1852,7 @@
           {
             "type": "row",
             "when": "card.detail",
-            "class": "card-badge",
-            "padding": 4,
+            "class": "card-badge pad4",
             "children": [
               {
                 "type": "text",
@@ -1951,15 +1861,12 @@
               }
             ]
           }
-        ]
+        ],
+        "class": "pad8-items-start"
       },
       {
         "type": "column",
         "fill": true,
-        "justify": "end",
-        "align": "stretch",
-        "padding": "12",
-        "gap": 4,
         "children": [
           {
             "type": "text",
@@ -1997,7 +1904,8 @@
             ],
             "class": "stack-h4"
           }
-        ]
+        ],
+        "class": "gap4-pad12-items-stretch-justify-end"
       },
       {
         "include": "card_preview"
@@ -2058,8 +1966,7 @@
             "as": "opt",
             "template": {
               "type": "row",
-              "class": "select-row",
-              "gap": 8,
+              "class": "select-row gap8",
               "action": {
                 "name": "set_setting",
                 "args": {
@@ -2138,8 +2045,7 @@
             "as": "opt",
             "template": {
               "type": "row",
-              "class": "select-row",
-              "gap": 8,
+              "class": "select-row gap8",
               "action": {
                 "name": "choose",
                 "args": {
@@ -2170,8 +2076,6 @@
   },
   "settings_content": {
     "type": "column",
-    "gap": 22,
-    "align": "stretch",
     "children": [
       {
         "type": "row",
@@ -2184,7 +2088,6 @@
       },
       {
         "type": "column",
-        "gap": 6,
         "children": [
           {
             "type": "text",
@@ -2197,7 +2100,8 @@
             "text": "{prefs.description}",
             "when": "prefs.description"
           }
-        ]
+        ],
+        "class": "gap6"
       },
       {
         "each": "prefs.lead",
@@ -2236,8 +2140,6 @@
       {
         "type": "column",
         "when": "prefs.skins",
-        "gap": 12,
-        "align": "stretch",
         "children": [
           {
             "type": "text",
@@ -2257,23 +2159,16 @@
               "children": [
                 {
                   "type": "row",
-                  "class": "setting-row",
-                  "gap": 12,
-                  "padding": "0 18",
+                  "class": "setting-row gap12-pad0-18",
                   "children": [
                     {
                       "type": "text",
-                      "class": "setting-label",
-                      "text": "{skin.name}",
-                      "grow": 1
+                      "class": "setting-label grow1",
+                      "text": "{skin.name}"
                     },
                     {
                       "type": "row",
-                      "class": "switch",
-                      "width": 46,
-                      "height": 28,
-                      "padding": "3 3 3 3",
-                      "align": "center",
+                      "class": "switch w46-h28-pad3-3-3-3-items-center",
                       "when": "!skin.active",
                       "props": {
                         "selected": "{skin.active}"
@@ -2293,9 +2188,7 @@
                         },
                         {
                           "type": "column",
-                          "class": "knob",
-                          "width": 22,
-                          "height": 22
+                          "class": "knob w22-h22"
                         },
                         {
                           "type": "spacer",
@@ -2306,11 +2199,7 @@
                     },
                     {
                       "type": "row",
-                      "class": "switch",
-                      "width": 46,
-                      "height": 28,
-                      "padding": "3 3 3 3",
-                      "align": "center",
+                      "class": "switch w46-h28-pad3-3-3-3-items-center",
                       "when": "skin.active",
                       "props": {
                         "selected": "{skin.active}"
@@ -2329,9 +2218,7 @@
                         },
                         {
                           "type": "column",
-                          "class": "knob",
-                          "width": 22,
-                          "height": 22
+                          "class": "knob w22-h22"
                         },
                         {
                           "type": "spacer",
@@ -2345,19 +2232,16 @@
                 {
                   "type": "row",
                   "when": "skin.scripts",
-                  "class": "row-gap12-items-center",
-                  "padding": "0 18",
+                  "class": "row-gap12-items-center pad0-18",
                   "children": [
                     {
                       "type": "text",
-                      "class": "setting-hint",
-                      "text": "{skin.scripts}",
-                      "grow": 1
+                      "class": "setting-hint grow1",
+                      "text": "{skin.scripts}"
                     },
                     {
                       "type": "row",
-                      "class": "btn-primary",
-                      "padding": "8 14",
+                      "class": "btn-primary pad8-14",
                       "when": "!skin.allowed",
                       "action": {
                         "name": "skins",
@@ -2376,8 +2260,7 @@
                     },
                     {
                       "type": "row",
-                      "class": "btn-secondary",
-                      "padding": "8 14",
+                      "class": "btn-secondary pad8-14",
                       "when": "skin.allowed",
                       "action": {
                         "name": "skins",
@@ -2404,14 +2287,13 @@
             "children": [
               {
                 "type": "input",
-                "width": 420,
                 "props": {
                   "key": "skinSource",
                   "placeholder": "{prefs.skins.placeholder}",
                   "value": "{fields.skinSource}",
                   "kind": "text"
                 },
-                "class": "only-desktop-tv"
+                "class": "only-desktop-tv w420"
               },
               {
                 "type": "input",
@@ -2425,8 +2307,7 @@
               },
               {
                 "type": "row",
-                "class": "btn-primary",
-                "padding": "10 18",
+                "class": "btn-primary pad10-18",
                 "action": {
                   "name": "skins",
                   "args": {
@@ -2458,9 +2339,6 @@
           },
           {
             "type": "column",
-            "gap": 12,
-            "align": "stretch",
-            "padding": "20 0 0 0",
             "children": [
               {
                 "type": "text",
@@ -2474,20 +2352,18 @@
               },
               {
                 "type": "input",
-                "height": 520,
                 "fill": true,
                 "props": {
                   "key": "customCss",
                   "placeholder": "{prefs.skins.cssPlaceholder}",
                   "value": "{fields.customCss}",
                   "kind": "multiline"
-                }
+                },
+                "class": "h520"
               },
               {
                 "type": "row",
-                "width": 140,
-                "class": "btn-secondary",
-                "padding": "10 18",
+                "class": "btn-secondary w140-pad10-18",
                 "action": {
                   "name": "skins",
                   "args": {
@@ -2501,9 +2377,11 @@
                   }
                 ]
               }
-            ]
+            ],
+            "class": "gap12-pad20-0-0-0-items-stretch"
           }
-        ]
+        ],
+        "class": "gap12-items-stretch"
       },
       {
         "each": "prefs.lists",
@@ -2518,21 +2396,18 @@
       },
       {
         "type": "spacer",
-        "height": 48,
-        "class": "only-desktop-tv"
+        "class": "only-desktop-tv h48"
       },
       {
         "type": "spacer",
-        "height": 112,
-        "class": "only-mobile"
+        "class": "only-mobile h112"
       }
-    ]
+    ],
+    "class": "gap22-items-stretch"
   },
   "setting_input": {
     "type": "column",
-    "class": "setting-input",
-    "gap": 10,
-    "padding": "14 18",
+    "class": "setting-input gap10-pad14-18",
     "children": [
       {
         "type": "text",
@@ -2552,14 +2427,13 @@
         "children": [
           {
             "type": "input",
-            "width": 420,
             "props": {
               "key": "{input.key}",
               "placeholder": "{input.placeholder}",
               "value": "{input.value}",
               "kind": "{input.kind}"
             },
-            "class": "only-desktop-tv"
+            "class": "only-desktop-tv w420"
           },
           {
             "type": "input",
@@ -2573,8 +2447,7 @@
           },
           {
             "type": "row",
-            "class": "btn-secondary",
-            "padding": "10 18",
+            "class": "btn-secondary pad10-18",
             "action": {
               "name": "save_field",
               "args": {
@@ -2604,17 +2477,13 @@
       },
       {
         "type": "column",
-        "class": "setting-input",
-        "padding": "6 0",
+        "class": "setting-input pad6-0",
         "children": [
           {
             "each": "list.rows",
             "as": "row",
             "template": {
               "type": "column",
-              "gap": 4,
-              "padding": "12 18",
-              "align": "stretch",
               "children": [
                 {
                   "type": "text",
@@ -2630,7 +2499,8 @@
                     "lines": 4
                   }
                 }
-              ]
+              ],
+              "class": "gap4-pad12-18-items-stretch"
             }
           }
         ]
@@ -2680,13 +2550,10 @@
       {
         "type": "column",
         "when": "!w.inRoom && !w.connecting",
-        "gap": 14,
-        "align": "stretch",
         "children": [
           {
             "type": "row",
-            "class": "btn-primary",
-            "justify": "center",
+            "class": "btn-primary justify-center",
             "action": {
               "name": "watch",
               "args": {
@@ -2721,9 +2588,7 @@
               },
               {
                 "type": "row",
-                "class": "btn-secondary",
-                "justify": "center",
-                "padding": "0 18",
+                "class": "btn-secondary pad0-18-justify-center",
                 "action": {
                   "name": "watch",
                   "args": {
@@ -2741,13 +2606,12 @@
             ],
             "class": "row-gap8-items-center"
           }
-        ]
+        ],
+        "class": "gap14-items-stretch"
       },
       {
         "type": "column",
         "when": "w.inRoom",
-        "gap": 14,
-        "align": "stretch",
         "children": [
           {
             "type": "row",
@@ -2761,9 +2625,7 @@
               },
               {
                 "type": "row",
-                "class": "btn-secondary",
-                "justify": "center",
-                "padding": "0 14",
+                "class": "btn-secondary pad0-14-justify-center",
                 "action": {
                   "name": "watch",
                   "args": {
@@ -2810,11 +2672,7 @@
                   },
                   {
                     "type": "row",
-                    "class": "switch",
-                    "width": 46,
-                    "height": 28,
-                    "padding": "3 3 3 3",
-                    "align": "center",
+                    "class": "switch w46-h28-pad3-3-3-3-items-center",
                     "props": {
                       "selected": "w.locked"
                     },
@@ -2832,9 +2690,7 @@
                       },
                       {
                         "type": "column",
-                        "class": "knob",
-                        "width": 22,
-                        "height": 22
+                        "class": "knob w22-h22"
                       },
                       {
                         "type": "spacer",
@@ -2866,11 +2722,7 @@
                   },
                   {
                     "type": "row",
-                    "class": "switch",
-                    "width": 46,
-                    "height": 28,
-                    "padding": "3 3 3 3",
-                    "align": "center",
+                    "class": "switch w46-h28-pad3-3-3-3-items-center",
                     "props": {
                       "selected": "w.shareStream"
                     },
@@ -2888,9 +2740,7 @@
                       },
                       {
                         "type": "column",
-                        "class": "knob",
-                        "width": 22,
-                        "height": 22
+                        "class": "knob w22-h22"
                       },
                       {
                         "type": "spacer",
@@ -3031,8 +2881,7 @@
           },
           {
             "type": "row",
-            "class": "btn-secondary",
-            "justify": "center",
+            "class": "btn-secondary justify-center",
             "when": "w.host",
             "action": {
               "name": "watch",
@@ -3050,8 +2899,7 @@
           },
           {
             "type": "row",
-            "class": "btn-secondary",
-            "justify": "center",
+            "class": "btn-secondary justify-center",
             "when": "!w.host",
             "action": {
               "name": "watch",
@@ -3067,7 +2915,8 @@
               }
             ]
           }
-        ]
+        ],
+        "class": "gap14-items-stretch"
       },
       {
         "type": "text",
@@ -3080,10 +2929,6 @@
   },
   "empty_state": {
     "type": "column",
-    "gap": 8,
-    "align": "center",
-    "justify": "center",
-    "padding": "0 24",
     "children": [
       {
         "type": "icon",
@@ -3107,16 +2952,15 @@
         },
         "when": "hint != \"\""
       }
-    ]
+    ],
+    "class": "gap8-pad0-24-items-center-justify-center"
   },
   "block_row": {
     "type": "column",
     "children": [
       {
         "type": "row",
-        "class": "setting-row",
-        "gap": 14,
-        "padding": "14 18",
+        "class": "setting-row h88-gap14-pad14-18",
         "when": "row.kind == \"profile\"",
         "children": [
           {
@@ -3147,14 +2991,11 @@
             ],
             "class": "column-gap2-grow1"
           }
-        ],
-        "height": 88
+        ]
       },
       {
         "type": "row",
-        "class": "setting-row",
-        "gap": 12,
-        "padding": "12 18",
+        "class": "setting-row gap12-pad12-18",
         "when": "row.kind == \"link\" && !row.danger",
         "action": {
           "name": "node",
@@ -3203,8 +3044,7 @@
       },
       {
         "type": "row",
-        "class": "setting-row",
-        "padding": "0 18",
+        "class": "setting-row pad0-18",
         "when": "row.kind == \"link\" && row.danger",
         "action": {
           "name": "node",
@@ -3222,9 +3062,7 @@
       },
       {
         "type": "row",
-        "class": "setting-row",
-        "gap": 14,
-        "padding": "0 12 0 18",
+        "class": "setting-row gap14-pad0-12-0-18",
         "when": "row.kind == \"service\"",
         "children": [
           {
@@ -3255,10 +3093,7 @@
           },
           {
             "type": "row",
-            "class": "btn-primary",
-            "padding": "0 18",
-            "justify": "center",
-            "height": 36,
+            "class": "btn-primary h36-pad0-18-justify-center",
             "action": {
               "name": "node",
               "args": {
@@ -3276,10 +3111,7 @@
           },
           {
             "type": "row",
-            "class": "btn-secondary",
-            "padding": "0 18",
-            "justify": "center",
-            "height": 36,
+            "class": "btn-secondary h36-pad0-18-justify-center",
             "action": {
               "name": "node",
               "args": {
@@ -3299,16 +3131,13 @@
       },
       {
         "type": "row",
-        "class": "setting-row",
-        "gap": 12,
-        "padding": "0 12 0 18",
+        "class": "setting-row gap12-pad0-12-0-18",
         "when": "row.kind == \"choice\"",
         "children": [
           {
             "type": "text",
-            "class": "setting-label",
-            "text": "{row.title}",
-            "grow": 1
+            "class": "setting-label grow1",
+            "text": "{row.title}"
           },
           {
             "include": "dropdown_setting",
@@ -3328,8 +3157,6 @@
         "children": [
           {
             "type": "column",
-            "gap": 10,
-            "grow": 1,
             "children": [
               {
                 "type": "text",
@@ -3360,14 +3187,12 @@
                 "class": "setting-hint",
                 "text": "{row.created}"
               }
-            ]
+            ],
+            "class": "gap10-grow1"
           },
           {
             "type": "row",
-            "class": "btn-primary",
-            "padding": "0 18",
-            "justify": "center",
-            "height": 36,
+            "class": "btn-primary h36-pad0-18-justify-center",
             "action": {
               "name": "node",
               "args": {
@@ -3387,9 +3212,7 @@
       },
       {
         "type": "column",
-        "gap": 10,
-        "class": "form-card",
-        "padding": "14 18",
+        "class": "form-card gap10-pad14-18",
         "when": "row.kind == \"form\"",
         "children": [
           {
@@ -3402,20 +3225,17 @@
             "children": [
               {
                 "type": "input",
-                "width": 520,
                 "props": {
                   "key": "{row.key}",
                   "placeholder": "{row.placeholder}",
                   "value": "{row.value}",
                   "kind": "text"
-                }
+                },
+                "class": "w520"
               },
               {
                 "type": "row",
-                "class": "btn-primary",
-                "padding": "0 20",
-                "justify": "center",
-                "height": 36,
+                "class": "btn-primary h36-pad0-20-justify-center",
                 "action": {
                   "name": "node",
                   "args": {
@@ -3470,10 +3290,7 @@
                 "children": [
                   {
                     "type": "row",
-                    "class": "btn-primary",
-                    "padding": "0 20",
-                    "justify": "center",
-                    "height": 36,
+                    "class": "btn-primary h36-pad0-20-justify-center",
                     "action": {
                       "name": "node",
                       "args": {
@@ -3541,8 +3358,6 @@
         "children": [
           {
             "type": "row",
-            "gap": 14,
-            "align": "center",
             "children": [
               {
                 "type": "stack",
@@ -3552,11 +3367,10 @@
                     "type": "image",
                     "src": "{row.logo}",
                     "when": "row.logo",
-                    "width": 48,
-                    "height": 48,
                     "props": {
                       "fit": "contain"
-                    }
+                    },
+                    "class": "w48-h48"
                   },
                   {
                     "type": "column",
@@ -3621,11 +3435,7 @@
               },
               {
                 "type": "row",
-                "class": "switch",
-                "width": 46,
-                "height": 28,
-                "padding": "3 3 3 3",
-                "align": "center",
+                "class": "switch w46-h28-pad3-3-3-3-items-center",
                 "when": "row.toggle",
                 "props": {
                   "selected": "{row.toggle.on}"
@@ -3644,9 +3454,7 @@
                   },
                   {
                     "type": "column",
-                    "class": "knob",
-                    "width": 22,
-                    "height": 22
+                    "class": "knob w22-h22"
                   },
                   {
                     "type": "spacer",
@@ -3655,7 +3463,8 @@
                   }
                 ]
               }
-            ]
+            ],
+            "class": "gap14-items-center"
           },
           {
             "type": "text",
@@ -3687,17 +3496,12 @@
             "children": [
               {
                 "type": "text",
-                "class": "setting-hint",
-                "text": "{row.group.label}",
-                "grow": 1
+                "class": "setting-hint grow1",
+                "text": "{row.group.label}"
               },
               {
                 "type": "row",
-                "class": "switch",
-                "width": 46,
-                "height": 28,
-                "padding": "3 3 3 3",
-                "align": "center",
+                "class": "switch w46-h28-pad3-3-3-3-items-center",
                 "props": {
                   "selected": "{row.group.on}"
                 },
@@ -3715,9 +3519,7 @@
                   },
                   {
                     "type": "column",
-                    "class": "knob",
-                    "width": 22,
-                    "height": 22
+                    "class": "knob w22-h22"
                   },
                   {
                     "type": "spacer",
@@ -3734,10 +3536,9 @@
             "children": [
               {
                 "type": "text",
-                "class": "setting-hint",
+                "class": "setting-hint grow1",
                 "text": "{row.builtin.label}",
-                "when": "row.builtin",
-                "grow": 1
+                "when": "row.builtin"
               },
               {
                 "type": "spacer",
@@ -3774,9 +3575,7 @@
       },
       {
         "type": "row",
-        "class": "setting-row",
-        "gap": 12,
-        "padding": "0 18",
+        "class": "setting-row gap12-pad0-18",
         "when": "row.kind == \"item\"",
         "children": [
           {
@@ -3842,10 +3641,7 @@
                 "as": "pill",
                 "template": {
                   "type": "row",
-                  "class": "btn-secondary",
-                  "padding": "0 16",
-                  "justify": "center",
-                  "height": 34,
+                  "class": "btn-secondary h34-pad0-16-justify-center",
                   "action": {
                     "name": "node",
                     "args": {
@@ -3896,11 +3692,7 @@
           },
           {
             "type": "row",
-            "class": "switch",
-            "width": 46,
-            "height": 28,
-            "padding": "3 3 3 3",
-            "align": "center",
+            "class": "switch w46-h28-pad3-3-3-3-items-center",
             "props": {
               "selected": "{row.toggle.on}"
             },
@@ -3918,9 +3710,7 @@
               },
               {
                 "type": "column",
-                "class": "knob",
-                "width": 22,
-                "height": 22
+                "class": "knob w22-h22"
               },
               {
                 "type": "spacer",
@@ -3934,9 +3724,7 @@
       },
       {
         "type": "column",
-        "gap": 8,
-        "class": "form-card",
-        "padding": "12 18",
+        "class": "form-card gap8-pad12-18",
         "when": "row.kind == \"field\"",
         "children": [
           {
@@ -3957,10 +3745,7 @@
       },
       {
         "type": "row",
-        "class": "btn-primary",
-        "padding": "0 24",
-        "justify": "center",
-        "height": 40,
+        "class": "btn-primary w240-h40-pad0-24-justify-center",
         "when": "row.kind == \"button\"",
         "action": {
           "name": "node",
@@ -3975,8 +3760,7 @@
             "class": "btn-label",
             "text": "{row.button}"
           }
-        ],
-        "width": 240
+        ]
       },
       {
         "type": "row",
@@ -3990,11 +3774,7 @@
               "children": [
                 {
                   "type": "row",
-                  "class": "chip",
-                  "align": "center",
-                  "justify": "center",
-                  "padding": "0 16",
-                  "height": 34,
+                  "class": "chip h34-pad0-16-items-center-justify-center",
                   "when": "!tab.selected",
                   "action": {
                     "name": "node",
@@ -4012,11 +3792,7 @@
                 },
                 {
                   "type": "row",
-                  "class": "chip-active",
-                  "align": "center",
-                  "justify": "center",
-                  "padding": "0 16",
-                  "height": 34,
+                  "class": "chip-active h34-pad0-16-items-center-justify-center",
                   "when": "tab.selected",
                   "action": {
                     "name": "node",
@@ -4040,26 +3816,20 @@
       },
       {
         "type": "row",
-        "class": "setting-row",
-        "gap": 10,
-        "padding": "0 12 0 18",
+        "class": "setting-row gap10-pad0-12-0-18",
         "when": "row.kind == \"keys\"",
         "children": [
           {
             "type": "text",
-            "class": "setting-label",
+            "class": "setting-label grow1",
             "text": "{row.title}",
-            "grow": 1,
             "props": {
               "lines": 1
             }
           },
           {
             "type": "row",
-            "class": "btn-secondary",
-            "padding": "0 14",
-            "justify": "center",
-            "height": 32,
+            "class": "btn-secondary h32-pad0-14-justify-center",
             "when": "row.reset",
             "action": {
               "name": "node",
@@ -4137,12 +3907,9 @@
   },
   "sources_body": {
     "type": "column",
-    "gap": 16,
-    "align": "stretch",
     "children": [
       {
         "type": "stack",
-        "height": 240,
         "children": [
           {
             "type": "image",
@@ -4160,72 +3927,60 @@
           },
           {
             "type": "column",
-            "padding": "60 0 20 0",
-            "justify": "end",
-            "align": "stretch",
-            "gap": 6,
             "children": [
               {
                 "type": "column",
-                "gap": 6,
-                "align": "start",
-                "padding": "0 20",
                 "children": [
                   {
                     "type": "image",
                     "src": "{sources.logo}",
                     "when": "sources.logo",
-                    "height": 64,
                     "props": {
                       "fit": "contain"
-                    }
+                    },
+                    "class": "h64"
                   },
                   {
                     "type": "text",
                     "text": "{sources.title}",
-                    "height": null,
                     "style": "title",
                     "when": "!sources.logo"
                   },
                   {
                     "type": "text",
                     "text": "{sources.season}",
-                    "height": null,
                     "when": "sources.season",
                     "class": "sources-season"
                   },
                   {
                     "type": "text",
                     "text": "{sources.episode}",
-                    "height": null,
                     "when": "sources.episode",
                     "class": "sources-episode"
                   }
-                ]
+                ],
+                "class": "gap6-pad0-20-items-start"
               },
               {
                 "type": "row",
                 "when": "sources.overview",
-                "align": "stretch",
                 "children": [
                   {
                     "type": "text",
                     "text": "{sources.overview}",
-                    "height": null,
                     "class": "sources-synopsis",
                     "props": {
                       "lines": 3
                     }
                   }
                 ],
-                "padding": "0 20"
+                "class": "pad0-20-items-stretch"
               }
-            ]
+            ],
+            "class": "gap6-pad60-0-20-0-items-stretch-justify-end"
           },
           {
             "type": "row",
-            "padding": 12,
-            "align": "start",
             "children": [
               {
                 "type": "row",
@@ -4246,15 +4001,14 @@
                   }
                 ]
               }
-            ]
+            ],
+            "class": "pad12-items-start"
           }
-        ]
+        ],
+        "class": "h240"
       },
       {
         "type": "row",
-        "gap": 10,
-        "padding": "0 16",
-        "align": "center",
         "children": [
           {
             "type": "row",
@@ -4278,16 +4032,13 @@
           },
           {
             "type": "scroll",
-            "gap": 8,
             "children": [
               {
                 "each": "sources.filters",
                 "as": "f",
                 "template": {
                   "type": "row",
-                  "class": "chip",
-                  "padding": "8 16",
-                  "align": "center",
+                  "class": "chip pad8-16-items-center",
                   "props": {
                     "selected": "{f.selected}"
                   },
@@ -4301,7 +4052,6 @@
                     {
                       "type": "text",
                       "text": "{f.label}",
-                      "height": null,
                       "style": "meta",
                       "class": "chip-label"
                     }
@@ -4312,39 +4062,34 @@
             "props": {
               "within": true
             },
-            "grow": 1
+            "class": "gap8-grow1"
           }
-        ]
+        ],
+        "class": "gap10-pad0-16-items-center"
       },
       {
         "type": "row",
-        "padding": "0 16",
         "when": "sources.waiting",
         "children": [
           {
             "type": "text",
             "text": "{sources.waiting}",
-            "height": null,
-            "class": "setting-hint",
-            "grow": 1,
+            "class": "setting-hint grow1",
             "props": {
               "lines": 2
             }
           }
-        ]
+        ],
+        "class": "pad0-16"
       },
       {
         "type": "scroll",
-        "grow": 1,
         "props": {
           "axis": "y"
         },
         "children": [
           {
             "type": "column",
-            "gap": 12,
-            "padding": "0 16 24 16",
-            "align": "stretch",
             "children": [
               {
                 "each": "sources.rows",
@@ -4361,8 +4106,6 @@
                   "children": [
                     {
                       "type": "column",
-                      "gap": 6,
-                      "grow": 1,
                       "children": [
                         {
                           "type": "row",
@@ -4373,8 +4116,7 @@
                               "as": "b",
                               "template": {
                                 "type": "row",
-                                "class": "card-badge",
-                                "padding": "3 8",
+                                "class": "card-badge pad3-8",
                                 "props": {
                                   "tint": "{b.fill}",
                                   "border": "{b.border}"
@@ -4384,7 +4126,6 @@
                                     "type": "text",
                                     "class": "badge-text",
                                     "text": "{b.label}",
-                                    "height": null,
                                     "props": {
                                       "color": "{b.text}"
                                     }
@@ -4398,7 +4139,6 @@
                         {
                           "type": "text",
                           "text": "{s.name}",
-                          "height": null,
                           "class": "setting-label",
                           "props": {
                             "lines": 2
@@ -4407,7 +4147,6 @@
                         {
                           "type": "text",
                           "text": "{s.detail}",
-                          "height": null,
                           "class": "setting-hint",
                           "when": "s.detail",
                           "props": {
@@ -4423,8 +4162,7 @@
                               "as": "b",
                               "template": {
                                 "type": "row",
-                                "class": "card-badge",
-                                "padding": "3 8",
+                                "class": "card-badge pad3-8",
                                 "props": {
                                   "tint": "{b.fill}",
                                   "border": "{b.border}"
@@ -4434,7 +4172,6 @@
                                     "type": "text",
                                     "class": "badge-text",
                                     "text": "{b.label}",
-                                    "height": null,
                                     "props": {
                                       "color": "{b.text}"
                                     }
@@ -4445,12 +4182,12 @@
                           ],
                           "class": "row-gap6"
                         }
-                      ]
+                      ],
+                      "class": "gap6-grow1"
                     },
                     {
                       "type": "text",
                       "text": "{s.addon}",
-                      "height": null,
                       "class": "setting-hint",
                       "when": "s.addon"
                     },
@@ -4500,16 +4237,18 @@
               {
                 "type": "text",
                 "text": "{sources.emptyText}",
-                "height": null,
                 "class": "setting-hint",
                 "when": "sources.empty"
               }
-            ]
+            ],
+            "class": "gap12-pad0-16-24-16-items-stretch"
           }
-        ]
+        ],
+        "class": "grow1"
       }
     ],
-    "fill": true
+    "fill": true,
+    "class": "gap16-items-stretch"
   },
   "progress_wide": {
     "type": "stack",
@@ -4600,10 +4339,7 @@
         "children": [
           {
             "type": "row",
-            "class": "btn-primary",
-            "padding": "0 18",
-            "justify": "center",
-            "gap": 6,
+            "class": "btn-primary gap6-pad0-18-justify-center",
             "action": {
               "name": "play",
               "args": {

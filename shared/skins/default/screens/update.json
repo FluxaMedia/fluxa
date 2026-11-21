@@ -10,54 +10,43 @@
         "args": {
           "op": "later"
         }
-      },
-      "height": null
+      }
     },
     {
       "type": "column",
       "children": [
         {
           "type": "column",
-          "class": "menu-panel",
+          "class": "menu-panel gap12-pad20-items-stretch",
           "width": "{const.dialogWidth}",
-          "padding": 20,
-          "gap": 12,
-          "align": "stretch",
           "children": [
             {
               "type": "row",
-              "gap": 6,
               "children": [
                 {
                   "type": "text",
                   "i18n": "update.popup_title",
-                  "style": "subtitle",
-                  "height": null
+                  "style": "subtitle"
                 },
                 {
                   "type": "text",
                   "text": "v{update.version}",
-                  "style": "subtitle",
-                  "height": null
+                  "style": "subtitle"
                 }
               ],
-              "height": null
+              "class": "gap6"
             },
             {
               "type": "text",
               "i18n": "update.popup_body",
-              "style": "meta muted",
-              "height": null
+              "style": "meta muted"
             },
             {
               "type": "row",
-              "gap": 8,
               "children": [
                 {
                   "type": "row",
-                  "class": "btn-secondary",
-                  "justify": "center",
-                  "grow": 1,
+                  "class": "btn-secondary justify-center-grow1",
                   "action": {
                     "name": "update",
                     "args": {
@@ -68,17 +57,13 @@
                     {
                       "type": "text",
                       "i18n": "update.download_only",
-                      "class": "btn-label",
-                      "height": null
+                      "class": "btn-label"
                     }
-                  ],
-                  "height": null
+                  ]
                 },
                 {
                   "type": "row",
-                  "class": "btn-primary",
-                  "justify": "center",
-                  "grow": 1,
+                  "class": "btn-primary justify-center-grow1",
                   "action": {
                     "name": "update",
                     "args": {
@@ -89,17 +74,14 @@
                     {
                       "type": "text",
                       "i18n": "update.download_install",
-                      "class": "btn-label",
-                      "height": null
+                      "class": "btn-label"
                     }
-                  ],
-                  "height": null
+                  ]
                 }
               ],
-              "height": null
+              "class": "gap8"
             }
-          ],
-          "height": null
+          ]
         }
       ],
       "class": "column-w100vw-h100vh-items-center-justify-center"

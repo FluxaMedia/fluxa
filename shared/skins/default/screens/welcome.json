@@ -1,15 +1,9 @@
 {
   "type": "column",
-  "class": "screen",
-  "align": "center",
-  "justify": "center",
+  "class": "screen w100vw-h100vh-items-center-justify-center",
   "children": [
     {
       "type": "column",
-      "width": 440,
-      "padding": "36 36 32",
-      "gap": 0,
-      "align": "stretch",
       "children": [
         {
           "type": "row",
@@ -129,9 +123,7 @@
         },
         {
           "type": "row",
-          "class": "btn-primary",
-          "padding": "0 28",
-          "justify": "center",
+          "class": "btn-primary pad0-28-justify-center",
           "when": "!welcome.busy",
           "action": {
             "name": "welcome",
@@ -149,10 +141,7 @@
         },
         {
           "type": "row",
-          "class": "btn-secondary",
-          "padding": "0 28",
-          "justify": "center",
-          "gap": 10,
+          "class": "btn-secondary gap10-pad0-28-justify-center",
           "when": "welcome.busy",
           "children": [
             {
@@ -178,8 +167,7 @@
           "children": [
             {
               "type": "row",
-              "class": "divider",
-              "grow": 1,
+              "class": "divider grow1",
               "children": []
             },
             {
@@ -189,8 +177,7 @@
             },
             {
               "type": "row",
-              "class": "divider",
-              "grow": 1,
+              "class": "divider grow1",
               "children": []
             }
           ],
@@ -202,9 +189,7 @@
         },
         {
           "type": "row",
-          "class": "btn-secondary",
-          "padding": "0 28",
-          "justify": "center",
+          "class": "btn-secondary pad0-28-justify-center",
           "action": {
             "name": "welcome",
             "args": {
@@ -221,19 +206,13 @@
         }
       ],
       "when": "!welcome.pairing",
-      "class": "only-desktop"
+      "class": "only-desktop w440-gap0-pad36-36-32-items-stretch"
     },
     {
       "type": "row",
-      "padding": "40 48",
-      "gap": 48,
-      "align": "center",
       "children": [
         {
           "type": "column",
-          "gap": 0,
-          "align": "stretch",
-          "width": 280,
           "children": [
             {
               "type": "row",
@@ -267,7 +246,7 @@
             },
             {
               "type": "spacer",
-              "height": 4
+              "class": "h4"
             },
             {
               "type": "row",
@@ -280,13 +259,11 @@
               ],
               "class": "row-justify-center"
             }
-          ]
+          ],
+          "class": "w280-gap0-items-stretch"
         },
         {
           "type": "column",
-          "gap": 0,
-          "align": "stretch",
-          "width": 440,
           "children": [
             {
               "type": "row",
@@ -323,7 +300,7 @@
             },
             {
               "type": "spacer",
-              "height": 10
+              "class": "h10"
             },
             {
               "type": "text",
@@ -335,7 +312,7 @@
             },
             {
               "type": "spacer",
-              "height": 10
+              "class": "h10"
             },
             {
               "type": "text",
@@ -370,9 +347,7 @@
             },
             {
               "type": "row",
-              "class": "btn-secondary",
-              "padding": "0 28",
-              "justify": "center",
+              "class": "btn-secondary pad0-28-justify-center",
               "action": {
                 "name": "welcome",
                 "args": {
@@ -387,17 +362,17 @@
                 }
               ]
             }
-          ]
+          ],
+          "class": "w440-gap0-items-stretch"
         }
       ],
-      "class": "only-tv"
+      "class": "only-tv gap48-pad40-48-items-center"
     },
     {
       "type": "scroll",
       "props": {
         "axis": "y"
       },
-      "width": "100vw",
       "children": [
         {
           "type": "column",
@@ -445,7 +420,7 @@
             },
             {
               "type": "spacer",
-              "height": 32
+              "class": "h32"
             },
             {
               "type": "row",
@@ -515,9 +490,7 @@
             },
             {
               "type": "row",
-              "class": "btn-primary",
-              "padding": "0 28",
-              "justify": "center",
+              "class": "btn-primary pad0-28-justify-center",
               "when": "!welcome.busy",
               "action": {
                 "name": "welcome",
@@ -535,10 +508,7 @@
             },
             {
               "type": "row",
-              "class": "btn-secondary",
-              "padding": "0 28",
-              "justify": "center",
-              "gap": 10,
+              "class": "btn-secondary gap10-pad0-28-justify-center",
               "when": "welcome.busy",
               "children": [
                 {
@@ -564,8 +534,7 @@
               "children": [
                 {
                   "type": "row",
-                  "class": "divider",
-                  "grow": 1,
+                  "class": "divider grow1",
                   "children": []
                 },
                 {
@@ -575,8 +544,7 @@
                 },
                 {
                   "type": "row",
-                  "class": "divider",
-                  "grow": 1,
+                  "class": "divider grow1",
                   "children": []
                 }
               ],
@@ -588,9 +556,7 @@
             },
             {
               "type": "row",
-              "class": "btn-secondary",
-              "padding": "0 28",
-              "justify": "center",
+              "class": "btn-secondary pad0-28-justify-center",
               "action": {
                 "name": "welcome",
                 "args": {
@@ -609,11 +575,8 @@
           "class": "welcome-mobile"
         }
       ],
-      "height": "100vh",
       "when": "!welcome.pairing",
-      "class": "only-mobile"
+      "class": "only-mobile w100vw-h100vh"
     }
-  ],
-  "height": "100vh",
-  "width": "100vw"
+  ]
 }

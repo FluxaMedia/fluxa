@@ -17,23 +17,18 @@
       "children": [
         {
           "type": "column",
-          "class": "menu-panel",
+          "class": "menu-panel gap12-pad20-items-stretch",
           "width": "{const.dialogWidth}",
-          "padding": 20,
-          "gap": 12,
-          "align": "stretch",
           "when": "dialog.kind == \"report\"",
           "children": [
             {
               "type": "text",
               "text": "{dialog.title}",
-              "style": "subtitle",
-              "height": null
+              "style": "subtitle"
             },
             {
               "type": "text",
               "text": "{dialog.description}",
-              "height": null,
               "props": {
                 "lines": 3
               },
@@ -62,18 +57,14 @@
             {
               "type": "text",
               "text": "{dialog.counter}",
-              "style": "meta muted",
-              "height": null
+              "style": "meta muted"
             },
             {
               "type": "row",
               "children": [
                 {
                   "type": "row",
-                  "class": "btn-secondary",
-                  "grow": 1,
-                  "height": 40,
-                  "justify": "center",
+                  "class": "btn-secondary h40-justify-center-grow1",
                   "action": {
                     "name": "node",
                     "args": {
@@ -85,17 +76,13 @@
                     {
                       "type": "text",
                       "class": "btn-label",
-                      "text": "{dialog.cancel}",
-                      "height": null
+                      "text": "{dialog.cancel}"
                     }
                   ]
                 },
                 {
                   "type": "row",
-                  "class": "btn-primary",
-                  "grow": 1,
-                  "height": 40,
-                  "justify": "center",
+                  "class": "btn-primary h40-justify-center-grow1",
                   "action": {
                     "name": "node",
                     "args": {
@@ -107,18 +94,14 @@
                     {
                       "type": "text",
                       "class": "btn-label",
-                      "text": "{dialog.send}",
-                      "height": null
+                      "text": "{dialog.send}"
                     }
                   ],
                   "when": "dialog.ready"
                 },
                 {
                   "type": "row",
-                  "class": "btn-secondary",
-                  "grow": 1,
-                  "height": 40,
-                  "justify": "center",
+                  "class": "btn-secondary h40-justify-center-grow1",
                   "action": {
                     "name": "node",
                     "args": {
@@ -130,8 +113,7 @@
                     {
                       "type": "text",
                       "class": "btn-label",
-                      "text": "{dialog.send}",
-                      "height": null
+                      "text": "{dialog.send}"
                     }
                   ],
                   "when": "!dialog.ready"
@@ -143,36 +125,29 @@
         },
         {
           "type": "column",
-          "class": "menu-panel",
+          "class": "menu-panel gap12-pad20-items-stretch",
           "width": "{const.dialogWidth}",
-          "padding": 20,
-          "gap": 12,
-          "align": "stretch",
           "when": "dialog.kind == \"addon\"",
           "children": [
             {
               "type": "text",
               "text": "{dialog.title}",
-              "style": "subtitle",
-              "height": null
+              "style": "subtitle"
             },
             {
               "type": "text",
               "text": "{dialog.urlLabel}",
-              "style": "meta muted",
-              "height": null
+              "style": "meta muted"
             },
             {
               "type": "text",
               "text": "{dialog.url}",
-              "style": "body",
-              "height": null
+              "style": "body"
             },
             {
               "type": "text",
               "text": "{dialog.nameLabel}",
-              "style": "meta muted",
-              "height": null
+              "style": "meta muted"
             },
             {
               "type": "input",
@@ -187,7 +162,6 @@
             {
               "type": "text",
               "text": "{dialog.hint}",
-              "height": null,
               "props": {
                 "lines": 3
               },
@@ -198,10 +172,7 @@
               "children": [
                 {
                   "type": "row",
-                  "class": "btn-secondary",
-                  "grow": 1,
-                  "height": 40,
-                  "justify": "center",
+                  "class": "btn-secondary h40-justify-center-grow1",
                   "action": {
                     "name": "node",
                     "args": {
@@ -213,17 +184,13 @@
                     {
                       "type": "text",
                       "class": "btn-label",
-                      "text": "{dialog.cancel}",
-                      "height": null
+                      "text": "{dialog.cancel}"
                     }
                   ]
                 },
                 {
                   "type": "row",
-                  "class": "btn-primary",
-                  "grow": 1,
-                  "height": 40,
-                  "justify": "center",
+                  "class": "btn-primary h40-justify-center-grow1",
                   "action": {
                     "name": "node",
                     "args": {
@@ -235,8 +202,7 @@
                     {
                       "type": "text",
                       "class": "btn-label",
-                      "text": "{dialog.save}",
-                      "height": null
+                      "text": "{dialog.save}"
                     }
                   ]
                 }

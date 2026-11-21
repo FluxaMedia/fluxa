@@ -3,15 +3,10 @@
   "children": [
     {
       "type": "column",
-      "class": "screen only-desktop-tv",
-      "gap": 28,
-      "align": "center",
+      "class": "screen only-desktop-tv w100vw-h100vh-gap28-items-center-justify-center",
       "children": [
         {
           "type": "row",
-          "justify": "center",
-          "gap": 12,
-          "align": "center",
           "children": [
             {
               "type": "text",
@@ -36,7 +31,8 @@
                 }
               }
             }
-          ]
+          ],
+          "class": "gap12-items-center-justify-center"
         },
         {
           "type": "column",
@@ -81,9 +77,7 @@
           "children": [
             {
               "type": "row",
-              "class": "btn-secondary",
-              "padding": "0 28",
-              "justify": "center",
+              "class": "btn-secondary pad0-28-justify-center",
               "children": [
                 {
                   "type": "text",
@@ -102,22 +96,14 @@
           "class": "row-justify-center"
         }
       ],
-      "height": "100vh",
-      "justify": "center",
-      "when": "profiles.isSelect",
-      "width": "100vw"
+      "when": "profiles.isSelect"
     },
     {
       "type": "column",
-      "class": "screen only-mobile",
-      "gap": 28,
-      "align": "center",
+      "class": "screen only-mobile w100vw-h100vh-gap28-pad72-0-0-0-items-center",
       "children": [
         {
           "type": "row",
-          "justify": "center",
-          "gap": 12,
-          "align": "center",
           "children": [
             {
               "type": "text",
@@ -142,7 +128,8 @@
                 }
               }
             }
-          ]
+          ],
+          "class": "gap12-items-center-justify-center"
         },
         {
           "type": "column",
@@ -187,9 +174,7 @@
           "children": [
             {
               "type": "row",
-              "class": "btn-secondary",
-              "padding": "0 28",
-              "justify": "center",
+              "class": "btn-secondary pad0-28-justify-center",
               "children": [
                 {
                   "type": "text",
@@ -208,20 +193,12 @@
           "class": "row-justify-center"
         }
       ],
-      "height": "100vh",
-      "padding": "72 0 0 0",
-      "when": "profiles.isSelect",
-      "width": "100vw"
+      "when": "profiles.isSelect"
     },
     {
       "type": "column",
       "when": "profiles.isForm",
-      "width": "100vw",
-      "height": "100vh",
-      "class": "screen",
-      "align": "center",
-      "padding": "48 0 0 0",
-      "gap": 14,
+      "class": "screen w100vw-h100vh-gap14-pad48-0-0-0-items-center",
       "children": [
         {
           "type": "column",
@@ -259,9 +236,6 @@
             },
             {
               "type": "row",
-              "align": "center",
-              "gap": 14,
-              "padding": "8 0",
               "children": [
                 {
                   "type": "row",
@@ -292,9 +266,8 @@
                 },
                 {
                   "type": "column",
-                  "grow": 1,
                   "children": [],
-                  "class": "only-mobile"
+                  "class": "only-mobile grow1"
                 },
                 {
                   "type": "text",
@@ -304,9 +277,7 @@
                 },
                 {
                   "type": "row",
-                  "class": "btn-secondary",
-                  "justify": "center",
-                  "padding": "0 24",
+                  "class": "btn-secondary pad0-24-justify-center",
                   "action": {
                     "name": "profiles",
                     "args": {
@@ -321,7 +292,8 @@
                     }
                   ]
                 }
-              ]
+              ],
+              "class": "gap14-pad8-0-items-center"
             },
             {
               "type": "text",
@@ -406,8 +378,6 @@
             {
               "type": "column",
               "when": "profiles.form.shared",
-              "gap": 4,
-              "align": "stretch",
               "children": [
                 {
                   "type": "text",
@@ -416,9 +386,6 @@
                 },
                 {
                   "type": "row",
-                  "align": "center",
-                  "gap": 12,
-                  "padding": "6 0",
                   "children": [
                     {
                       "type": "text",
@@ -427,11 +394,7 @@
                     },
                     {
                       "type": "row",
-                      "class": "switch",
-                      "width": 46,
-                      "height": 28,
-                      "padding": "3 3 3 3",
-                      "align": "center",
+                      "class": "switch w46-h28-pad3-3-3-3-items-center",
                       "props": {
                         "selected": "profiles.form.addons"
                       },
@@ -449,9 +412,7 @@
                         },
                         {
                           "type": "column",
-                          "class": "knob",
-                          "width": 22,
-                          "height": 22
+                          "class": "knob w22-h22"
                         },
                         {
                           "type": "spacer",
@@ -460,13 +421,11 @@
                         }
                       ]
                     }
-                  ]
+                  ],
+                  "class": "gap12-pad6-0-items-center"
                 },
                 {
                   "type": "row",
-                  "align": "center",
-                  "gap": 12,
-                  "padding": "6 0",
                   "children": [
                     {
                       "type": "text",
@@ -475,11 +434,7 @@
                     },
                     {
                       "type": "row",
-                      "class": "switch",
-                      "width": 46,
-                      "height": 28,
-                      "padding": "3 3 3 3",
-                      "align": "center",
+                      "class": "switch w46-h28-pad3-3-3-3-items-center",
                       "props": {
                         "selected": "profiles.form.plugins"
                       },
@@ -497,9 +452,7 @@
                         },
                         {
                           "type": "column",
-                          "class": "knob",
-                          "width": 22,
-                          "height": 22
+                          "class": "knob w22-h22"
                         },
                         {
                           "type": "spacer",
@@ -508,20 +461,18 @@
                         }
                       ]
                     }
-                  ]
+                  ],
+                  "class": "gap12-pad6-0-items-center"
                 }
-              ]
+              ],
+              "class": "gap4-items-stretch"
             },
             {
               "type": "row",
-              "gap": 8,
-              "padding": "12 0 0 0",
               "children": [
                 {
                   "type": "row",
-                  "class": "btn-secondary",
-                  "justify": "center",
-                  "padding": "0 24",
+                  "class": "btn-secondary pad0-24-justify-center-grow1",
                   "action": {
                     "name": "profiles",
                     "args": {
@@ -534,14 +485,11 @@
                       "class": "btn-label",
                       "i18n": "common.cancel"
                     }
-                  ],
-                  "grow": 1
+                  ]
                 },
                 {
                   "type": "row",
-                  "class": "btn-primary",
-                  "justify": "center",
-                  "grow": 1,
+                  "class": "btn-primary justify-center-grow1",
                   "action": {
                     "name": "profiles",
                     "args": {
@@ -559,9 +507,7 @@
                 },
                 {
                   "type": "row",
-                  "class": "btn-secondary",
-                  "justify": "center",
-                  "grow": 1,
+                  "class": "btn-secondary justify-center-grow1",
                   "when": "!profiles.form.canSave",
                   "children": [
                     {
@@ -572,7 +518,8 @@
                     }
                   ]
                 }
-              ]
+              ],
+              "class": "gap8-pad12-0-0-0"
             }
           ]
         }
@@ -581,12 +528,7 @@
     {
       "type": "column",
       "when": "profiles.isAvatars",
-      "width": "100vw",
-      "height": "100vh",
-      "class": "screen",
-      "align": "center",
-      "gap": 14,
-      "padding": "48 0 0 0",
+      "class": "screen w100vw-h100vh-gap14-pad48-0-0-0-items-center",
       "children": [
         {
           "type": "column",
@@ -700,7 +642,6 @@
                     "props": {
                       "columns": "4"
                     },
-                    "width": "88vw",
                     "children": [
                       {
                         "each": "pack.items",
@@ -733,7 +674,7 @@
                         }
                       }
                     ],
-                    "class": "only-mobile"
+                    "class": "only-mobile w88vw"
                   }
                 ],
                 "class": "column-gap8-items-stretch"
@@ -746,12 +687,7 @@
     {
       "type": "column",
       "when": "profiles.isSettings",
-      "width": "100vw",
-      "height": "100vh",
-      "class": "screen",
-      "align": "center",
-      "gap": 14,
-      "padding": "48 0 0 0",
+      "class": "screen w100vw-h100vh-gap14-pad48-0-0-0-items-center",
       "children": [
         {
           "type": "column",
@@ -812,9 +748,7 @@
               "children": [
                 {
                   "type": "row",
-                  "class": "btn-secondary",
-                  "justify": "center",
-                  "padding": "0 24",
+                  "class": "btn-secondary pad0-24-justify-center-grow1",
                   "action": {
                     "name": "profiles",
                     "args": {
@@ -827,14 +761,11 @@
                       "class": "btn-label",
                       "i18n": "profiles.choose_image"
                     }
-                  ],
-                  "grow": 1
+                  ]
                 },
                 {
                   "type": "row",
-                  "class": "btn-secondary",
-                  "justify": "center",
-                  "padding": "0 24",
+                  "class": "btn-secondary pad0-24-justify-center-grow1",
                   "action": {
                     "name": "profiles",
                     "args": {
@@ -848,8 +779,7 @@
                       "i18n": "profiles.clear_background"
                     }
                   ],
-                  "when": "profiles.settings.hasBackground",
-                  "grow": 1
+                  "when": "profiles.settings.hasBackground"
                 }
               ],
               "class": "row-gap8"
@@ -858,7 +788,7 @@
               "type": "text",
               "i18n": "profiles.avatar_packs",
               "style": "subtitle",
-              "padding": "12 0 0 0"
+              "class": "pad12-0-0-0"
             },
             {
               "type": "text",
@@ -877,9 +807,7 @@
             },
             {
               "type": "row",
-              "class": "btn-primary",
-              "justify": "center",
-              "padding": "0 24",
+              "class": "btn-primary pad0-24-justify-center",
               "action": {
                 "name": "profiles",
                 "args": {
@@ -897,8 +825,7 @@
             },
             {
               "type": "row",
-              "class": "btn-secondary",
-              "justify": "center",
+              "class": "btn-secondary justify-center",
               "when": "!profiles.settings.canAdd",
               "children": [
                 {
@@ -923,7 +850,6 @@
                 "children": [
                   {
                     "type": "column",
-                    "grow": 1,
                     "children": [
                       {
                         "type": "text",
@@ -935,13 +861,12 @@
                         "text": "{pack.count}",
                         "style": "meta muted"
                       }
-                    ]
+                    ],
+                    "class": "grow1"
                   },
                   {
                     "type": "row",
-                    "class": "btn-secondary",
-                    "justify": "center",
-                    "padding": "0 24",
+                    "class": "btn-secondary pad0-24-justify-center",
                     "action": {
                       "name": "profiles",
                       "args": {
@@ -959,9 +884,7 @@
                   },
                   {
                     "type": "row",
-                    "class": "btn-secondary",
-                    "justify": "center",
-                    "padding": "0 24",
+                    "class": "btn-secondary pad0-24-justify-center",
                     "action": {
                       "name": "profiles",
                       "args": {
@@ -998,19 +921,15 @@
             "args": {
               "op": "pin_cancel"
             }
-          },
-          "height": null
+          }
         },
         {
           "type": "column",
           "children": [
             {
               "type": "column",
-              "class": "menu-panel",
+              "class": "menu-panel gap12-pad20-items-stretch",
               "width": "{const.dialogWidth}",
-              "padding": 20,
-              "gap": 12,
-              "align": "stretch",
               "children": [
                 {
                   "type": "row",
@@ -1059,9 +978,7 @@
                   "children": [
                     {
                       "type": "row",
-                      "class": "btn-secondary",
-                      "justify": "center",
-                      "padding": "0 24",
+                      "class": "btn-secondary pad0-24-justify-center-grow1",
                       "action": {
                         "name": "profiles",
                         "args": {
@@ -1074,14 +991,11 @@
                           "class": "btn-label",
                           "i18n": "common.cancel"
                         }
-                      ],
-                      "grow": 1
+                      ]
                     },
                     {
                       "type": "row",
-                      "class": "btn-primary",
-                      "justify": "center",
-                      "padding": "0 24",
+                      "class": "btn-primary pad0-24-justify-center-grow1",
                       "action": {
                         "name": "profiles",
                         "args": {
@@ -1094,8 +1008,7 @@
                           "class": "btn-label",
                           "i18n": "profiles.unlock"
                         }
-                      ],
-                      "grow": 1
+                      ]
                     }
                   ],
                   "class": "row-gap8"
@@ -1121,19 +1034,15 @@
             "args": {
               "op": "confirm_cancel"
             }
-          },
-          "height": null
+          }
         },
         {
           "type": "column",
           "children": [
             {
               "type": "column",
-              "class": "menu-panel",
+              "class": "menu-panel gap12-pad20-items-stretch",
               "width": "{const.dialogWidth}",
-              "padding": 20,
-              "gap": 12,
-              "align": "stretch",
               "children": [
                 {
                   "type": "text",
@@ -1150,9 +1059,7 @@
                   "children": [
                     {
                       "type": "row",
-                      "class": "btn-secondary",
-                      "justify": "center",
-                      "padding": "0 24",
+                      "class": "btn-secondary pad0-24-justify-center-grow1",
                       "action": {
                         "name": "profiles",
                         "args": {
@@ -1165,14 +1072,11 @@
                           "class": "btn-label",
                           "i18n": "common.cancel"
                         }
-                      ],
-                      "grow": 1
+                      ]
                     },
                     {
                       "type": "row",
-                      "class": "btn-primary",
-                      "justify": "center",
-                      "padding": "0 24",
+                      "class": "btn-primary pad0-24-justify-center-grow1",
                       "action": {
                         "name": "profiles",
                         "args": {
@@ -1185,8 +1089,7 @@
                           "class": "btn-label",
                           "i18n": "profiles.delete"
                         }
-                      ],
-                      "grow": 1
+                      ]
                     }
                   ],
                   "class": "row-gap8"

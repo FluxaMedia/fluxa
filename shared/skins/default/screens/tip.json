@@ -7,9 +7,7 @@
   "children": [
     {
       "type": "row",
-      "class": "toast",
-      "align": "center",
-      "padding": "6 10 6 10",
+      "class": "toast pad6-10-6-10-items-center",
       "children": [
         {
           "type": "text",

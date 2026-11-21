@@ -1,8 +1,6 @@
 {
   "type": "column",
-  "class": "screen",
-  "gap": 14,
-  "align": "stretch",
+  "class": "screen gap14-items-stretch",
   "children": [
     {
       "type": "spacer",
@@ -10,13 +8,10 @@
     },
     {
       "type": "page",
-      "gap": 14,
       "children": [
         {
           "type": "row",
           "fill": true,
-          "align": "center",
-          "justify": "space_between",
           "children": [
             {
               "type": "text",
@@ -25,14 +20,13 @@
             },
             {
               "type": "input",
-              "width": 320,
               "props": {
                 "key": "librarySearch",
                 "placeholder": "Filter",
                 "value": "{fields.librarySearch}",
                 "kind": "search"
               },
-              "class": "only-desktop-tv"
+              "class": "only-desktop-tv w320"
             },
             {
               "type": "input",
@@ -45,7 +39,7 @@
               "class": "input-grow1 only-mobile"
             }
           ],
-          "gap": 12
+          "class": "gap12-items-center-justify-space-between"
         },
         {
           "include": "section_tabs"
@@ -148,8 +142,7 @@
             },
             {
               "type": "row",
-              "padding": "8 16",
-              "class": "chip",
+              "class": "chip pad8-16",
               "action": {
                 "name": "downloads",
                 "args": {
@@ -208,10 +201,10 @@
         },
         {
           "type": "spacer",
-          "height": 96,
-          "class": "only-mobile"
+          "class": "only-mobile h96"
         }
-      ]
+      ],
+      "class": "gap14"
     },
     {
       "type": "grid",

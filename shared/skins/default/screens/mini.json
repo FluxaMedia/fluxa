@@ -25,7 +25,6 @@
         },
         {
           "type": "column",
-          "justify": "end",
           "fill": true,
           "children": [
             {
@@ -90,20 +89,19 @@
             },
             {
               "type": "column",
-              "class": "progress-track",
-              "height": 3,
+              "class": "progress-track h3",
               "children": [
                 {
                   "type": "column",
-                  "class": "progress-bar",
-                  "height": 3,
+                  "class": "progress-bar h3",
                   "props": {
                     "span": "{mini.ratio}"
                   }
                 }
               ]
             }
-          ]
+          ],
+          "class": "justify-end"
         }
       ]
     }

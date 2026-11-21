@@ -20,9 +20,8 @@
           "children": [
             {
               "type": "column",
-              "class": "menu-panel",
+              "class": "menu-panel h88vh",
               "width": "{const.modalWidth}",
-              "height": "88vh",
               "children": [
                 {
                   "type": "scroll",
@@ -32,12 +31,9 @@
                   "children": [
                     {
                       "type": "column",
-                      "gap": 16,
-                      "align": "stretch",
                       "children": [
                         {
                           "type": "stack",
-                          "height": 300,
                           "children": [
                             {
                               "type": "image",
@@ -55,10 +51,6 @@
                             {
                               "type": "column",
                               "fill": true,
-                              "padding": 20,
-                              "justify": "end",
-                              "align": "start",
-                              "gap": 8,
                               "children": [
                                 {
                                   "type": "text",
@@ -70,26 +62,21 @@
                                   "text": "{detail.meta}",
                                   "style": "meta muted"
                                 }
-                              ]
+                              ],
+                              "class": "gap8-pad20-items-start-justify-end"
                             }
-                          ]
+                          ],
+                          "class": "h300"
                         },
                         {
                           "type": "column",
-                          "padding": "0 20 20 20",
-                          "gap": 16,
-                          "align": "stretch",
                           "children": [
                             {
                               "type": "row",
                               "children": [
                                 {
                                   "type": "row",
-                                  "class": "btn-primary",
-                                  "justify": "center",
-                                  "gap": 8,
-                                  "padding": "0 20",
-                                  "height": 44,
+                                  "class": "btn-primary h44-gap8-pad0-20-justify-center",
                                   "action": {
                                     "name": "modal",
                                     "args": {
@@ -200,8 +187,7 @@
                                       "as": "ep",
                                       "template": {
                                         "type": "row",
-                                        "class": "panel-row",
-                                        "gap": 12,
+                                        "class": "panel-row gap12",
                                         "action": {
                                           "name": "modal",
                                           "args": {
@@ -213,11 +199,10 @@
                                           {
                                             "type": "image",
                                             "src": "{ep.thumb}",
-                                            "width": 160,
-                                            "height": 90,
                                             "props": {
                                               "fit": "cover"
-                                            }
+                                            },
+                                            "class": "w160-h90"
                                           },
                                           {
                                             "type": "column",
@@ -267,15 +252,12 @@
                                 },
                                 {
                                   "type": "scroll",
-                                  "gap": 12,
                                   "children": [
                                     {
                                       "each": "detail.similar",
                                       "as": "s",
                                       "template": {
                                         "type": "column",
-                                        "gap": 6,
-                                        "width": 140,
                                         "action": {
                                           "name": "modal",
                                           "args": {
@@ -287,11 +269,10 @@
                                           {
                                             "type": "image",
                                             "src": "{s.artworkUrl}",
-                                            "width": 140,
-                                            "height": 210,
                                             "props": {
                                               "fit": "cover"
-                                            }
+                                            },
+                                            "class": "w140-h210"
                                           },
                                           {
                                             "type": "text",
@@ -301,20 +282,24 @@
                                               "lines": 1
                                             }
                                           }
-                                        ]
+                                        ],
+                                        "class": "w140-gap6"
                                       }
                                     }
-                                  ]
+                                  ],
+                                  "class": "gap12"
                                 }
                               ],
                               "class": "column-gap10"
                             }
-                          ]
+                          ],
+                          "class": "gap16-pad0-20-20-20-items-stretch"
                         }
-                      ]
+                      ],
+                      "class": "gap16-items-stretch"
                     }
                   ],
-                  "grow": 1
+                  "class": "grow1"
                 }
               ]
             }

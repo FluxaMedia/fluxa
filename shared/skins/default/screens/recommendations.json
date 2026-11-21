@@ -16,38 +16,28 @@
     },
     {
       "type": "column",
-      "width": "100vw",
-      "height": "100vh",
-      "justify": "end",
-      "align": "end",
-      "padding": "0 64 56 64",
       "children": [
         {
           "type": "column",
-          "width": 560,
-          "gap": 12,
-          "align": "start",
           "children": [
             {
               "type": "image",
               "src": "{recommendations.logo}",
               "when": "recommendations.logo",
-              "height": 96,
               "props": {
                 "fit": "contain"
-              }
+              },
+              "class": "h96"
             },
             {
               "type": "text",
               "text": "{recommendations.title}",
-              "height": null,
               "style": "title",
               "when": "!recommendations.logo"
             },
             {
               "type": "text",
               "text": "{recommendations.eyebrow}",
-              "height": null,
               "style": "meta muted",
               "when": "recommendations.eyebrow"
             },
@@ -56,15 +46,12 @@
               "text": "{recommendations.description}",
               "class": "setting-hint",
               "when": "recommendations.description",
-              "height": null,
               "props": {
                 "lines": 3
               }
             },
             {
               "type": "row",
-              "gap": 6,
-              "align": "center",
               "children": [
                 {
                   "each": "recommendations.dots",
@@ -74,9 +61,7 @@
                     "children": [
                       {
                         "type": "row",
-                        "class": "chip-active",
-                        "width": 10,
-                        "height": 10,
+                        "class": "chip-active w10-h10",
                         "when": "d.active",
                         "action": {
                           "name": "node",
@@ -88,9 +73,7 @@
                       },
                       {
                         "type": "row",
-                        "class": "chip",
-                        "width": 10,
-                        "height": 10,
+                        "class": "chip w10-h10",
                         "when": "!d.active",
                         "action": {
                           "name": "node",
@@ -103,18 +86,15 @@
                     ]
                   }
                 }
-              ]
+              ],
+              "class": "gap6-items-center"
             },
             {
               "type": "row",
-              "gap": 12,
               "children": [
                 {
                   "type": "row",
-                  "class": "btn-primary",
-                  "padding": "0 24",
-                  "height": 44,
-                  "justify": "center",
+                  "class": "btn-primary h44-pad0-24-justify-center",
                   "action": {
                     "name": "node",
                     "args": {
@@ -131,10 +111,7 @@
                 },
                 {
                   "type": "row",
-                  "class": "btn-secondary",
-                  "padding": "0 24",
-                  "height": 44,
-                  "justify": "center",
+                  "class": "btn-secondary h44-pad0-24-justify-center",
                   "action": {
                     "name": "node",
                     "args": {
@@ -149,17 +126,17 @@
                     }
                   ]
                 }
-              ]
+              ],
+              "class": "gap12"
             }
-          ]
+          ],
+          "class": "w560-gap12-items-start"
         }
-      ]
+      ],
+      "class": "w100vw-h100vh-pad0-64-56-64-items-end-justify-end"
     },
     {
       "type": "row",
-      "padding": "24 24 0 24",
-      "justify": "end",
-      "width": "100vw",
       "children": [
         {
           "type": "row",
@@ -181,9 +158,7 @@
           ]
         }
       ],
-      "align": "start",
-      "height": 64,
-      "gap": 0
+      "class": "w100vw-h64-gap0-pad24-24-0-24-items-start-justify-end"
     }
   ],
   "class": "player-black"

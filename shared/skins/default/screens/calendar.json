@@ -1,8 +1,6 @@
 {
   "type": "column",
-  "class": "screen",
-  "gap": 14,
-  "align": "stretch",
+  "class": "screen gap14-items-stretch",
   "children": [
     {
       "type": "spacer",
@@ -10,7 +8,6 @@
     },
     {
       "type": "page",
-      "gap": 14,
       "children": [
         {
           "type": "row",
@@ -78,11 +75,11 @@
           "style": "meta muted",
           "when": "!calendar.valid"
         }
-      ]
+      ],
+      "class": "gap14"
     },
     {
       "type": "grid",
-      "gap": 8,
       "props": {
         "columns": 7
       },
@@ -97,11 +94,11 @@
             "style": "meta muted"
           }
         }
-      ]
+      ],
+      "class": "gap8"
     },
     {
       "type": "grid",
-      "gap": 8,
       "props": {
         "columns": 7
       },
@@ -114,11 +111,11 @@
             "include": "day_cell"
           }
         }
-      ]
+      ],
+      "class": "gap8"
     },
     {
       "type": "page",
-      "gap": 12,
       "when": "len(calendar.selected) > 0",
       "children": [
         {
@@ -126,7 +123,8 @@
           "i18n": "calendar.releases",
           "style": "subtitle"
         }
-      ]
+      ],
+      "class": "gap12"
     },
     {
       "type": "grid",

@@ -21,11 +21,9 @@
           "children": [
             {
               "type": "column",
-              "class": "menu-panel",
+              "class": "menu-panel gap2-items-stretch",
               "width": "{const.menuWidth}",
-              "gap": 2,
               "padding": "{const.menuPadding}",
-              "align": "stretch",
               "children": [
                 {
                   "type": "text",
@@ -41,8 +39,7 @@
                   "as": "item",
                   "template": {
                     "type": "row",
-                    "class": "select-row",
-                    "gap": 10,
+                    "class": "select-row gap10",
                     "props": {
                       "selected": "{item.selected}"
                     },
@@ -86,11 +83,8 @@
           "children": [
             {
               "type": "column",
-              "class": "menu-panel menu-sheet",
-              "width": "100vw",
-              "gap": 2,
+              "class": "menu-panel menu-sheet w100vw-gap2-items-stretch",
               "padding": "{const.menuPadding}",
-              "align": "stretch",
               "children": [
                 {
                   "type": "text",
@@ -106,8 +100,7 @@
                   "as": "item",
                   "template": {
                     "type": "row",
-                    "class": "select-row",
-                    "gap": 10,
+                    "class": "select-row gap10",
                     "props": {
                       "selected": "{item.selected}"
                     },
@@ -146,11 +139,9 @@
           "children": [
             {
               "type": "column",
-              "class": "menu-panel",
+              "class": "menu-panel gap2-items-stretch",
               "width": "{const.menuWidth}",
-              "gap": 2,
               "padding": "{const.menuPadding}",
-              "align": "stretch",
               "children": [
                 {
                   "type": "text",
@@ -166,8 +157,7 @@
                   "as": "item",
                   "template": {
                     "type": "row",
-                    "class": "select-row",
-                    "gap": 10,
+                    "class": "select-row gap10",
                     "props": {
                       "selected": "{item.selected}"
                     },

@@ -10,19 +10,15 @@
         "args": {
           "op": "close"
         }
-      },
-      "height": null
+      }
     },
     {
       "type": "column",
       "children": [
         {
           "type": "column",
-          "class": "menu-panel",
+          "class": "menu-panel gap12-pad20-items-stretch",
           "width": "{const.watchWidth}",
-          "padding": 20,
-          "gap": 12,
-          "align": "stretch",
           "children": [
             {
               "include": "watch_body",

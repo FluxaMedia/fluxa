@@ -1,8 +1,6 @@
 {
   "type": "column",
-  "class": "screen",
-  "gap": 16,
-  "align": "stretch",
+  "class": "screen gap16-items-stretch",
   "children": [
     {
       "type": "spacer",
@@ -10,12 +8,9 @@
     },
     {
       "type": "page",
-      "gap": 14,
       "children": [
         {
           "type": "row",
-          "gap": 14,
-          "align": "center",
           "children": [
             {
               "type": "row",
@@ -38,23 +33,22 @@
             {
               "type": "image",
               "src": "{folder.cover}",
-              "width": 56,
-              "height": 56,
               "when": "folder.cover",
               "props": {
                 "fit": "cover"
-              }
+              },
+              "class": "w56-h56"
             },
             {
               "type": "text",
               "text": "{folder.title}",
               "style": "title"
             }
-          ]
+          ],
+          "class": "gap14-items-center"
         },
         {
           "type": "scroll",
-          "gap": 8,
           "when": "folder.showTabs",
           "children": [
             {
@@ -74,7 +68,8 @@
                 ]
               }
             }
-          ]
+          ],
+          "class": "gap8"
         },
         {
           "type": "text",
@@ -88,7 +83,8 @@
           "style": "meta muted",
           "when": "folder.empty"
         }
-      ]
+      ],
+      "class": "gap14"
     },
     {
       "type": "grid",
@@ -105,7 +101,6 @@
     },
     {
       "type": "column",
-      "gap": 16,
       "when": "!folder.grid",
       "children": [
         {
@@ -115,7 +110,8 @@
             "include": "shelf"
           }
         }
-      ]
+      ],
+      "class": "gap16"
     },
     {
       "type": "fixed",

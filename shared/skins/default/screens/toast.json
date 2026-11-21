@@ -3,16 +3,10 @@
   "children": [
     {
       "type": "column",
-      "align": "center",
-      "padding": "48 0 0 0",
-      "width": "100vw",
-      "height": "100vh",
       "children": [
         {
           "type": "row",
-          "class": "toast",
-          "align": "center",
-          "padding": "10 16 10 16",
+          "class": "toast pad10-16-10-16-items-center",
           "children": [
             {
               "type": "text",
@@ -25,16 +19,12 @@
           ]
         }
       ],
-      "when": "!toast.gauge"
+      "when": "!toast.gauge",
+      "class": "w100vw-h100vh-pad48-0-0-0-items-center"
     },
     {
       "type": "row",
       "when": "toast.gauge",
-      "align": "center",
-      "padding": "0 24 0 24",
-      "width": "100vw",
-      "height": "100vh",
-      "gap": 14,
       "children": [
         {
           "type": "row",
@@ -64,7 +54,8 @@
           "when": "toast.left",
           "fill": true
         }
-      ]
+      ],
+      "class": "w100vw-h100vh-gap14-pad0-24-0-24-items-center"
     }
   ],
   "class": "stack-w100vw-h100vh"

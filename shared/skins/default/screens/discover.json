@@ -1,8 +1,6 @@
 {
   "type": "column",
-  "class": "screen",
-  "gap": 16,
-  "align": "stretch",
+  "class": "screen gap16-items-stretch",
   "children": [
     {
       "type": "spacer",
@@ -10,12 +8,9 @@
     },
     {
       "type": "page",
-      "gap": 12,
       "children": [
         {
           "type": "row",
-          "align": "center",
-          "justify": "space_between",
           "children": [
             {
               "type": "text",
@@ -24,16 +19,16 @@
             },
             {
               "type": "input",
-              "width": 320,
               "props": {
                 "key": "discoverSearch",
                 "placeholder": "Search",
                 "value": "{fields.discoverSearch}",
                 "kind": "search"
               },
-              "class": "only-desktop-tv"
+              "class": "only-desktop-tv w320"
             }
-          ]
+          ],
+          "class": "items-center-justify-space-between"
         },
         {
           "type": "input",
@@ -89,7 +84,8 @@
           },
           "when": "len(discover.results) == 0"
         }
-      ]
+      ],
+      "class": "gap12"
     },
     {
       "type": "grid",

@@ -17,9 +17,8 @@
       "children": [
         {
           "type": "column",
-          "class": "menu-panel",
+          "class": "menu-panel h88vh",
           "width": "{const.modalWidth}",
-          "height": "88vh",
           "children": [
             {
               "include": "sources_body"

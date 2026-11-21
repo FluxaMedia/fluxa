@@ -1,13 +1,9 @@
 {
   "type": "column",
-  "class": "screen",
-  "align": "stretch",
+  "class": "screen items-stretch",
   "children": [
     {
       "type": "column",
-      "gap": 18,
-      "padding": "40 16 96 16",
-      "align": "stretch",
       "children": [
         {
           "type": "row",
@@ -39,14 +35,11 @@
         }
       ],
       "when": "prefs.open",
-      "class": "only-mobile"
+      "class": "only-mobile gap18-pad40-16-96-16-items-stretch"
     },
     {
       "type": "column",
       "when": "!prefs.open",
-      "gap": 8,
-      "padding": "48 16 96 16",
-      "align": "stretch",
       "children": [
         {
           "type": "column",
@@ -55,8 +48,7 @@
               "type": "text",
               "i18n": "nav.settings",
               "style": "title",
-              "height": null,
-              "padding": "8 0"
+              "class": "pad8-0"
             },
             {
               "type": "input",
@@ -78,14 +70,11 @@
                     "when": "cat.hasHeading",
                     "text": "{cat.heading}",
                     "style": "meta muted",
-                    "height": null,
-                    "padding": "12 8 2 8"
+                    "class": "pad12-8-2-8"
                   },
                   {
                     "type": "row",
-                    "class": "setting-row",
-                    "padding": "14 16",
-                    "gap": 12,
+                    "class": "setting-row gap12-pad14-16",
                     "action": {
                       "name": "choose",
                       "args": {
@@ -119,13 +108,10 @@
           "class": "column-gap6-items-stretch"
         }
       ],
-      "class": "only-mobile"
+      "class": "only-mobile gap8-pad48-16-96-16-items-stretch"
     },
     {
       "type": "row",
-      "justify": "start",
-      "align": "stretch",
-      "gap": 0,
       "children": [
         {
           "type": "column",
@@ -159,8 +145,7 @@
           "class": "settings-page"
         }
       ],
-      "height": "100vh",
-      "class": "only-desktop-tv"
+      "class": "only-desktop-tv h100vh-gap0-items-stretch-justify-start"
     },
     {
       "type": "fixed",
