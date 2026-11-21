@@ -48,7 +48,11 @@ pub(super) fn draw_seek_preview(
             Pos2::new(x - width * 0.5, bottom - width * 9.0 / 16.0),
             Pos2::new(x + width * 0.5, bottom),
         );
-        painter.rect_filled(frame.expand(1.0), 6.0, Color32::from_black_alpha(200));
+        painter.rect_filled(
+            frame.expand(1.0),
+            crate::vars::px("player-thumb-radius"),
+            Color32::from_black_alpha(crate::vars::byte("player-thumb-backdrop")),
+        );
         painter.image(texture, frame, full_uv(), Color32::WHITE);
     }
 }

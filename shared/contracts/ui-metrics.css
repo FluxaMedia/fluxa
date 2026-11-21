@@ -208,6 +208,12 @@
   --sheet-max-width: 560px;
   --drawer-max-width: 420px;
   --scrim-alpha: 180;
+  --player-video-radius: 18px;
+  --player-watch-inset: 40px;
+  --player-thumb-radius: 6px;
+  --player-thumb-backdrop: 200;
+  --player-cue-lift: 150px;
+  --player-cue-lift-hidden: 56px;
   --overlay-panel-alpha: 242;
   --shadow-alpha: 120;
   --shadow-blur: 32px;

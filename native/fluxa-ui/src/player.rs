@@ -255,13 +255,16 @@ pub fn draw_player_with(
             context
                 .layer_painter(crate::gfx::LayerId::background())
                 .rect_filled(left, 0.0, surface);
-            (left.shrink(40.0), Some(right))
+            (
+                left.shrink(crate::vars::px("player-watch-inset")),
+                Some(right),
+            )
         }
         None => (rect, None),
     };
     match player.video {
         Some(_) if player.video_hole && side.is_some() => {
-            painter.rect_filled(rect, 18.0, Color32::BLACK);
+            painter.rect_filled(rect, crate::vars::px("player-video-radius"), Color32::BLACK);
             crate::components::dom_video(&painter, fit_16_9(rect));
         }
         Some(_) if player.video_hole => {
@@ -269,7 +272,7 @@ pub fn draw_player_with(
             crate::components::dom_video(&painter, rect);
         }
         Some(texture) if side.is_some() => {
-            painter.rect_filled(rect, 18.0, Color32::BLACK);
+            painter.rect_filled(rect, crate::vars::px("player-video-radius"), Color32::BLACK);
             painter.image(texture, fit_16_9(rect), full_uv(), Color32::WHITE);
         }
         Some(texture) => {
@@ -282,7 +285,11 @@ pub fn draw_player_with(
         return layout;
     }
     if let Some(text) = &player.subtitle {
-        let lift = if player.controls_visible { 150.0 } else { 56.0 };
+        let lift = crate::vars::px(if player.controls_visible {
+            "player-cue-lift"
+        } else {
+            "player-cue-lift-hidden"
+        });
         paint_subtitle_cue(&painter, rect, text, lift);
     }
     if player.controls_visible
