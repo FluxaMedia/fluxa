@@ -82,7 +82,7 @@ impl Selector {
 }
 
 impl Query {
-    fn parse(key: &str) -> Result<Self, String> {
+    pub(super) fn parse(key: &str) -> Result<Self, String> {
         let body = key.trim_start_matches('@');
         if let Some(width) = body.strip_prefix("min-width:") {
             return Ok(Query::MinWidth(number(key, width)?));

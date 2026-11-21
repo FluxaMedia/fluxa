@@ -1265,3 +1265,47 @@ fn season_opens_on_the_one_being_resumed() {
     detail.selected_season = Some(2);
     assert_eq!(detail.current_season(), 2);
 }
+
+#[test]
+#[ignore]
+fn dump_metrics_matrix() {
+    let cases: Vec<(&str, u32, u32, UiFormFactor)> = vec![
+        ("d500", 500, 800, UiFormFactor::Desktop),
+        ("d599", 599, 800, UiFormFactor::Desktop),
+        ("d600", 600, 800, UiFormFactor::Desktop),
+        ("d700", 700, 800, UiFormFactor::Desktop),
+        ("d839", 839, 800, UiFormFactor::Desktop),
+        ("d840", 840, 800, UiFormFactor::Desktop),
+        ("d1000", 1000, 800, UiFormFactor::Desktop),
+        ("d1280", 1280, 800, UiFormFactor::Desktop),
+        ("d1920", 1920, 1080, UiFormFactor::Desktop),
+        ("d2560", 2560, 1440, UiFormFactor::Desktop),
+        ("m390", 390, 844, UiFormFactor::Mobile),
+        ("m844", 844, 390, UiFormFactor::Mobile),
+        ("m768", 768, 1024, UiFormFactor::Mobile),
+        ("t960", 960, 540, UiFormFactor::Tv),
+        ("t1280", 1280, 720, UiFormFactor::Tv),
+    ];
+    let dir = std::env::var("DUMP_DIR").unwrap();
+    for (name, w, h, form) in cases {
+        let metrics = UiMetrics::for_viewport(Viewport::new(w, h, form));
+        let text = format!("{metrics:#?}");
+        std::fs::write(format!("{dir}/{name}.txt"), &text).unwrap();
+        let mut checked = 0;
+        for line in text.lines() {
+            let Some((field, value)) = line.trim().trim_end_matches(',').split_once(": ") else {
+                continue;
+            };
+            let Ok(expected) = value.parse::<f32>() else {
+                continue;
+            };
+            let var = field.replace('_', "-");
+            if let Some(raw) = crate::stylesheet::vars::raw(&var) {
+                let got: f32 = raw.trim_end_matches("px").parse().unwrap();
+                assert!((got - expected).abs() < 1e-4, "{name} {field}: {got} vs {expected}");
+                checked += 1;
+            }
+        }
+        assert!(checked > 100, "{name}: only {checked} checked");
+    }
+}

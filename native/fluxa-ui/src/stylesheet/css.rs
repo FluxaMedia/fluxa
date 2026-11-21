@@ -42,6 +42,34 @@ fn property_value(name: &str, value: String) -> String {
     }
 }
 
+pub(super) type RootLayer = (Vec<String>, Vec<(String, String)>);
+
+pub(super) fn root_layers(text: &str) -> Result<Vec<RootLayer>, String> {
+    let text = strip_comments(text);
+    let mut layers = Vec::new();
+    for (prelude, body) in blocks(&text)? {
+        let prelude = prelude.trim();
+        if prelude == ":root" {
+            layers.push((Vec::new(), custom_properties(&body)?));
+        } else if prelude.starts_with("@media") {
+            let keys = media_keys(prelude.trim_start_matches('@'))?;
+            for (inner, inner_body) in blocks(&body)? {
+                if inner.trim() == ":root" {
+                    layers.push((keys.clone(), custom_properties(&inner_body)?));
+                }
+            }
+        }
+    }
+    Ok(layers)
+}
+
+fn custom_properties(body: &str) -> Result<Vec<(String, String)>, String> {
+    Ok(declarations(body)?
+        .into_iter()
+        .filter_map(|(name, value)| Some((name.strip_prefix("--")?.to_owned(), value)))
+        .collect())
+}
+
 pub(super) fn to_value(text: &str) -> Result<Value, String> {
     let text = strip_comments(text);
     let mut vars = HashMap::new();

@@ -4,6 +4,7 @@ use std::sync::{Arc, Mutex, RwLock};
 
 mod css;
 mod parse;
+pub(crate) mod vars;
 
 const DEFAULT_SHEET: &str = include_str!("../../../shared/contracts/ui-styles.css");
 
@@ -420,6 +421,7 @@ pub(crate) fn sheet() -> Arc<Sheet> {
 }
 
 pub fn reload_styles(text: &str) -> Result<(), String> {
+    vars::load(text)?;
     let (parsed, motion, curve) = Sheet::parse_with_motion(text)?;
     crate::motion::set_styled(motion);
     if let Some(points) = curve {
