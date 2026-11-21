@@ -126,3 +126,60 @@ pub(crate) fn apply(state: &mut RendererState) {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn sync_shares_route_and_drops_secret_settings() {
+        let _serial = skins::SCRIPT_SERIAL
+            .lock()
+            .unwrap_or_else(|held| held.into_inner());
+        let host = FluxaHost::new(1.0, None);
+        host.peek(|state| {
+            state.settings.values = json!({"theme": "dark", "traktApiKey": "x", "authToken": "y"});
+            state.route = Route::Library;
+            sync(state);
+        });
+        let app = skins::script_app();
+        assert_eq!(app["navigation"]["route"], "library");
+        assert_eq!(app["settings"]["theme"], "dark");
+        assert!(app["settings"].get("traktApiKey").is_none());
+        assert!(app["settings"].get("authToken").is_none());
+        assert_eq!(app["player"], Value::Null);
+    }
+
+    #[test]
+    fn requests_become_native_actions_and_unknown_ones_are_dropped() {
+        let _serial = skins::SCRIPT_SERIAL
+            .lock()
+            .unwrap_or_else(|held| held.into_inner());
+        let host = FluxaHost::new(1.0, None);
+        skins::script_requests();
+        for (name, args) in [
+            ("navigate", json!({"screen": "library"})),
+            ("search", json!({"query": "dune"})),
+            ("bogus", json!({})),
+            ("player.pause", json!({})),
+            ("player.volume", json!({"value": 10})),
+        ] {
+            skins::script_enqueue(skins::ScriptRequest {
+                name: name.to_owned(),
+                args,
+            });
+        }
+        host.peek(|state| {
+            apply(state);
+            assert_eq!(state.pending_native_actions.len(), 2);
+            assert!(matches!(
+                state.pending_native_actions[0],
+                NativeAction::Navigate { .. }
+            ));
+            assert!(matches!(
+                state.pending_native_actions[1],
+                NativeAction::Search { .. }
+            ));
+        });
+    }
+}
