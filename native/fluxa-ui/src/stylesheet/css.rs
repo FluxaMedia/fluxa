@@ -1,3 +1,4 @@
+use super::math;
 use serde_json::{Map, Value};
 use std::collections::HashMap;
 
@@ -532,30 +533,22 @@ fn split_words(value: &str) -> Vec<String> {
     words
 }
 
+const MATH: [&str; 4] = ["calc(", "min(", "max(", "clamp("];
+
 fn calc(value: &str) -> Result<String, String> {
     let mut out = String::new();
     let mut rest = value;
-    while let Some(start) = rest.find("calc(") {
+    while let Some((start, open)) = next_call(rest) {
         out.push_str(&rest[..start]);
-        let after = &rest[start + 5..];
-        let mut depth = 1;
-        let mut end = None;
-        for (index, ch) in after.char_indices() {
-            match ch {
-                '(' => depth += 1,
-                ')' => {
-                    depth -= 1;
-                    if depth == 0 {
-                        end = Some(index);
-                        break;
-                    }
-                }
-                _ => {}
-            }
-        }
-        let end = end.ok_or_else(|| format!("{value}: unclosed calc("))?;
-        let result = evaluate(&calc(&after[..end])?)
-            .ok_or_else(|| format!("{value}: calc() supports + - * / on numbers and px values"))?;
+        let after = &rest[start + open..];
+        let end = closing(after).ok_or_else(|| format!("{value}: unclosed math function"))?;
+        let call = &rest[start..start + open + end + 1];
+        let expr = math::Expr::parse(call)
+            .filter(|expr| !expr.needs_env())
+            .ok_or_else(|| {
+                format!("{value}: math functions here support + - * / on numbers and px values")
+            })?;
+        let result = expr.eval(&math::Env::default()).unwrap_or(0.0);
         out.push_str(&format!("{result}"));
         rest = &after[end + 1..];
     }
@@ -563,81 +556,35 @@ fn calc(value: &str) -> Result<String, String> {
     Ok(out)
 }
 
-fn evaluate(expression: &str) -> Option<f64> {
-    let mut tokens: Vec<String> = Vec::new();
-    let mut current = String::new();
-    for ch in expression.chars() {
+fn next_call(text: &str) -> Option<(usize, usize)> {
+    MATH.iter()
+        .flat_map(|name| {
+            text.match_indices(name).filter_map(move |(at, _)| {
+                let word_start = !text[..at]
+                    .chars()
+                    .next_back()
+                    .is_some_and(|ch| ch.is_alphanumeric() || ch == '-' || ch == '_');
+                word_start.then_some((at, name.len()))
+            })
+        })
+        .min_by_key(|(at, _)| *at)
+}
+
+fn closing(after: &str) -> Option<usize> {
+    let mut depth = 1;
+    for (index, ch) in after.char_indices() {
         match ch {
-            '(' | ')' | '*' | '/' | '+' => {
-                if !current.trim().is_empty() {
-                    tokens.push(current.trim().to_owned());
-                }
-                current.clear();
-                tokens.push(ch.to_string());
-            }
-            '-' => {
-                let after_value = tokens.last().is_some_and(|last| {
-                    last == ")" || last.trim_end_matches("px").parse::<f64>().is_ok()
-                });
-                if current.trim().is_empty() && !after_value {
-                    current.push('-');
-                } else {
-                    if !current.trim().is_empty() {
-                        tokens.push(current.trim().to_owned());
-                    }
-                    current.clear();
-                    tokens.push("-".to_owned());
+            '(' => depth += 1,
+            ')' => {
+                depth -= 1;
+                if depth == 0 {
+                    return Some(index);
                 }
             }
-            c if c.is_whitespace() => {
-                if !current.trim().is_empty() {
-                    tokens.push(current.trim().to_owned());
-                    current.clear();
-                }
-            }
-            _ => current.push(ch),
+            _ => {}
         }
     }
-    if !current.trim().is_empty() {
-        tokens.push(current.trim().to_owned());
-    }
-    let mut position = 0;
-    let value = sum(&tokens, &mut position)?;
-    (position == tokens.len()).then_some(value)
-}
-
-fn sum(tokens: &[String], at: &mut usize) -> Option<f64> {
-    let mut total = product(tokens, at)?;
-    while let Some(op) = tokens.get(*at).filter(|t| matches!(t.as_str(), "+" | "-")) {
-        let plus = op == "+";
-        *at += 1;
-        let next = product(tokens, at)?;
-        total = if plus { total + next } else { total - next };
-    }
-    Some(total)
-}
-
-fn product(tokens: &[String], at: &mut usize) -> Option<f64> {
-    let mut total = atom(tokens, at)?;
-    while let Some(op) = tokens.get(*at).filter(|t| matches!(t.as_str(), "*" | "/")) {
-        let times = op == "*";
-        *at += 1;
-        let next = atom(tokens, at)?;
-        total = if times { total * next } else { total / next };
-    }
-    Some(total)
-}
-
-fn atom(tokens: &[String], at: &mut usize) -> Option<f64> {
-    let token = tokens.get(*at)?;
-    *at += 1;
-    if token == "(" {
-        let inner = sum(tokens, at)?;
-        (tokens.get(*at)? == ")").then_some(())?;
-        *at += 1;
-        return Some(inner);
-    }
-    token.trim_end_matches("px").parse().ok()
+    None
 }
 
 fn substitute(value: &str, vars: &HashMap<String, String>) -> Result<String, String> {

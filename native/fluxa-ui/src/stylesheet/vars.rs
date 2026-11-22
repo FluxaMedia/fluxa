@@ -1,4 +1,4 @@
-use super::{Query, css};
+use super::{Query, css, math};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex, RwLock};
 
@@ -178,53 +178,36 @@ pub(crate) fn scaled(name: &str, basis: f32) -> f32 {
     let values = resolved();
     let value = values.get(name);
     debug_assert!(value.is_some(), "missing metric --{name}");
-    value.map_or(0.0, |value| clamp(value, basis))
+    value.map_or(0.0, |value| evaluate(value, basis))
 }
 
-fn clamp(value: &str, basis: f32) -> f32 {
-    let Some(inner) = value
-        .trim()
-        .strip_prefix("clamp(")
-        .and_then(|v| v.strip_suffix(')'))
-    else {
-        return 0.0;
+fn evaluate(value: &str, basis: f32) -> f32 {
+    let env = math::Env {
+        percent: Some(basis),
+        view: None,
+        rem: px("root-font-size").max(1.0),
     };
-    let mut parts = inner.split(',').map(|part| sum(part, basis));
-    let (Some(min), Some(mid), Some(max)) = (parts.next(), parts.next(), parts.next()) else {
-        return 0.0;
-    };
-    mid.clamp(min, max.max(min))
-}
-
-fn sum(expression: &str, basis: f32) -> f32 {
-    let mut total = 0.0;
-    let mut sign = 1.0;
-    for term in expression.split_whitespace() {
-        match term {
-            "+" => sign = 1.0,
-            "-" => sign = -1.0,
-            _ => {
-                total += sign
-                    * match term.strip_suffix('%') {
-                        Some(percent) => percent.parse::<f32>().unwrap_or(0.0) * basis / 100.0,
-                        None => term.trim_end_matches("px").parse::<f32>().unwrap_or(0.0),
-                    };
-            }
-        }
-    }
-    total
+    math::Expr::parse(value)
+        .and_then(|expr| expr.eval(&env))
+        .unwrap_or(0.0)
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{Query, build, clamp};
+    use super::{Query, build, evaluate};
 
     #[test]
     fn clamp_follows_basis_between_bounds() {
-        assert_eq!(clamp("clamp(14px, 13%, 28px)", 100.0), 14.0);
-        assert_eq!(clamp("clamp(14px, 13%, 28px)", 150.0), 19.5);
-        assert_eq!(clamp("clamp(14px, 13%, 28px)", 900.0), 28.0);
-        assert_eq!(clamp("clamp(0px, 50% + 20px, 500px)", 100.0), 70.0);
+        assert_eq!(evaluate("clamp(14px, 13%, 28px)", 100.0), 14.0);
+        assert_eq!(evaluate("clamp(14px, 13%, 28px)", 150.0), 19.5);
+        assert_eq!(evaluate("clamp(14px, 13%, 28px)", 900.0), 28.0);
+        assert_eq!(evaluate("clamp(0px, 50% + 20px, 500px)", 100.0), 70.0);
+    }
+
+    #[test]
+    fn rem_and_percent_mix_inside_a_clamp() {
+        assert_eq!(evaluate("clamp(1rem, 50% + 2px, 40px)", 20.0), 16.0);
+        assert_eq!(evaluate("clamp(1rem, 50% + 2px, 40px)", 40.0), 22.0);
     }
 
     #[test]

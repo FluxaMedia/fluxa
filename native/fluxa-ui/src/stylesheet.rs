@@ -4,6 +4,7 @@ use std::sync::{Arc, Mutex, RwLock};
 
 mod css;
 mod defaults;
+pub(crate) mod math;
 mod parse;
 mod scoped;
 pub(crate) mod vars;
@@ -2187,6 +2188,24 @@ mod tests {
         assert_eq!(style.margin, 4.0);
         assert_eq!(rule.transition.as_deref(), Some("200ms"));
         assert_eq!(rule.easing.as_deref(), Some("out"));
+    }
+
+    #[test]
+    fn static_math_functions_fold_in_any_length() {
+        let sheet = Sheet::parse(
+            ".a { padding: clamp(4px, calc(2px * 3), 5px); gap: min(10px, 3px + 4px); margin: max(2px, 1px); }\n\
+             .b { gap: calc(1rem + 2px); }",
+        );
+        assert!(sheet.is_err());
+        let sheet = Sheet::parse(
+            ".a { padding: clamp(4px, calc(2px * 3), 5px); gap: min(10px, 3px + 4px); margin: max(2px, 1px); }",
+        )
+        .unwrap();
+        let mut style = Style::blank();
+        apply(&mut style, &sheet.rules["a"].layer.base);
+        assert_eq!(style.padding, 5.0);
+        assert_eq!(style.gap, 7.0);
+        assert_eq!(style.margin, 2.0);
     }
 
     #[test]
