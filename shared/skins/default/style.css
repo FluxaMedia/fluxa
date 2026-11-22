@@ -439,11 +439,14 @@ button.primary {
   color: var(--color-background);
 }
 
+button.primary:disabled,
+button.secondary:disabled,
+button.selected:disabled,
+button.danger:disabled { background: var(--ink-soft); color: var(--ink-dim); }
+
 button.primary:hover {
   background: color-mix(in srgb, var(--color-text-primary) 88.235%, transparent);
 }
-
-button.primary:disabled { background: var(--ink-soft); color: var(--ink-dim); }
 
 button.secondary {
   background: color-mix(in srgb, var(--color-text-primary) 10.98%, transparent);
@@ -454,8 +457,6 @@ button.secondary:hover {
   background: color-mix(in srgb, var(--color-text-primary) 18.039%, transparent);
 }
 
-button.secondary:disabled { background: var(--ink-soft); color: var(--ink-dim); }
-
 button.selected {
   background: var(--color-accent);
   color: var(--color-accent-foreground);
@@ -465,8 +466,6 @@ button.selected:hover {
   background: color-mix(in srgb, var(--color-accent) 85%, transparent);
 }
 
-button.selected:disabled { background: var(--ink-soft); color: var(--ink-dim); }
-
 button.danger {
   background: var(--color-error);
   color: var(--color-text-primary);
@@ -475,8 +474,6 @@ button.danger {
 button.danger:hover {
   background: color-mix(in srgb, var(--color-error) 85%, transparent);
 }
-
-button.danger:disabled { background: var(--ink-soft); color: var(--ink-dim); }
 
 chip {
   background: var(--ink-faint);
