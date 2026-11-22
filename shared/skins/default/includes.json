@@ -99,7 +99,7 @@
       {
         "type": "row",
         "tag": "a",
-        "class": "navbar-item",
+        "class": "navbar-item me",
         "action": {
           "name": "open_settings"
         },
@@ -1027,6 +1027,8 @@
     "children": [
       {
         "type": "stack",
+        "tag": "figure",
+        "class": "episode-art",
         "children": [
           {
             "type": "image",
@@ -1042,13 +1044,13 @@
           },
           {
             "type": "column",
+            "tag": "header",
+            "class": "fill-space",
             "when": "ep.watched",
             "children": [
               {
                 "type": "stack",
                 "class": "episode-check",
-                "width": 20,
-                "height": 20,
                 "children": [
                   {
                     "type": "column",
@@ -1065,16 +1067,16 @@
                   }
                 ]
               }
-            ],
-            "padding": 8,
-            "align": "end",
-            "fill": true
+            ]
           },
           {
             "type": "column",
+            "tag": "footer",
+            "class": "fill-space",
             "children": [
               {
                 "type": "row",
+                "tag": "section",
                 "children": [
                   {
                     "type": "row",
@@ -1093,10 +1095,7 @@
                     "class": "episode-time",
                     "when": "ep.runtime"
                   }
-                ],
-                "padding": "0 8 10 8",
-                "align": "end",
-                "justify": "space_between"
+                ]
               },
               {
                 "include": "progress",
@@ -1105,16 +1104,14 @@
                 },
                 "when": "ep.progress > 0"
               }
-            ],
-            "justify": "end",
-            "fill": true
+            ]
           }
-        ],
-        "width": 276,
-        "height": 155
+        ]
       },
       {
         "type": "column",
+        "tag": "section",
+        "class": "episode-info",
         "children": [
           {
             "type": "text",
@@ -1132,15 +1129,14 @@
               "lines": 2
             }
           }
-        ],
-        "width": 276,
-        "gap": 4,
-        "padding": "0 4 4 4"
+        ]
       }
     ]
   },
   "cast_card": {
     "type": "column",
+    "tag": "section",
+    "class": "cast",
     "action": {
       "name": "detail",
       "args": {
@@ -1166,16 +1162,15 @@
       },
       {
         "type": "text",
-        "text": "{person.role}",
-        "style": "meta muted"
+        "tag": "small",
+        "text": "{person.role}"
       }
-    ],
-    "width": 120,
-    "gap": 6,
-    "align": "center"
+    ]
   },
   "trailer_card": {
     "type": "column",
+    "tag": "section",
+    "class": "trailer",
     "action": {
       "name": "detail",
       "args": {
@@ -1190,35 +1185,30 @@
         "props": {
           "fit": "cover"
         },
-        "width": 296,
-        "height": 166
+        "class": "trailer-thumb"
       },
       {
         "type": "text",
         "text": "{trailer.title}",
         "style": "meta"
       }
-    ],
-    "width": 296,
-    "gap": 6
+    ]
   },
   "info_row": {
     "type": "row",
+    "tag": "li",
     "children": [
       {
         "type": "text",
-        "text": "{line.label}",
-        "style": "meta muted",
-        "width": 180
+        "tag": "small",
+        "text": "{line.label}"
       },
       {
         "type": "text",
         "text": "{line.value}",
         "style": "meta"
       }
-    ],
-    "gap": 24,
-    "padding": "8 0"
+    ]
   },
   "detail_hero": {
     "type": "stack",
@@ -1251,10 +1241,12 @@
       },
       {
         "type": "column",
+        "tag": "header",
+        "class": "compact-only fill-space below-bar",
         "children": [
           {
             "type": "row",
-            "class": "centered icon-btn",
+            "class": "icon-btn",
             "children": [
               {
                 "type": "icon",
@@ -1270,18 +1262,16 @@
               }
             }
           }
-        ],
-        "class": "compact-only",
-        "padding": "84 24 0 24",
-        "align": "start",
-        "fill": true
+        ]
       },
       {
         "type": "column",
+        "tag": "header",
+        "class": "wide-only fill-space",
         "children": [
           {
             "type": "row",
-            "class": "centered icon-btn",
+            "class": "icon-btn",
             "children": [
               {
                 "type": "icon",
@@ -1297,11 +1287,7 @@
               }
             }
           }
-        ],
-        "class": "wide-only",
-        "padding": "0 24 0 24",
-        "align": "start",
-        "fill": true
+        ]
       },
       {
         "type": "column",
@@ -1316,9 +1302,9 @@
           },
           {
             "type": "text",
-            "text": "{detail.meta}",
-            "style": "meta muted",
-            "class": "compact-only"
+            "tag": "small",
+            "class": "compact-only",
+            "text": "{detail.meta}"
           },
           {
             "type": "text",
@@ -1328,12 +1314,14 @@
           },
           {
             "type": "text",
-            "text": "{detail.genres}",
-            "style": "meta muted",
-            "class": "wide-only"
+            "tag": "small",
+            "class": "wide-only",
+            "text": "{detail.genres}"
           },
           {
             "type": "row",
+            "tag": "ul",
+            "class": "ratings",
             "children": [
               {
                 "each": "detail.ratings",
@@ -1352,8 +1340,8 @@
                     },
                     {
                       "type": "text",
+                      "tag": "small",
                       "when": "!rating.logo",
-                      "style": "meta muted",
                       "text": "{rating.label}"
                     },
                     {
@@ -1366,8 +1354,7 @@
                 }
               }
             ],
-            "when": "len(detail.ratings) > 0",
-            "gap": 12
+            "when": "len(detail.ratings) > 0"
           },
           {
             "type": "text",
@@ -1379,28 +1366,28 @@
           },
           {
             "type": "row",
+            "tag": "section",
+            "class": "actions",
             "children": [
               {
                 "type": "stack",
                 "children": [
                   {
                     "type": "row",
-                    "class": "btn-primary fill-space",
-                    "padding": "0 28",
-                    "justify": "center",
-                    "gap": 8,
+                    "tag": "button",
+                    "class": "fill-space primary",
                     "children": [
                       {
                         "type": "icon",
+                        "tag": "i",
                         "props": {
                           "name": "PlayFilled",
                           "size": 18
-                        },
-                        "class": "btn-label"
+                        }
                       },
                       {
                         "type": "text",
-                        "class": "btn-label",
+                        "tag": "span",
                         "text": "{detail.playLabel}"
                       }
                     ]
@@ -1415,7 +1402,7 @@
               },
               {
                 "type": "row",
-                "class": "centered icon-btn",
+                "class": "icon-btn",
                 "children": [
                   {
                     "type": "icon",
@@ -1433,7 +1420,7 @@
               },
               {
                 "type": "row",
-                "class": "centered icon-btn",
+                "class": "icon-btn",
                 "children": [
                   {
                     "type": "icon",
@@ -1452,7 +1439,7 @@
               },
               {
                 "type": "row",
-                "class": "centered icon-btn",
+                "class": "icon-btn",
                 "children": [
                   {
                     "type": "icon",
@@ -1470,7 +1457,7 @@
               },
               {
                 "type": "row",
-                "class": "centered icon-btn",
+                "class": "icon-btn",
                 "children": [
                   {
                     "type": "icon",
@@ -1488,7 +1475,7 @@
               },
               {
                 "type": "row",
-                "class": "centered icon-btn",
+                "class": "icon-btn",
                 "children": [
                   {
                     "type": "icon",
@@ -1505,8 +1492,7 @@
                   }
                 }
               }
-            ],
-            "gap": 12
+            ]
           }
         ]
       }

@@ -336,6 +336,7 @@ hero-synopsis-size { font-size: 16; }
 }
 
 .navbar a { gap: .5rem; padding: .25rem .875rem; }
+.navbar .me { padding: .25rem .625rem; }
 .navbar-item {
   color: var(--ink-subtle);
   border-radius: var(--radius-pill);
@@ -875,7 +876,7 @@ hero-synopsis-size { font-size: 16; }
 
 .day-number { width: 24px; height: 24px; justify-content: center; }
 
-.episode-thumb { width: 276px; height: 155px; }
+.episode-thumb, .episode-art { width: 276px; height: 155px; }
 .detail-hero { height: 68vh; }
 
 .progress { width: 200px; height: 4px; }
@@ -1079,5 +1080,21 @@ button:focus { background: color-mix(in srgb, var(--color-text-primary) 18.039%,
 .tabs { gap: 1.25rem; }
 .tabs li { padding: .5rem .25rem; }
 .download-row div { gap: .25rem; }
+
+/* ==== Detail ============================================================ */
+.detail { gap: 1.25rem; }
+.picker { gap: .75rem; }
+.detail-hero header { padding: 0 1.5rem; align-items: flex-start; }
+.detail-hero .below-bar { padding: 5.25rem 1.5rem 0; }
+.episode header { padding: .5rem; align-items: flex-end; }
+.episode footer { justify-content: flex-end; }
+.episode footer section { padding: 0 .5rem .625rem; align-items: flex-end; justify-content: space-between; }
+.episode-check { width: 20px; height: 20px; }
+.episode-info { width: 17.25rem; gap: .25rem; padding: 0 .25rem .25rem; }
+.cast { width: 7.5rem; gap: .375rem; align-items: center; }
+.trailer { width: 18.5rem; gap: .375rem; }
+.trailer-thumb { width: 296px; height: 166px; }
+.info li { gap: 1.5rem; padding: .5rem 0; }
+.info small { width: 11.25rem; }
 
 /* ==== end of settings section ============================================ */

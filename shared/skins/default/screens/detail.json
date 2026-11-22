@@ -1,7 +1,6 @@
 {
   "type": "column",
-  "class": "screen",
-  "gap": 20,
+  "class": "screen detail",
   "children": [
     {
       "include": "detail_hero"
@@ -11,8 +10,8 @@
       "children": [
         {
           "type": "text",
+          "tag": "small",
           "text": "{detail.error}",
-          "style": "meta muted",
           "when": "detail.error"
         },
         {
@@ -27,9 +26,12 @@
             },
             {
               "type": "column",
+              "tag": "section",
+              "class": "picker",
               "children": [
                 {
                   "type": "row",
+                  "tag": "ul",
                   "when": "detail.multiSeason",
                   "children": [
                     {
@@ -49,9 +51,7 @@
                         ]
                       }
                     }
-                  ],
-                  "gap": 8,
-                  "align": "center"
+                  ]
                 },
                 {
                   "type": "scroll",
@@ -66,8 +66,7 @@
                   ],
                   "class": "page-snug"
                 }
-              ],
-              "gap": 12
+              ]
             }
           ],
           "class": "section"
@@ -110,9 +109,12 @@
             },
             {
               "type": "column",
+              "tag": "section",
+              "class": "picker",
               "children": [
                 {
                   "type": "row",
+                  "tag": "ul",
                   "children": [
                     {
                       "each": "detail.trailerKinds",
@@ -131,9 +133,7 @@
                         ]
                       }
                     }
-                  ],
-                  "gap": 8,
-                  "align": "center"
+                  ]
                 },
                 {
                   "type": "scroll",
@@ -148,8 +148,7 @@
                   ],
                   "class": "page-snug"
                 }
-              ],
-              "gap": 12
+              ]
             }
           ],
           "class": "section"
@@ -218,6 +217,7 @@
             },
             {
               "type": "column",
+              "class": "info",
               "children": [
                 {
                   "each": "detail.info",
