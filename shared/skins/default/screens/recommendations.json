@@ -29,7 +29,7 @@
               "props": {
                 "fit": "contain"
               },
-              "class": "reco-logo"
+              "class": "copy-logo"
             },
             {
               "type": "text",

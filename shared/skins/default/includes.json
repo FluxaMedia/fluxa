@@ -223,20 +223,20 @@
           {
             "type": "column",
             "tag": "section",
-            "class": "fill-space expanded-info",
+            "class": "fill-space expanded-copy",
             "props": {
               "expandedOnly": true
             },
             "children": [
               {
                 "type": "image",
-                "height": 84,
                 "props": {
                   "fit": "contain",
                   "position": "start",
                   "logoOf": "{card.id}",
                   "share": 0.62
-                }
+                },
+                "class": "expanded-mark"
               },
               {
                 "type": "text",
@@ -510,13 +510,11 @@
   "skeleton_shelf": {
     "type": "column",
     "tag": "section",
-    "class": "shelf skeleton-shelf",
+    "class": "shelf shelf-skeleton",
     "children": [
       {
         "type": "column",
-        "class": "skeleton-bar",
-        "height": 20,
-        "width": 180
+        "class": "skeleton-bar"
       },
       {
         "type": "row",
@@ -1111,7 +1109,7 @@
       {
         "type": "column",
         "tag": "section",
-        "class": "episode-info",
+        "class": "episode-text",
         "children": [
           {
             "type": "text",
@@ -1734,7 +1732,7 @@
         "style": "headline"
       }
     ],
-    "align": "start"
+    "class": "title-slot"
   },
   "continue_card": {
     "type": "stack",
@@ -2518,14 +2516,13 @@
               },
               {
                 "type": "input",
-                "height": 520,
-                "fill": true,
                 "props": {
                   "key": "customCss",
                   "placeholder": "{prefs.skins.cssPlaceholder}",
                   "value": "{fields.customCss}",
                   "kind": "multiline"
-                }
+                },
+                "class": "editor fill-space"
               },
               {
                 "type": "row",
@@ -3534,13 +3531,12 @@
                 "children": [
                   {
                     "type": "image",
-                    "width": 48,
-                    "height": 48,
                     "src": "{row.logo}",
                     "when": "row.logo",
                     "props": {
                       "fit": "contain"
-                    }
+                    },
+                    "class": "logo"
                   },
                   {
                     "type": "column",
@@ -4086,7 +4082,7 @@
                     "props": {
                       "fit": "contain"
                     },
-                    "class": "sources-logo"
+                    "class": "source-logo"
                   },
                   {
                     "type": "text",

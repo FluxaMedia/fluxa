@@ -201,7 +201,7 @@
                   }
                 }
               ],
-              "justify": "center"
+              "class": "centered"
             },
             {
               "type": "text",

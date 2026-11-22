@@ -205,7 +205,7 @@
                                             "props": {
                                               "fit": "cover"
                                             },
-                                            "class": "modal-thumb"
+                                            "class": "modal-art"
                                           },
                                           {
                                             "type": "column",
@@ -297,7 +297,7 @@
                           ]
                         }
                       ],
-                      "class": "modal-body"
+                      "class": "modal-stack"
                     }
                   ],
                   "class": "grow"

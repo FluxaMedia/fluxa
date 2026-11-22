@@ -1147,6 +1147,7 @@ pub(crate) fn look(context: &crate::gfx::Context, rule: &str) -> Style {
 /// (`.slide` is `.grow`, `.about-name` is `.page-title`, ...).
 const ALIASES: &[(&str, &str)] = &[
     ("button.primary", "btn-primary"),
+    ("btn-label", "span"),
     ("setting-row", "li"),
     ("profile-row", "profile"),
     ("hub-row", "hub"),
@@ -1176,7 +1177,6 @@ const ALIASES: &[(&str, &str)] = &[
     ("welcome-label", "group-heading"),
     ("sources-season", "welcome-subtitle"),
     ("sources-synopsis", "welcome-subtitle"),
-    ("sources-logo", "h-64"),
     ("thumb-strip", "page-snug"),
     ("card-strip", "shelf-row"),
     ("sources", "shelf-row"),

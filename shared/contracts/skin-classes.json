@@ -1,5 +1,5 @@
 {
-  "version": 5,
+  "version": 6,
   "classes": [
     {
       "name": "actions",
@@ -44,6 +44,13 @@
       "since": 5
     },
     {
+      "name": "back-bar",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 6
+    },
+    {
       "name": "backdrop",
       "element": "",
       "meaning": "",
@@ -58,6 +65,27 @@
       "since": 1
     },
     {
+      "name": "badges",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 6
+    },
+    {
+      "name": "bar",
+      "element": "stack",
+      "meaning": "",
+      "stability": "internal",
+      "since": 6
+    },
+    {
+      "name": "below-bar",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 6
+    },
+    {
       "name": "body",
       "element": "",
       "meaning": "",
@@ -65,16 +93,16 @@
       "since": 2
     },
     {
+      "name": "bottom-bar",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 6
+    },
+    {
       "name": "btn-danger",
       "element": "",
       "meaning": "Destructive button variant, combined with a button class",
-      "stability": "stable",
-      "since": 1
-    },
-    {
-      "name": "btn-label",
-      "element": "icon text",
-      "meaning": "Label inside any button",
       "stability": "stable",
       "since": 1
     },
@@ -107,6 +135,13 @@
       "since": 2
     },
     {
+      "name": "caption",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 6
+    },
+    {
       "name": "card-badge",
       "element": "row",
       "meaning": "Badge on a media card (quality, status)",
@@ -135,11 +170,39 @@
       "since": 1
     },
     {
+      "name": "cast",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 6
+    },
+    {
       "name": "centered",
       "element": "column row",
       "meaning": "",
       "stability": "internal",
       "since": 3
+    },
+    {
+      "name": "channel-logo",
+      "element": "image",
+      "meaning": "",
+      "stability": "internal",
+      "since": 6
+    },
+    {
+      "name": "channels",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 6
+    },
+    {
+      "name": "chat",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 6
     },
     {
       "name": "chat-text",
@@ -170,6 +233,13 @@
       "since": 1
     },
     {
+      "name": "chip-grid",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 6
+    },
+    {
       "name": "chip-label",
       "element": "text",
       "meaning": "Text inside a chip",
@@ -177,11 +247,32 @@
       "since": 1
     },
     {
+      "name": "chip-row",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 6
+    },
+    {
       "name": "choice-chip",
       "element": "row",
       "meaning": "Chip used as one option in a choice list",
       "stability": "internal",
       "since": 1
+    },
+    {
+      "name": "choices",
+      "element": "grid",
+      "meaning": "",
+      "stability": "internal",
+      "since": 6
+    },
+    {
+      "name": "code",
+      "element": "column row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 6
     },
     {
       "name": "compact",
@@ -219,11 +310,32 @@
       "since": 1
     },
     {
+      "name": "copy",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 6
+    },
+    {
+      "name": "copy-logo",
+      "element": "image",
+      "meaning": "",
+      "stability": "internal",
+      "since": 6
+    },
+    {
       "name": "corner",
       "element": "column",
       "meaning": "",
       "stability": "internal",
       "since": 2
+    },
+    {
+      "name": "cta",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 6
     },
     {
       "name": "current",
@@ -289,11 +401,32 @@
       "since": 2
     },
     {
+      "name": "detail",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 6
+    },
+    {
       "name": "detail-hero",
       "element": "stack",
       "meaning": "",
       "stability": "internal",
       "since": 3
+    },
+    {
+      "name": "details",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 6
+    },
+    {
+      "name": "discover",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 6
     },
     {
       "name": "divider",
@@ -303,11 +436,39 @@
       "since": 1
     },
     {
+      "name": "dots",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 6
+    },
+    {
       "name": "download-row",
       "element": "row",
       "meaning": "One row in the downloads list",
       "stability": "internal",
       "since": 1
+    },
+    {
+      "name": "editor",
+      "element": "input",
+      "meaning": "",
+      "stability": "internal",
+      "since": 6
+    },
+    {
+      "name": "empty",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 6
+    },
+    {
+      "name": "empty-home",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 6
     },
     {
       "name": "empty-title",
@@ -329,6 +490,13 @@
       "meaning": "One episode entry in a season list",
       "stability": "stable",
       "since": 1
+    },
+    {
+      "name": "episode-art",
+      "element": "stack",
+      "meaning": "",
+      "stability": "internal",
+      "since": 6
     },
     {
       "name": "episode-check",
@@ -366,6 +534,13 @@
       "since": 1
     },
     {
+      "name": "episode-text",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 6
+    },
+    {
       "name": "episode-thumb",
       "element": "image",
       "meaning": "Episode still image",
@@ -394,6 +569,20 @@
       "since": 1
     },
     {
+      "name": "expanded-copy",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 6
+    },
+    {
+      "name": "expanded-mark",
+      "element": "image",
+      "meaning": "",
+      "stability": "internal",
+      "since": 6
+    },
+    {
       "name": "expanded-meta",
       "element": "text",
       "meaning": "Meta line of an expanded card",
@@ -408,6 +597,20 @@
       "since": 1
     },
     {
+      "name": "feed",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 6
+    },
+    {
+      "name": "field",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 6
+    },
+    {
       "name": "field-input",
       "element": "input",
       "meaning": "",
@@ -416,10 +619,17 @@
     },
     {
       "name": "fill-space",
-      "element": "column image input row",
+      "element": "column image input row stack",
       "meaning": "",
       "stability": "internal",
       "since": 2
+    },
+    {
+      "name": "filters",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 6
     },
     {
       "name": "flush",
@@ -436,6 +646,13 @@
       "since": 1
     },
     {
+      "name": "folder-cover",
+      "element": "image",
+      "meaning": "",
+      "stability": "internal",
+      "since": 6
+    },
+    {
       "name": "fullscreen",
       "element": "column row scroll stack",
       "meaning": "",
@@ -448,13 +665,6 @@
       "meaning": "",
       "stability": "internal",
       "since": 3
-    },
-    {
-      "name": "gap-2",
-      "element": "column",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
     },
     {
       "name": "gauge-fill",
@@ -492,6 +702,13 @@
       "since": 2
     },
     {
+      "name": "guide",
+      "element": "stack",
+      "meaning": "",
+      "stability": "internal",
+      "since": 6
+    },
+    {
       "name": "guide-cell",
       "element": "",
       "meaning": "Programme cell in the live TV guide",
@@ -518,13 +735,6 @@
       "meaning": "Now-playing marker in the live TV guide",
       "stability": "internal",
       "since": 1
-    },
-    {
-      "name": "h-64",
-      "element": "column",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
     },
     {
       "name": "hero",
@@ -576,11 +786,32 @@
       "since": 1
     },
     {
+      "name": "identity",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 6
+    },
+    {
+      "name": "identity-tile",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 6
+    },
+    {
       "name": "indicator",
       "element": "",
       "meaning": "",
       "stability": "internal",
       "since": 2
+    },
+    {
+      "name": "info",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 6
     },
     {
       "name": "inset",
@@ -632,6 +863,20 @@
       "since": 1
     },
     {
+      "name": "lead",
+      "element": "spacer",
+      "meaning": "",
+      "stability": "internal",
+      "since": 6
+    },
+    {
+      "name": "library",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 6
+    },
+    {
       "name": "list",
       "element": "column",
       "meaning": "",
@@ -639,11 +884,53 @@
       "since": 2
     },
     {
+      "name": "listing",
+      "element": "page",
+      "meaning": "",
+      "stability": "internal",
+      "since": 6
+    },
+    {
+      "name": "login",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 6
+    },
+    {
+      "name": "logo",
+      "element": "image",
+      "meaning": "",
+      "stability": "internal",
+      "since": 6
+    },
+    {
+      "name": "look",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 6
+    },
+    {
       "name": "mark",
       "element": "",
       "meaning": "",
       "stability": "internal",
       "since": 2
+    },
+    {
+      "name": "me",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 6
+    },
+    {
+      "name": "menu-items",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 6
     },
     {
       "name": "menu-panel",
@@ -667,6 +954,13 @@
       "since": 1
     },
     {
+      "name": "method-list",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 6
+    },
+    {
       "name": "mini-controls",
       "element": "row",
       "meaning": "Control row of the mini player",
@@ -674,11 +968,39 @@
       "since": 1
     },
     {
+      "name": "mini-poster",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 6
+    },
+    {
+      "name": "mini-poster-art",
+      "element": "image",
+      "meaning": "",
+      "stability": "internal",
+      "since": 6
+    },
+    {
       "name": "mini-tile",
       "element": "stack",
       "meaning": "Mini player tile",
       "stability": "stable",
       "since": 1
+    },
+    {
+      "name": "modal",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 6
+    },
+    {
+      "name": "modal-art",
+      "element": "image",
+      "meaning": "",
+      "stability": "internal",
+      "since": 6
     },
     {
       "name": "modal-hero-scrim",
@@ -693,6 +1015,13 @@
       "meaning": "Dimmed backdrop behind a modal",
       "stability": "stable",
       "since": 1
+    },
+    {
+      "name": "modal-stack",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 6
     },
     {
       "name": "nav-dock",
@@ -714,13 +1043,6 @@
       "meaning": "Moving highlight behind the active navbar entry",
       "stability": "stable",
       "since": 1
-    },
-    {
-      "name": "nav-slot",
-      "element": "row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
     },
     {
       "name": "navbar",
@@ -780,17 +1102,31 @@
     },
     {
       "name": "option",
-      "element": "",
+      "element": "row",
       "meaning": "",
       "stability": "internal",
       "since": 2
     },
     {
-      "name": "pad-10",
+      "name": "or",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 6
+    },
+    {
+      "name": "overview",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 6
+    },
+    {
+      "name": "pack",
       "element": "column",
       "meaning": "",
       "stability": "internal",
-      "since": 2
+      "since": 6
     },
     {
       "name": "page",
@@ -828,11 +1164,39 @@
       "since": 1
     },
     {
+      "name": "pairing",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 6
+    },
+    {
+      "name": "panel-box",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 6
+    },
+    {
+      "name": "panel-cols",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 6
+    },
+    {
       "name": "panel-detail",
       "element": "text",
       "meaning": "Secondary value text in a panel row",
       "stability": "internal",
       "since": 1
+    },
+    {
+      "name": "panel-form",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 6
     },
     {
       "name": "panel-heading",
@@ -849,6 +1213,34 @@
       "since": 1
     },
     {
+      "name": "panel-layer",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 6
+    },
+    {
+      "name": "panel-list",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 6
+    },
+    {
+      "name": "panel-next",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 6
+    },
+    {
+      "name": "panel-note",
+      "element": "text",
+      "meaning": "",
+      "stability": "internal",
+      "since": 6
+    },
+    {
       "name": "panel-row",
       "element": "row",
       "meaning": "Row inside a panel",
@@ -856,11 +1248,60 @@
       "since": 1
     },
     {
+      "name": "panel-scroll",
+      "element": "scroll",
+      "meaning": "",
+      "stability": "internal",
+      "since": 6
+    },
+    {
+      "name": "panel-sheet",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 6
+    },
+    {
       "name": "panel-thumb",
       "element": "image",
       "meaning": "Thumbnail inside a panel",
       "stability": "internal",
       "since": 1
+    },
+    {
+      "name": "pause-copy",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 6
+    },
+    {
+      "name": "phone",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 6
+    },
+    {
+      "name": "pick",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 6
+    },
+    {
+      "name": "pick-compact",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 6
+    },
+    {
+      "name": "picker",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 6
     },
     {
       "name": "plain",
@@ -875,6 +1316,13 @@
       "meaning": "Playback progress bar on a card",
       "stability": "stable",
       "since": 1
+    },
+    {
+      "name": "player",
+      "element": "stack",
+      "meaning": "",
+      "stability": "internal",
+      "since": 6
     },
     {
       "name": "player-buffering-veil",
@@ -968,11 +1416,25 @@
       "since": 1
     },
     {
+      "name": "profile-page",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 6
+    },
+    {
       "name": "profile-tile",
       "element": "column",
       "meaning": "Selectable profile on the profile picker",
       "stability": "stable",
       "since": 1
+    },
+    {
+      "name": "program",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 6
     },
     {
       "name": "progress",
@@ -996,6 +1458,13 @@
       "since": 1
     },
     {
+      "name": "rail",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 6
+    },
+    {
       "name": "rating",
       "element": "row",
       "meaning": "",
@@ -1008,6 +1477,48 @@
       "meaning": "Numeric rating text",
       "stability": "internal",
       "since": 1
+    },
+    {
+      "name": "ratings",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 6
+    },
+    {
+      "name": "reading",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 6
+    },
+    {
+      "name": "readout",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 6
+    },
+    {
+      "name": "reco",
+      "element": "stack",
+      "meaning": "",
+      "stability": "internal",
+      "since": 6
+    },
+    {
+      "name": "reco-text",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 6
+    },
+    {
+      "name": "results",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 6
     },
     {
       "name": "rows",
@@ -1036,6 +1547,13 @@
       "meaning": "Gradient fading to the side edge of an image",
       "stability": "stable",
       "since": 1
+    },
+    {
+      "name": "search",
+      "element": "input",
+      "meaning": "",
+      "stability": "internal",
+      "since": 6
     },
     {
       "name": "section",
@@ -1108,6 +1626,34 @@
       "since": 2
     },
     {
+      "name": "sharing",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 6
+    },
+    {
+      "name": "sheet-layer",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 6
+    },
+    {
+      "name": "sheet-list",
+      "element": "scroll",
+      "meaning": "",
+      "stability": "internal",
+      "since": 6
+    },
+    {
+      "name": "sheet-top",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 6
+    },
+    {
       "name": "shelf",
       "element": "column",
       "meaning": "Horizontal row of cards with a title",
@@ -1122,6 +1668,13 @@
       "since": 3
     },
     {
+      "name": "shelf-skeleton",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 6
+    },
+    {
       "name": "shelf-title",
       "element": "text",
       "meaning": "Title above a shelf",
@@ -1129,11 +1682,25 @@
       "since": 1
     },
     {
+      "name": "shelves",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 6
+    },
+    {
       "name": "side-heading",
       "element": "icon",
       "meaning": "Section heading in the side panel",
       "stability": "internal",
       "since": 1
+    },
+    {
+      "name": "skeleton",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 6
     },
     {
       "name": "skeleton-bar",
@@ -1148,6 +1715,13 @@
       "meaning": "Placeholder card while content loads",
       "stability": "stable",
       "since": 1
+    },
+    {
+      "name": "skip-layer",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 6
     },
     {
       "name": "slider",
@@ -1192,11 +1766,32 @@
       "since": 1
     },
     {
+      "name": "slot",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 6
+    },
+    {
+      "name": "source-logo",
+      "element": "image",
+      "meaning": "",
+      "stability": "internal",
+      "since": 6
+    },
+    {
       "name": "source-row",
       "element": "row",
       "meaning": "One source entry in the sources list",
       "stability": "internal",
       "since": 1
+    },
+    {
+      "name": "sources-body",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 6
     },
     {
       "name": "sources-chips",
@@ -1213,11 +1808,39 @@
       "since": 1
     },
     {
+      "name": "spaced",
+      "element": "text",
+      "meaning": "",
+      "stability": "internal",
+      "since": 6
+    },
+    {
+      "name": "splash",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 6
+    },
+    {
+      "name": "split",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 6
+    },
+    {
       "name": "square",
       "element": "",
       "meaning": "Square card shape modifier",
       "stability": "stable",
       "since": 1
+    },
+    {
+      "name": "stats-layer",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 6
     },
     {
       "name": "stats-panel",
@@ -1232,6 +1855,20 @@
       "meaning": "Plus or minus button next to a value",
       "stability": "internal",
       "since": 1
+    },
+    {
+      "name": "stepper-row",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 6
+    },
+    {
+      "name": "steps",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 6
     },
     {
       "name": "subtle",
@@ -1262,6 +1899,13 @@
       "since": 1
     },
     {
+      "name": "sync-layer",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 6
+    },
+    {
       "name": "synopsis",
       "element": "text",
       "meaning": "Plot summary text",
@@ -1283,6 +1927,27 @@
       "since": 2
     },
     {
+      "name": "tabs",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 6
+    },
+    {
+      "name": "tail",
+      "element": "spacer",
+      "meaning": "",
+      "stability": "internal",
+      "since": 6
+    },
+    {
+      "name": "tall",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 6
+    },
+    {
       "name": "tile",
       "element": "row",
       "meaning": "",
@@ -1297,6 +1962,13 @@
       "since": 3
     },
     {
+      "name": "tip",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 6
+    },
+    {
       "name": "title-logo",
       "element": "image",
       "meaning": "Title logo image",
@@ -1304,11 +1976,81 @@
       "since": 1
     },
     {
+      "name": "title-slot",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 6
+    },
+    {
       "name": "toast",
       "element": "row",
       "meaning": "Transient notification",
       "stability": "stable",
       "since": 1
+    },
+    {
+      "name": "toast-gauge",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 6
+    },
+    {
+      "name": "toast-top",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 6
+    },
+    {
+      "name": "toolbar",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 6
+    },
+    {
+      "name": "top-bar",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 6
+    },
+    {
+      "name": "topbar",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 6
+    },
+    {
+      "name": "trailer",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 6
+    },
+    {
+      "name": "trailer-actions",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 6
+    },
+    {
+      "name": "trailer-bar",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 6
+    },
+    {
+      "name": "trailer-thumb",
+      "element": "image",
+      "meaning": "",
+      "stability": "internal",
+      "since": 6
     },
     {
       "name": "tv-only",
@@ -1332,6 +2074,20 @@
       "since": 1
     },
     {
+      "name": "waiting",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 6
+    },
+    {
+      "name": "warn-layer",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 6
+    },
+    {
       "name": "warning-box",
       "element": "column",
       "meaning": "Highlighted warning message",
@@ -1339,11 +2095,25 @@
       "since": 1
     },
     {
+      "name": "watch-layer",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 6
+    },
+    {
       "name": "watched",
       "element": "",
       "meaning": "Marks a watched item",
       "stability": "stable",
       "since": 1
+    },
+    {
+      "name": "welcome",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 6
     },
     {
       "name": "welcome-busy",
@@ -1393,6 +2163,13 @@
       "meaning": "",
       "stability": "internal",
       "since": 2
+    },
+    {
+      "name": "window-strip",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 6
     },
     {
       "name": "wrapped",
@@ -3016,6 +3793,12 @@
       "since": 1,
       "removedIn": 5,
       "replacement": "danger"
+    },
+    {
+      "name": "btn-label",
+      "since": 1,
+      "removedIn": 6,
+      "replacement": "span or i inside a button (tag button)"
     }
   ]
 }

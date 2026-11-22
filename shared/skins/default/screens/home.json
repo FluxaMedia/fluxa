@@ -1,6 +1,6 @@
 {
   "type": "column",
-  "class": "screen rows",
+  "class": "screen",
   "children": [
     {
       "type": "column",

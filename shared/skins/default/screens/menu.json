@@ -83,7 +83,6 @@
             {
               "type": "column",
               "class": "popover menu-panel menu-sheet",
-              "width": "100vw",
               "padding": "{const.menuPadding}",
               "children": [
                 {

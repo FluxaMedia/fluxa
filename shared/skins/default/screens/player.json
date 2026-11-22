@@ -1227,7 +1227,7 @@
                   }
                 }
               ],
-              "class": "wide-only panel-columns"
+              "class": "wide-only panel-cols"
             },
             {
               "type": "column",
@@ -1824,7 +1824,7 @@
                   ]
                 }
               ],
-              "class": "sheet-head"
+              "class": "sheet-top"
             },
             {
               "type": "row",
