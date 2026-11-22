@@ -26,7 +26,7 @@
               "props": {
                 "fit": "contain"
               },
-              "class": "reco-logo"
+              "height": 96
             },
             {
               "type": "text",

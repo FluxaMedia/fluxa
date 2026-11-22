@@ -107,7 +107,7 @@
                 {
                   "type": "scroll",
                   "when": "menu.long",
-                  "class": "sheet-scroll",
+                  "height": "55vh",
                   "props": {
                     "axis": "y"
                   },

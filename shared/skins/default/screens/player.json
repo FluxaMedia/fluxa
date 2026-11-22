@@ -772,6 +772,8 @@
                                   "when": "row.thumb",
                                   "src": "{row.thumb}",
                                   "class": "panel-thumb",
+                                  "width": 96,
+                                  "height": 54,
                                   "props": {
                                     "fit": "cover"
                                   }
@@ -1038,6 +1040,8 @@
                                       "when": "row.thumb",
                                       "src": "{row.thumb}",
                                       "class": "panel-thumb",
+                                      "width": 96,
+                                      "height": 54,
                                       "props": {
                                         "fit": "cover"
                                       }
@@ -1271,7 +1275,7 @@
                             }
                           }
                         ],
-                        "class": "player-scroll"
+                        "height": "42vh"
                       }
                     ],
                     "gap": 2
@@ -1325,6 +1329,8 @@
                                   "when": "row.thumb",
                                   "src": "{row.thumb}",
                                   "class": "panel-thumb",
+                                  "width": 96,
+                                  "height": 54,
                                   "props": {
                                     "fit": "cover"
                                   }
@@ -2007,7 +2013,8 @@
               "type": "image",
               "when": "player.next.thumb",
               "src": "{player.next.thumb}",
-              "class": "next-thumb"
+              "class": "next-thumb",
+              "height": 140
             },
             {
               "type": "text",

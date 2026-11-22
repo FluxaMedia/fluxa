@@ -26,7 +26,8 @@
                 "value": "{fields.discoverSearch}",
                 "kind": "search"
               },
-              "class": "wide-only search-field"
+              "class": "wide-only",
+              "width": 320
             }
           ],
           "justify": "space_between"

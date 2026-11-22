@@ -230,7 +230,7 @@
             "children": [
               {
                 "type": "image",
-                "class": "expanded-logo",
+                "height": 84,
                 "props": {
                   "fit": "contain",
                   "position": "start",
@@ -1193,7 +1193,8 @@
         "props": {
           "fit": "cover"
         },
-        "class": "trailer-art"
+        "width": 296,
+        "height": 166
       },
       {
         "type": "text",
@@ -2538,7 +2539,8 @@
               },
               {
                 "type": "input",
-                "class": "code-area",
+                "height": 520,
+                "fill": true,
                 "props": {
                   "key": "customCss",
                   "placeholder": "{prefs.skins.cssPlaceholder}",
@@ -3588,7 +3590,8 @@
                 "children": [
                   {
                     "type": "image",
-                    "class": "addon-art",
+                    "width": 48,
+                    "height": 48,
                     "src": "{row.logo}",
                     "when": "row.logo",
                     "props": {
@@ -4145,7 +4148,7 @@
                     "props": {
                       "fit": "contain"
                     },
-                    "class": "sources-logo"
+                    "height": 64
                   },
                   {
                     "type": "text",

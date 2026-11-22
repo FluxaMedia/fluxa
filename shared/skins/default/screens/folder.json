@@ -38,7 +38,8 @@
               "props": {
                 "fit": "cover"
               },
-              "class": "folder-logo"
+              "width": 56,
+              "height": 56
             },
             {
               "type": "text",

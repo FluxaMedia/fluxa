@@ -9,13 +9,6 @@
       "since": 1
     },
     {
-      "name": "addon-art",
-      "element": "image",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
       "name": "addon-chip",
       "element": "text",
       "meaning": "Small label on an addon card",
@@ -205,13 +198,6 @@
       "since": 1
     },
     {
-      "name": "code-area",
-      "element": "input",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
       "name": "compact",
       "element": "",
       "meaning": "",
@@ -324,13 +310,6 @@
       "since": 3
     },
     {
-      "name": "dialog-field",
-      "element": "input",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
       "name": "divider",
       "element": "row",
       "meaning": "Thin separator line",
@@ -436,13 +415,6 @@
       "since": 1
     },
     {
-      "name": "expanded-logo",
-      "element": "image",
-      "meaning": "Title logo of an expanded card",
-      "stability": "internal",
-      "since": 1
-    },
-    {
       "name": "expanded-meta",
       "element": "text",
       "meaning": "Meta line of an expanded card",
@@ -476,13 +448,6 @@
       "meaning": "Outline drawn around the focused element",
       "stability": "stable",
       "since": 1
-    },
-    {
-      "name": "folder-logo",
-      "element": "image",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
     },
     {
       "name": "folder-tabs",
@@ -567,13 +532,6 @@
       "meaning": "Channel name in the live TV guide",
       "stability": "internal",
       "since": 1
-    },
-    {
-      "name": "guide-logo",
-      "element": "image",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
     },
     {
       "name": "guide-now",
@@ -744,13 +702,6 @@
       "since": 1
     },
     {
-      "name": "modal-cast-photo",
-      "element": "image",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
       "name": "modal-hero-scrim",
       "element": "column",
       "meaning": "Gradient over the detail modal hero",
@@ -767,13 +718,6 @@
     {
       "name": "modal-scroll",
       "element": "scroll",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
-      "name": "modal-thumb",
-      "element": "image",
       "meaning": "",
       "stability": "internal",
       "since": 3
@@ -1003,13 +947,6 @@
       "since": 1
     },
     {
-      "name": "player-scroll",
-      "element": "scroll",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
       "name": "popover",
       "element": "column",
       "meaning": "",
@@ -1080,13 +1017,6 @@
       "since": 1
     },
     {
-      "name": "profiles-avatar-grid",
-      "element": "grid",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
       "name": "progress",
       "element": "stack",
       "meaning": "",
@@ -1122,13 +1052,6 @@
       "since": 1
     },
     {
-      "name": "reco-logo",
-      "element": "image",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
       "name": "rows",
       "element": "column row",
       "meaning": "",
@@ -1155,20 +1078,6 @@
       "meaning": "Gradient fading to the side edge of an image",
       "stability": "stable",
       "since": 1
-    },
-    {
-      "name": "search-field",
-      "element": "input",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
-      "name": "search-fill",
-      "element": "input",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
     },
     {
       "name": "secondary",
@@ -1274,13 +1183,6 @@
       "meaning": "",
       "stability": "internal",
       "since": 2
-    },
-    {
-      "name": "sheet-scroll",
-      "element": "scroll",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
     },
     {
       "name": "shelf",
@@ -1430,13 +1332,6 @@
       "since": 3
     },
     {
-      "name": "sources-logo",
-      "element": "image",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
       "name": "sources-season",
       "element": "text",
       "meaning": "Season text in the sources list",
@@ -1554,13 +1449,6 @@
       "meaning": "Transient notification",
       "stability": "stable",
       "since": 1
-    },
-    {
-      "name": "trailer-art",
-      "element": "image",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
     },
     {
       "name": "tv-only",
@@ -3016,6 +2904,102 @@
     },
     {
       "name": "welcome-busy-action",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "addon-art",
+      "since": 2,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "code-area",
+      "since": 2,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "dialog-field",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "expanded-logo",
+      "since": 1,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "folder-logo",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "guide-logo",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "modal-cast-photo",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "modal-thumb",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "player-scroll",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "profiles-avatar-grid",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "reco-logo",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "search-field",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "search-fill",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "sheet-scroll",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "sources-logo",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "trailer-art",
       "since": 3,
       "removedIn": 4,
       "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"

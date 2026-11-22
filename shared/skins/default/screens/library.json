@@ -26,7 +26,8 @@
                 "value": "{fields.librarySearch}",
                 "kind": "search"
               },
-              "class": "wide-only search-field"
+              "class": "wide-only",
+              "width": 320
             },
             {
               "type": "input",
@@ -36,7 +37,8 @@
                 "value": "{fields.librarySearch}",
                 "kind": "search"
               },
-              "class": "compact-only search-fill"
+              "class": "compact-only",
+              "grow": 1
             }
           ],
           "class": "fill-space",

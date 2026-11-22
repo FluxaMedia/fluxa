@@ -718,7 +718,8 @@
                         }
                       }
                     ],
-                    "class": "compact-only profiles-avatar-grid"
+                    "class": "compact-only",
+                    "width": "88vw"
                   }
                 ],
                 "gap": 8

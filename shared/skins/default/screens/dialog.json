@@ -43,7 +43,7 @@
                 "value": "{dialog.titleValue}",
                 "kind": "text"
               },
-              "class": "dialog-field"
+              "width": 380
             },
             {
               "type": "input",
@@ -53,7 +53,7 @@
                 "value": "{dialog.bodyValue}",
                 "kind": "text"
               },
-              "class": "dialog-field"
+              "width": 380
             },
             {
               "type": "text",
@@ -169,7 +169,7 @@
                 "value": "{dialog.nameValue}",
                 "kind": "text"
               },
-              "class": "dialog-field"
+              "width": 380
             },
             {
               "type": "text",

@@ -81,7 +81,8 @@
                         "props": {
                           "fit": "contain"
                         },
-                        "class": "guide-logo"
+                        "width": 40,
+                        "height": 40
                       },
                       {
                         "each": "channel.cells",

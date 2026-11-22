@@ -210,7 +210,8 @@
                                             "props": {
                                               "fit": "cover"
                                             },
-                                            "class": "modal-thumb"
+                                            "width": 160,
+                                            "height": 90
                                           },
                                           {
                                             "type": "column",
@@ -281,7 +282,8 @@
                                             "props": {
                                               "fit": "cover"
                                             },
-                                            "class": "modal-cast-photo"
+                                            "width": 140,
+                                            "height": 210
                                           },
                                           {
                                             "type": "text",
