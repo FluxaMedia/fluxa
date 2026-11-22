@@ -426,6 +426,84 @@ fn full_width_row_inside_a_padded_column_stops_at_the_padding() {
     assert_eq!(targets[0].1.width(), frame_width - 40.0);
 }
 
+fn padded_bar(css: &str, class: &str) -> Rect {
+    crate::reload_styles_with(&format!(
+        ".frame {{ padding: 20px; align-items: flex-start; }} {css}"
+    ))
+    .unwrap();
+    let tree = skin_from(json!({
+        "type": "column",
+        "class": "frame",
+        "children": [{
+            "type": "row",
+            "class": class,
+            "action": {"name": "back"},
+            "children": []
+        }]
+    }));
+    let (_, targets) = render(&tree);
+    assert_eq!(targets.len(), 1);
+    targets[0].1
+}
+
+#[test]
+fn calc_width_subtracts_from_the_padded_parent() {
+    let rect = padded_bar(".bar { width: calc(100% - 10px); height: 30px; }", "bar");
+    assert_eq!(rect.width(), 1230.0);
+}
+
+#[test]
+fn clamp_width_follows_the_parent_between_bounds() {
+    let rect = padded_bar(
+        ".bar { width: clamp(100px, 50%, 400px); height: 30px; }",
+        "bar",
+    );
+    assert_eq!(rect.width(), 400.0);
+    let rect = padded_bar(
+        ".bar { width: clamp(100px, 10%, 400px); height: 30px; }",
+        "bar",
+    );
+    assert_eq!(rect.width(), 124.0);
+}
+
+#[test]
+fn viewport_and_rem_units_mix_without_a_parent_share() {
+    let rect = padded_bar(".bar { width: calc(50vw + 1rem); height: 30px; }", "bar");
+    assert_eq!(rect.width(), 640.0 + 16.0);
+    let rect = padded_bar(".bar { width: min(50vw, 300px); height: 30px; }", "bar");
+    assert_eq!(rect.width(), 300.0);
+}
+
+#[test]
+fn calc_height_in_a_stack_is_measured_from_the_content_box() {
+    crate::reload_styles_with(
+        ".frame { padding: 20px; height: 100vh; } .bar { width: 50px; height: calc(100% - 10px); }",
+    )
+    .unwrap();
+    let tree = skin_from(json!({
+        "type": "stack",
+        "class": "frame",
+        "children": [{
+            "type": "row",
+            "class": "bar",
+            "action": {"name": "back"},
+            "children": []
+        }]
+    }));
+    let (_, targets) = render(&tree);
+    assert_eq!(targets[0].1.height(), 800.0 - 40.0 - 10.0);
+}
+
+#[test]
+fn a_later_width_replaces_an_earlier_one_of_another_unit() {
+    let css = ".bar { width: 200px; height: 30px; } .wide { width: 100%; } .calc { width: calc(100% - 40px); } .fixed { width: 90px; }";
+    assert_eq!(padded_bar(css, "bar wide").width(), 1240.0);
+    assert_eq!(padded_bar(css, "bar calc").width(), 1200.0);
+    assert_eq!(padded_bar(css, "bar wide fixed").width(), 90.0);
+    assert_eq!(padded_bar(css, "bar calc wide").width(), 1240.0);
+    assert_eq!(padded_bar(css, "bar wide calc").width(), 1200.0);
+}
+
 fn corner_tree(stack_class: &str, child_class: &str) -> Vec<Resolved> {
     skin_from(json!({
         "type": "column",

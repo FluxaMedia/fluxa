@@ -372,7 +372,10 @@ fn properties(
         let value = if (colour || gradient) && raw.contains("var(--") {
             raw.trim().to_owned()
         } else {
-            calc(&substitute(&raw, vars)?)?
+            calc(
+                &substitute(&raw, vars)?,
+                matches!(name.as_str(), "width" | "height"),
+            )?
         };
         if name == "transition" {
             for word in split_words(&value.replace(',', " ")) {
@@ -535,7 +538,7 @@ fn split_words(value: &str) -> Vec<String> {
 
 const MATH: [&str; 4] = ["calc(", "min(", "max(", "clamp("];
 
-fn calc(value: &str) -> Result<String, String> {
+fn calc(value: &str, keep_dynamic: bool) -> Result<String, String> {
     let mut out = String::new();
     let mut rest = value;
     while let Some((start, open)) = next_call(rest) {
@@ -544,12 +547,18 @@ fn calc(value: &str) -> Result<String, String> {
         let end = closing(after).ok_or_else(|| format!("{value}: unclosed math function"))?;
         let call = &rest[start..start + open + end + 1];
         let expr = math::Expr::parse(call)
-            .filter(|expr| !expr.needs_env())
-            .ok_or_else(|| {
-                format!("{value}: math functions here support + - * / on numbers and px values")
-            })?;
-        let result = expr.eval(&math::Env::default()).unwrap_or(0.0);
-        out.push_str(&format!("{result}"));
+            .ok_or_else(|| format!("{value}: cannot parse the math function"))?;
+        if expr.needs_env() {
+            if !keep_dynamic {
+                return Err(format!(
+                    "{value}: math functions here support + - * / on numbers and px values"
+                ));
+            }
+            out.push_str(call);
+        } else {
+            let result = expr.eval(&math::Env::default()).unwrap_or(0.0);
+            out.push_str(&format!("{result}"));
+        }
         rest = &after[end + 1..];
     }
     out.push_str(rest);

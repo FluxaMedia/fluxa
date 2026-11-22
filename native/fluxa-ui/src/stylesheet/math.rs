@@ -1,4 +1,7 @@
 use crate::gfx::Vec2;
+use std::sync::{Arc, RwLock};
+
+static TABLE: RwLock<Vec<Arc<Expr>>> = RwLock::new(Vec::new());
 
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub(crate) struct Env {
@@ -23,6 +26,32 @@ pub(crate) enum Expr {
     Min(Vec<Expr>),
     Max(Vec<Expr>),
     Clamp(Box<Expr>, Box<Expr>, Box<Expr>),
+}
+
+impl Env {
+    pub(crate) fn at(view: Vec2, percent: Option<f32>) -> Self {
+        Self {
+            percent,
+            view: Some(view),
+            rem: super::vars::px("root-font-size").max(1.0),
+        }
+    }
+}
+
+pub(crate) fn intern(expr: Expr) -> u32 {
+    let mut table = TABLE
+        .write()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+    if let Some(found) = table.iter().position(|known| **known == expr) {
+        return found as u32 + 1;
+    }
+    table.push(Arc::new(expr));
+    table.len() as u32
+}
+
+pub(crate) fn get(id: u32) -> Option<Arc<Expr>> {
+    let at = (id as usize).checked_sub(1)?;
+    TABLE.read().ok()?.get(at).cloned()
 }
 
 impl Expr {

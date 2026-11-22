@@ -37,6 +37,8 @@ pub(crate) struct Style {
     pub width_vw: Option<f32>,
     pub width_pct: Option<f32>,
     pub height_pct: Option<f32>,
+    pub width_calc: u32,
+    pub height_calc: u32,
     pub column_width: Option<f32>,
     pub columns: Option<u32>,
     pub height_vh: Option<f32>,
@@ -132,6 +134,8 @@ impl Style {
             width_vw: None,
             width_pct: None,
             height_pct: None,
+            width_calc: 0,
+            height_calc: 0,
             column_width: None,
             columns: None,
             height_vh: None,
@@ -351,6 +355,8 @@ struct Patch {
     width_vw: Option<f32>,
     width_pct: Option<f32>,
     height_pct: Option<f32>,
+    width_calc: u32,
+    height_calc: u32,
     column_width: Option<Length>,
     columns: Option<u32>,
     height_vh: Option<f32>,
@@ -946,11 +952,37 @@ fn apply(style: &mut Style, patch: &Patch) {
     if let Some(blur) = patch.backdrop {
         style.backdrop = blur;
     }
+    if patch.width.is_some()
+        || patch.width_vw.is_some()
+        || patch.width_pct.is_some()
+        || patch.width_calc != 0
+    {
+        style.width = None;
+        style.width_vw = None;
+        style.width_pct = None;
+        style.width_calc = 0;
+    }
+    if patch.height.is_some()
+        || patch.height_vh.is_some()
+        || patch.height_pct.is_some()
+        || patch.height_calc != 0
+    {
+        style.height = None;
+        style.height_vh = None;
+        style.height_pct = None;
+        style.height_calc = 0;
+    }
     if let Some(width) = patch.width {
         style.width = Some(width.at(em));
     }
     if let Some(height) = patch.height {
         style.height = Some(height.at(em));
+    }
+    if patch.width_calc != 0 {
+        style.width_calc = patch.width_calc;
+    }
+    if patch.height_calc != 0 {
+        style.height_calc = patch.height_calc;
     }
     if let Some(width) = patch.column_width {
         style.column_width = Some(width.at(em));
@@ -1076,6 +1108,8 @@ fn mix(from: Style, to: Style, t: f32) -> Style {
         width_vw: to.width_vw,
         width_pct: to.width_pct,
         height_pct: to.height_pct,
+        width_calc: to.width_calc,
+        height_calc: to.height_calc,
         column_width: to.column_width,
         columns: to.columns,
         height_vh: to.height_vh,

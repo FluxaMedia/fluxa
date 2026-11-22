@@ -453,7 +453,10 @@ fn build_node<'a, A: HomeAssets>(
             .as_ref()
             .and_then(|style| style.width_pct)
             .zip(parent_inner)
-            .map(|(share, width)| share * width));
+            .map(|(share, width)| share * width))
+        .or(sheet_style
+            .as_ref()
+            .and_then(|style| calc_size(style.width_calc, env.view.get(), parent_inner)));
     let sides = node
         .padding
         .or(sheet_style.as_ref().and_then(|style| style.padding_box))
@@ -720,6 +723,14 @@ fn sheet_style<'a, A: HomeAssets>(
     style
 }
 
+fn calc_size(id: u32, view: Vec2, percent: Option<f32>) -> Option<f32> {
+    crate::stylesheet::math::get(id)?.eval(&crate::stylesheet::math::Env::at(view, percent))
+}
+
+fn calc_relative(id: u32) -> Option<std::sync::Arc<crate::stylesheet::math::Expr>> {
+    crate::stylesheet::math::get(id).filter(|expr| expr.uses_percent())
+}
+
 fn gap_of<'a, A: HomeAssets>(node: &Resolved, env: &'a Env<'a, A>) -> Option<f32> {
     node.gap
         .or_else(|| sheet_style(node, env).and_then(|style| style.gap_set))
@@ -793,7 +804,11 @@ fn frame<'a>(
         .or(style
             .and_then(|style| style.height_vh)
             .map(|share| share * view.y));
-    let spans_parent = style.is_some_and(|style| style.width_pct.is_some());
+    let mut width = width.or(style.and_then(|style| calc_size(style.width_calc, view, None)));
+    let height = height.or(style.and_then(|style| calc_size(style.height_calc, view, None)));
+    let spans_parent = style.is_some_and(|style| {
+        style.width_pct.is_some() || calc_relative(style.width_calc).is_some()
+    });
     if aspect.is_some() && height.is_none() && !spans_parent {
         width = width.or(parent);
     }
@@ -811,6 +826,24 @@ fn frame<'a>(
         .filter(|_| height.is_none())
     {
         item = item.height_pct(share);
+    }
+    if let Some(expr) = style
+        .and_then(|style| calc_relative(style.width_calc))
+        .filter(|_| width.is_none())
+    {
+        item = item.width_rel(flex::Rel::Calc(
+            expr,
+            crate::stylesheet::math::Env::at(view, None),
+        ));
+    }
+    if let Some(expr) = style
+        .and_then(|style| calc_relative(style.height_calc))
+        .filter(|_| height.is_none())
+    {
+        item = item.height_rel(flex::Rel::Calc(
+            expr,
+            crate::stylesheet::math::Env::at(view, None),
+        ));
     }
     if let Some(width) = width {
         item = item.width(width);

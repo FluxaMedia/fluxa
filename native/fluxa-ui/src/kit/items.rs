@@ -183,6 +183,14 @@ impl<'a> Item<'a> {
         self.with(|node| node.height_pct(share))
     }
 
+    pub fn width_rel(self, rel: crate::flex::Rel) -> Self {
+        self.with(|node| node.width_rel(rel))
+    }
+
+    pub fn height_rel(self, rel: crate::flex::Rel) -> Self {
+        self.with(|node| node.height_rel(rel))
+    }
+
     pub fn placed(self, horizontal: Option<Align>, vertical: Option<Align>) -> Self {
         self.with(|node| node.placed(horizontal, vertical))
     }

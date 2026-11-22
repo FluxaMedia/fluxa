@@ -128,6 +128,12 @@ impl Query {
     }
 }
 
+fn is_math(text: &str) -> bool {
+    ["calc(", "min(", "max(", "clamp("]
+        .iter()
+        .any(|name| text.trim_start().starts_with(name))
+}
+
 fn number(key: &str, text: &str) -> Result<f32, String> {
     text.trim()
         .trim_end_matches("px")
@@ -245,7 +251,7 @@ pub(super) fn parse_patch(rule: &str, value: &Value) -> Result<Patch, String> {
     let length = |key: &str| -> Result<Option<Length>, String> {
         value.get(key).map_or(Ok(None), |raw| {
             if raw.as_str().is_some_and(|text| {
-                text.ends_with("vw") || text.ends_with("vh") || text.ends_with('%')
+                text.ends_with("vw") || text.ends_with("vh") || text.ends_with('%') || is_math(text)
             }) {
                 return Ok(None);
             }
@@ -253,6 +259,18 @@ pub(super) fn parse_patch(rule: &str, value: &Value) -> Result<Patch, String> {
                 format!("{rule}.{key}: expected a px number or a space token like \"s12\"")
             })
         })
+    };
+    let calc = |key: &str| -> Result<u32, String> {
+        match value
+            .get(key)
+            .and_then(Value::as_str)
+            .filter(|text| is_math(text))
+        {
+            Some(text) => super::math::Expr::parse(text)
+                .map(super::math::intern)
+                .ok_or_else(|| format!("{rule}.{key}: cannot parse {text}")),
+            None => Ok(0),
+        }
     };
     let gradient = match value.get("gradient").and_then(Value::as_str) {
         Some(text) => Some(parse_gradient(rule, text)?),
@@ -291,6 +309,8 @@ pub(super) fn parse_patch(rule: &str, value: &Value) -> Result<Patch, String> {
         width_vw: view("width", "vw"),
         width_pct: view("width", "%"),
         height_pct: view("height", "%"),
+        width_calc: calc("width")?,
+        height_calc: calc("height")?,
         column_width: length("column-width")?,
         columns: value
             .get("columns")

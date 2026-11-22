@@ -164,13 +164,36 @@ fn memoising() -> bool {
 }
 
 #[derive(Clone, Debug)]
+pub(crate) enum Rel {
+    Share(f32),
+    Calc(
+        std::sync::Arc<crate::stylesheet::math::Expr>,
+        crate::stylesheet::math::Env,
+    ),
+}
+
+impl Rel {
+    fn at(&self, basis: f32) -> f32 {
+        match self {
+            Rel::Share(share) => basis * share,
+            Rel::Calc(expr, env) => expr
+                .eval(&crate::stylesheet::math::Env {
+                    percent: Some(basis),
+                    ..*env
+                })
+                .unwrap_or(0.0),
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
 pub(crate) struct Node {
     id: Option<usize>,
     kind: Kind,
     width: Option<f32>,
     height: Option<f32>,
-    width_pct: Option<f32>,
-    height_pct: Option<f32>,
+    width_rel: Option<Rel>,
+    height_rel: Option<Rel>,
     min_w: Option<f32>,
     min_h: Option<f32>,
     max_w: Option<f32>,
@@ -391,8 +414,8 @@ impl Node {
             kind,
             width: None,
             height: None,
-            width_pct: None,
-            height_pct: None,
+            width_rel: None,
+            height_rel: None,
             min_w: None,
             min_h: None,
             max_w: None,
@@ -449,13 +472,21 @@ impl Node {
         self
     }
 
-    pub fn width_pct(mut self, share: f32) -> Self {
-        self.width_pct = Some(share.max(0.0));
+    pub fn width_pct(self, share: f32) -> Self {
+        self.width_rel(Rel::Share(share.max(0.0)))
+    }
+
+    pub fn height_pct(self, share: f32) -> Self {
+        self.height_rel(Rel::Share(share.max(0.0)))
+    }
+
+    pub fn width_rel(mut self, rel: Rel) -> Self {
+        self.width_rel = Some(rel);
         self
     }
 
-    pub fn height_pct(mut self, share: f32) -> Self {
-        self.height_pct = Some(share.max(0.0));
+    pub fn height_rel(mut self, rel: Rel) -> Self {
+        self.height_rel = Some(rel);
         self
     }
 
@@ -845,18 +876,18 @@ impl Node {
     }
 
     fn relative(&self) -> bool {
-        self.width_pct.is_some() || self.height_pct.is_some()
+        self.width_rel.is_some() || self.height_rel.is_some()
     }
 
     fn with_percent_sizes(&self, space: Vec2) -> Node {
         let mut node = self.clone();
         for child in &mut node.children {
-            if let Some(share) = child.width_pct.take() {
-                child.width = Some((space.x * share - child.margin.width()).max(0.0));
+            if let Some(rel) = child.width_rel.take() {
+                child.width = Some((rel.at(space.x) - child.margin.width()).max(0.0));
                 child.memo.set(Memo::default());
             }
-            if let Some(share) = child.height_pct.take() {
-                child.height = Some((space.y * share - child.margin.height()).max(0.0));
+            if let Some(rel) = child.height_rel.take() {
+                child.height = Some((rel.at(space.y) - child.margin.height()).max(0.0));
                 child.memo.set(Memo::default());
             }
         }
@@ -1483,6 +1514,57 @@ mod tests {
         );
         assert_eq!(out[0].left(), 5.0);
         assert_eq!(out[0].width(), 90.0);
+    }
+
+    fn calc(text: &str) -> Rel {
+        Rel::Calc(
+            std::sync::Arc::new(crate::stylesheet::math::Expr::parse(text).unwrap()),
+            crate::stylesheet::math::Env::default(),
+        )
+    }
+
+    #[test]
+    fn calc_width_is_measured_from_the_padded_content_box() {
+        let placed = stack(
+            Align2::LEFT_TOP,
+            [boxed(10.0, 10.0).width_rel(calc("calc(100% - 20px)")).id(0)],
+        )
+        .padding(Insets::all(10.0))
+        .solve(bounds(200.0, 100.0));
+        assert_eq!(placed.find(0).unwrap().width(), 160.0);
+    }
+
+    #[test]
+    fn calc_height_in_a_column_resolves_against_the_main_axis() {
+        let out = rects(
+            column([
+                boxed(10.0, 10.0).height_rel(calc("min(50%, 70px)")),
+                boxed(10.0, 10.0),
+            ])
+            .gap(0.0),
+            bounds(100.0, 200.0),
+        );
+        assert_eq!(out[0].height(), 70.0);
+        assert_eq!(out[1].top(), 70.0);
+    }
+
+    #[test]
+    fn calc_sizes_are_recomputed_for_every_solve() {
+        let tree = column([boxed(10.0, 10.0).width_rel(calc("calc(50% + 10px)")).id(0)])
+            .align(Align::Start);
+        let narrow = tree.solve(bounds(100.0, 50.0));
+        assert_eq!(narrow.find(0).unwrap().width(), 60.0);
+        let wide = tree.solve(bounds(300.0, 50.0));
+        assert_eq!(wide.find(0).unwrap().width(), 160.0);
+    }
+
+    #[test]
+    fn calc_child_does_not_inflate_a_hugging_parent() {
+        let tree = row([boxed(30.0, 10.0).width_rel(calc("calc(100% - 4px)")).id(0)]);
+        assert_eq!(tree.outer_size(), Vec2::new(30.0, 10.0));
+        let placed = tree.solve(bounds(100.0, 10.0));
+        assert_eq!(placed.find(0).unwrap().width(), 96.0);
+        assert_eq!(tree.outer_size(), Vec2::new(30.0, 10.0));
     }
 
     #[test]
