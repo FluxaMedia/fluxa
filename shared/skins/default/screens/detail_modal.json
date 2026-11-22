@@ -19,8 +19,7 @@
           "children": [
             {
               "type": "column",
-              "class": "popover menu-panel",
-              "height": "88vh",
+              "class": "popover menu-panel modal",
               "width": "{const.modalWidth}",
               "children": [
                 {
@@ -34,6 +33,7 @@
                       "children": [
                         {
                           "type": "stack",
+                          "tag": "header",
                           "children": [
                             {
                               "type": "image",
@@ -49,40 +49,36 @@
                             },
                             {
                               "type": "column",
+                              "tag": "footer",
+                              "class": "fill-space",
                               "children": [
                                 {
                                   "type": "text",
-                                  "text": "{detail.title}",
-                                  "style": "title"
+                                  "tag": "h1",
+                                  "text": "{detail.title}"
                                 },
                                 {
                                   "type": "text",
-                                  "text": "{detail.meta}",
-                                  "style": "meta muted"
+                                  "tag": "small",
+                                  "text": "{detail.meta}"
                                 }
-                              ],
-                              "class": "fill-space",
-                              "align": "start",
-                              "justify": "end",
-                              "gap": 8,
-                              "padding": 20
+                              ]
                             }
-                          ],
-                          "height": 300
+                          ]
                         },
                         {
                           "type": "column",
+                          "class": "details",
                           "children": [
                             {
                               "type": "row",
+                              "tag": "section",
+                              "class": "actions",
                               "children": [
                                 {
                                   "type": "row",
-                                  "class": "btn-primary",
-                                  "height": 44,
-                                  "padding": "0 20",
-                                  "justify": "center",
-                                  "gap": 8,
+                                  "tag": "button",
+                                  "class": "primary",
                                   "action": {
                                     "name": "modal",
                                     "args": {
@@ -92,7 +88,7 @@
                                   "children": [
                                     {
                                       "type": "icon",
-                                      "class": "btn-label",
+                                      "tag": "i",
                                       "props": {
                                         "name": "PlayFilled",
                                         "size": 16
@@ -100,14 +96,14 @@
                                     },
                                     {
                                       "type": "text",
-                                      "class": "btn-label",
+                                      "tag": "span",
                                       "text": "{detail.playLabel}"
                                     }
                                   ]
                                 },
                                 {
                                   "type": "row",
-                                  "class": "centered icon-btn",
+                                  "class": "icon-btn",
                                   "action": {
                                     "name": "modal",
                                     "args": {
@@ -125,7 +121,7 @@
                                 },
                                 {
                                   "type": "row",
-                                  "class": "centered icon-btn",
+                                  "class": "icon-btn",
                                   "action": {
                                     "name": "modal",
                                     "args": {
@@ -141,8 +137,7 @@
                                     }
                                   ]
                                 }
-                              ],
-                              "gap": 10
+                              ]
                             },
                             {
                               "type": "text",
@@ -163,6 +158,7 @@
                                 },
                                 {
                                   "type": "row",
+                                  "tag": "ul",
                                   "when": "detail.multiSeason",
                                   "children": [
                                     {
@@ -182,20 +178,19 @@
                                         ]
                                       }
                                     }
-                                  ],
-                                  "gap": 8,
-                                  "align": "center"
+                                  ]
                                 },
                                 {
                                   "type": "column",
+                                  "tag": "ul",
                                   "children": [
                                     {
                                       "each": "detail.episodes",
                                       "as": "ep",
                                       "template": {
                                         "type": "row",
+                                        "tag": "li",
                                         "class": "panel-row",
-                                        "gap": 12,
                                         "action": {
                                           "name": "modal",
                                           "args": {
@@ -210,22 +205,22 @@
                                             "props": {
                                               "fit": "cover"
                                             },
-                                            "width": 160,
-                                            "height": 90
+                                            "class": "modal-thumb"
                                           },
                                           {
                                             "type": "column",
+                                            "tag": "div",
                                             "children": [
                                               {
                                                 "type": "text",
-                                                "text": "{ep.label}",
-                                                "style": "meta muted"
+                                                "tag": "small",
+                                                "text": "{ep.label}"
                                               },
                                               {
                                                 "type": "text",
-                                                "text": "{ep.title}",
-                                                "style": "subtitle",
+                                                "tag": "h4",
                                                 "class": "episode-title",
+                                                "text": "{ep.title}",
                                                 "props": {
                                                   "lines": 1
                                                 }
@@ -238,15 +233,12 @@
                                                   "lines": 2
                                                 }
                                               }
-                                            ],
-                                            "gap": 2,
-                                            "grow": 1
+                                            ]
                                           }
                                         ]
                                       }
                                     }
-                                  ],
-                                  "gap": 8
+                                  ]
                                 }
                               ],
                               "class": "section"
@@ -268,6 +260,7 @@
                                       "as": "s",
                                       "template": {
                                         "type": "column",
+                                        "class": "mini-poster details",
                                         "action": {
                                           "name": "modal",
                                           "args": {
@@ -282,8 +275,7 @@
                                             "props": {
                                               "fit": "cover"
                                             },
-                                            "width": 140,
-                                            "height": 210
+                                            "class": "mini-poster-art"
                                           },
                                           {
                                             "type": "text",
@@ -293,9 +285,7 @@
                                               "lines": 1
                                             }
                                           }
-                                        ],
-                                        "width": 140,
-                                        "gap": 6
+                                        ]
                                       }
                                     }
                                   ],
@@ -304,12 +294,10 @@
                               ],
                               "class": "section"
                             }
-                          ],
-                          "gap": 16,
-                          "padding": "0 20 20 20"
+                          ]
                         }
                       ],
-                      "gap": 16
+                      "class": "modal-body"
                     }
                   ],
                   "class": "grow"

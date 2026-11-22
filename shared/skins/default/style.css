@@ -1126,7 +1126,7 @@ button:focus { background: color-mix(in srgb, var(--color-text-primary) 18.039%,
 .panel-box li { gap: .75rem; padding: .375rem .25rem; }
 .code { gap: .625rem; padding: .75rem .875rem; }
 .chat { gap: .375rem; padding: .625rem; }
-.sources-modal { height: 88vh; }
+.modal { height: 88vh; }
 .sources-body header { height: 15rem; }
 .sources-body footer { gap: .375rem; padding: 3.75rem 0 1.25rem; justify-content: flex-end; }
 .sources-body footer section { gap: .375rem; padding: 0 1.25rem; align-items: flex-start; }
@@ -1137,5 +1137,24 @@ button:focus { background: color-mix(in srgb, var(--color-text-primary) 18.039%,
 .source-row div { gap: .375rem; }
 .source-row ul { gap: .375rem; }
 .source-row .card-badge { padding: .1875rem .5rem; }
+
+/* ==== Dialogs, detail modal, recommendations ============================ */
+.panel-box input { width: 23.75rem; }
+.modal-body { gap: 1rem; }
+.modal-body header { height: 18.75rem; }
+.modal-body footer { align-items: flex-start; justify-content: flex-end; gap: .5rem; padding: 1.25rem; }
+.details { gap: 1rem; padding: 0 1.25rem 1.25rem; }
+.modal-body button { height: 2.75rem; padding: 0 1.25rem; gap: .5rem; }
+.modal-body li { gap: .75rem; }
+.modal-thumb { width: 160px; height: 90px; }
+.mini-poster { width: 8.75rem; gap: .375rem; }
+.mini-poster-art { width: 140px; height: 210px; }
+.reco .copy { align-items: flex-end; justify-content: flex-end; padding: 0 4rem 3.5rem; }
+.reco-text { width: 35rem; gap: .75rem; align-items: flex-start; }
+.reco-logo { height: 6rem; }
+.dots { gap: .375rem; }
+.dots .chip, .dots .chip-active { width: 10px; height: 10px; padding: 0; }
+.reco .actions button { height: 2.75rem; padding: 0 1.5rem; }
+.reco header { align-items: flex-start; justify-content: flex-end; width: 100vw; height: 4rem; padding: 1.5rem 1.5rem 0; }
 
 /* ==== end of settings section ============================================ */

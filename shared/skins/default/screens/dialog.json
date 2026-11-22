@@ -16,16 +16,14 @@
       "children": [
         {
           "type": "column",
-          "class": "popover menu-panel",
-          "gap": 12,
-          "padding": 20,
+          "class": "popover menu-panel panel-box",
           "width": "{const.dialogWidth}",
           "when": "dialog.kind == \"report\"",
           "children": [
             {
               "type": "text",
-              "text": "{dialog.title}",
-              "style": "subtitle"
+              "tag": "h4",
+              "text": "{dialog.title}"
             },
             {
               "type": "text",
@@ -42,8 +40,7 @@
                 "placeholder": "{dialog.titleHint}",
                 "value": "{dialog.titleValue}",
                 "kind": "text"
-              },
-              "width": 380
+              }
             },
             {
               "type": "input",
@@ -52,23 +49,21 @@
                 "placeholder": "{dialog.bodyHint}",
                 "value": "{dialog.bodyValue}",
                 "kind": "text"
-              },
-              "width": 380
+              }
             },
             {
               "type": "text",
-              "text": "{dialog.counter}",
-              "style": "meta muted"
+              "tag": "small",
+              "text": "{dialog.counter}"
             },
             {
               "type": "row",
+              "tag": "footer",
+              "class": "split",
               "children": [
                 {
                   "type": "row",
-                  "class": "btn-secondary",
-                  "justify": "center",
-                  "height": 40,
-                  "grow": 1,
+                  "tag": "button",
                   "action": {
                     "name": "node",
                     "args": {
@@ -79,17 +74,15 @@
                   "children": [
                     {
                       "type": "text",
-                      "class": "btn-label",
+                      "tag": "span",
                       "text": "{dialog.cancel}"
                     }
                   ]
                 },
                 {
                   "type": "row",
-                  "class": "btn-primary",
-                  "justify": "center",
-                  "height": 40,
-                  "grow": 1,
+                  "tag": "button",
+                  "class": "primary",
                   "action": {
                     "name": "node",
                     "args": {
@@ -100,7 +93,7 @@
                   "children": [
                     {
                       "type": "text",
-                      "class": "btn-label",
+                      "tag": "span",
                       "text": "{dialog.send}"
                     }
                   ],
@@ -108,10 +101,7 @@
                 },
                 {
                   "type": "row",
-                  "class": "btn-secondary",
-                  "justify": "center",
-                  "height": 40,
-                  "grow": 1,
+                  "tag": "button",
                   "action": {
                     "name": "node",
                     "args": {
@@ -122,34 +112,31 @@
                   "children": [
                     {
                       "type": "text",
-                      "class": "btn-label",
+                      "tag": "span",
                       "text": "{dialog.send}"
                     }
                   ],
                   "when": "!dialog.ready"
                 }
-              ],
-              "gap": 8
+              ]
             }
           ]
         },
         {
           "type": "column",
-          "class": "popover menu-panel",
-          "gap": 12,
-          "padding": 20,
+          "class": "popover menu-panel panel-box",
           "width": "{const.dialogWidth}",
           "when": "dialog.kind == \"addon\"",
           "children": [
             {
               "type": "text",
-              "text": "{dialog.title}",
-              "style": "subtitle"
+              "tag": "h4",
+              "text": "{dialog.title}"
             },
             {
               "type": "text",
-              "text": "{dialog.urlLabel}",
-              "style": "meta muted"
+              "tag": "small",
+              "text": "{dialog.urlLabel}"
             },
             {
               "type": "text",
@@ -158,8 +145,8 @@
             },
             {
               "type": "text",
-              "text": "{dialog.nameLabel}",
-              "style": "meta muted"
+              "tag": "small",
+              "text": "{dialog.nameLabel}"
             },
             {
               "type": "input",
@@ -168,8 +155,7 @@
                 "placeholder": "{dialog.nameHint}",
                 "value": "{dialog.nameValue}",
                 "kind": "text"
-              },
-              "width": 380
+              }
             },
             {
               "type": "text",
@@ -181,13 +167,12 @@
             },
             {
               "type": "row",
+              "tag": "footer",
+              "class": "split",
               "children": [
                 {
                   "type": "row",
-                  "class": "btn-secondary",
-                  "justify": "center",
-                  "height": 40,
-                  "grow": 1,
+                  "tag": "button",
                   "action": {
                     "name": "node",
                     "args": {
@@ -198,17 +183,15 @@
                   "children": [
                     {
                       "type": "text",
-                      "class": "btn-label",
+                      "tag": "span",
                       "text": "{dialog.cancel}"
                     }
                   ]
                 },
                 {
                   "type": "row",
-                  "class": "btn-primary",
-                  "justify": "center",
-                  "height": 40,
-                  "grow": 1,
+                  "tag": "button",
+                  "class": "primary",
                   "action": {
                     "name": "node",
                     "args": {
@@ -219,13 +202,12 @@
                   "children": [
                     {
                       "type": "text",
-                      "class": "btn-label",
+                      "tag": "span",
                       "text": "{dialog.save}"
                     }
                   ]
                 }
-              ],
-              "gap": 8
+              ]
             }
           ]
         }

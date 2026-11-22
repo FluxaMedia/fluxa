@@ -15,9 +15,12 @@
     },
     {
       "type": "column",
+      "tag": "section",
+      "class": "fullscreen copy",
       "children": [
         {
           "type": "column",
+          "class": "reco-text",
           "children": [
             {
               "type": "image",
@@ -26,18 +29,18 @@
               "props": {
                 "fit": "contain"
               },
-              "height": 96
+              "class": "reco-logo"
             },
             {
               "type": "text",
+              "tag": "h1",
               "text": "{recommendations.title}",
-              "style": "title",
               "when": "!recommendations.logo"
             },
             {
               "type": "text",
+              "tag": "small",
               "text": "{recommendations.eyebrow}",
-              "style": "meta muted",
               "when": "recommendations.eyebrow"
             },
             {
@@ -51,6 +54,8 @@
             },
             {
               "type": "row",
+              "tag": "ul",
+              "class": "dots",
               "children": [
                 {
                   "each": "recommendations.dots",
@@ -61,8 +66,6 @@
                       {
                         "type": "row",
                         "class": "chip-active",
-                        "width": 10,
-                        "height": 10,
                         "when": "d.active",
                         "action": {
                           "name": "node",
@@ -75,8 +78,6 @@
                       {
                         "type": "row",
                         "class": "chip",
-                        "width": 10,
-                        "height": 10,
                         "when": "!d.active",
                         "action": {
                           "name": "node",
@@ -89,18 +90,17 @@
                     ]
                   }
                 }
-              ],
-              "gap": 6
+              ]
             },
             {
               "type": "row",
+              "tag": "section",
+              "class": "actions",
               "children": [
                 {
                   "type": "row",
-                  "class": "btn-primary",
-                  "height": 44,
-                  "padding": "0 24",
-                  "justify": "center",
+                  "tag": "button",
+                  "class": "primary",
                   "action": {
                     "name": "node",
                     "args": {
@@ -110,17 +110,14 @@
                   "children": [
                     {
                       "type": "text",
-                      "class": "btn-label",
+                      "tag": "span",
                       "text": "{recommendations.play}"
                     }
                   ]
                 },
                 {
                   "type": "row",
-                  "class": "btn-secondary",
-                  "height": 44,
-                  "padding": "0 24",
-                  "justify": "center",
+                  "tag": "button",
                   "action": {
                     "name": "node",
                     "args": {
@@ -130,31 +127,24 @@
                   "children": [
                     {
                       "type": "text",
-                      "class": "btn-label",
+                      "tag": "span",
                       "text": "{recommendations.details}"
                     }
                   ]
                 }
-              ],
-              "gap": 12
+              ]
             }
-          ],
-          "width": 560,
-          "gap": 12,
-          "align": "start"
+          ]
         }
-      ],
-      "class": "fullscreen",
-      "align": "end",
-      "justify": "end",
-      "padding": "0 64 56 64"
+      ]
     },
     {
       "type": "row",
+      "tag": "header",
       "children": [
         {
           "type": "row",
-          "class": "centered icon-btn",
+          "class": "icon-btn",
           "action": {
             "name": "node",
             "args": {
@@ -171,13 +161,8 @@
             }
           ]
         }
-      ],
-      "align": "start",
-      "justify": "end",
-      "width": "100vw",
-      "height": 64,
-      "padding": "24 24 0 24"
+      ]
     }
   ],
-  "class": "fullscreen slider-chapter"
+  "class": "fullscreen slider-chapter reco"
 }
