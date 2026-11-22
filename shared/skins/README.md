@@ -249,7 +249,7 @@ States: `:hover`, `:pressed`, `:focused` (or `:focus`), `:selected`, `:disabled`
 
 Properties in use: `background`, `color`, `font-size`, `font-weight`, `border`, `border-width`, `border-radius`, `padding`, `width`, `height`, `max-width`, `aspect-ratio`, `opacity`, `scale`, `box-shadow`, `backdrop-filter`, `transition`, `animation`, with `@keyframes` for animations.
 
-`aspect-ratio` works with a width, a height or neither: give one side and the other follows (`.thumb { width: 160px; aspect-ratio: 16 / 9; }`), clamped by `max-width` first; an explicit width and height together win over the ratio. Across the main axis rows default to `align-items: center` and columns to `stretch`, so a rule that sets neither behaves differently on a row and on a column; write `align-items` when it matters.
+`aspect-ratio` works with a width, a height or neither: give one side and the other follows (`.thumb { width: 160px; aspect-ratio: 16 / 9; }`), clamped by `max-width` first; an explicit width and height together win over the ratio. Without an `align-items`, a row centres its children across and a column stretches them, so the same rule lays out differently on the two; write `align-items` when it matters.
 
 Colors: `#rrggbb`, `rgba(r, g, b, a)`, `var(--color-accent)` (any color token, including the `--ink-*` text alphas) and `color-mix(in srgb, var(--color-background) 50%, transparent)` for a token at partial alpha. The default skin writes only these forms. The older spellings still parse for existing skins: theme names (`background`, `theme.surface`, `accent`, `text.primary`), `ink/225` and `ink/soft`, `background*0.5`, and a bare `pill` radius.
 
