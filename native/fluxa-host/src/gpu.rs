@@ -286,6 +286,7 @@ impl HomeAssets for HostAssets<'_> {
             .texture_for_priority(url, target_size, fetch_priority(priority));
         match texture {
             Some(id) => fluxa_ui::capture::note_texture(url, target_size, priority, id),
+            None if !artwork_expected(url) => {}
             None => fluxa_ui::capture::mark_dirty(),
         }
         texture
@@ -1830,6 +1831,10 @@ fn hex_color(hex: &str) -> egui::Color32 {
     egui::Color32::from_rgb((value >> 16) as u8, (value >> 8) as u8, value as u8)
 }
 
+fn artwork_expected(url: Option<&str>) -> bool {
+    url.and_then(fluxa_artwork::normalize_url).is_some()
+}
+
 fn fetch_priority(priority: ArtworkPriority) -> ArtworkFetchPriority {
     match priority {
         ArtworkPriority::Hero => ArtworkFetchPriority::Hero,
@@ -1841,6 +1846,13 @@ fn fetch_priority(priority: ArtworkPriority) -> ArtworkFetchPriority {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn missing_artwork_url_is_not_pending() {
+        assert!(!artwork_expected(None));
+        assert!(!artwork_expected(Some("  ")));
+        assert!(artwork_expected(Some("https://example.com/poster.jpg")));
+    }
 
     #[test]
     fn clickable_widgets_become_click_targets() {
