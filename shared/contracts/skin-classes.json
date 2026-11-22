@@ -1298,7 +1298,7 @@
     },
     {
       "name": "pill",
-      "element": "image row",
+      "element": "image",
       "meaning": "",
       "stability": "internal",
       "since": 6
@@ -1788,7 +1788,7 @@
     },
     {
       "name": "solid",
-      "element": "image row",
+      "element": "image",
       "meaning": "",
       "stability": "internal",
       "since": 6

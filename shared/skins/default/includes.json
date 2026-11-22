@@ -1854,7 +1854,7 @@
         "children": [
           {
             "type": "row",
-            "class": "select-field surface solid pill",
+            "class": "select-field",
             "children": [
               {
                 "each": "options",
@@ -1936,7 +1936,7 @@
         "children": [
           {
             "type": "row",
-            "class": "select-field surface solid pill",
+            "class": "select-field",
             "children": [
               {
                 "each": "options",
@@ -1981,7 +1981,7 @@
         "children": [
           {
             "type": "row",
-            "class": "select-field surface solid pill",
+            "class": "select-field",
             "children": [
               {
                 "each": "options",
@@ -2065,7 +2065,7 @@
         "children": [
           {
             "type": "row",
-            "class": "select-field surface solid pill",
+            "class": "select-field",
             "children": [
               {
                 "each": "options",

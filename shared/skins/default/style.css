@@ -178,9 +178,14 @@ card {
   border-radius: var(--card-radius);
 }
 
-input { background: var(--color-input-background); border-color: var(--color-input-border); border-width: hairline; }
+input, dropdown {
+  background: var(--color-input-background);
+  color: var(--color-text-primary);
+  border-color: var(--color-input-border);
+  border-width: hairline;
+}
 
-input:focused { border-color: var(--color-input-border-focus); border-width: theme.input.focus; }
+input:focused, dropdown:selected { border-color: var(--color-input-border-focus); border-width: theme.input.focus; }
 
 toggle, .switch { background: var(--ink-soft); border-radius: var(--radius-pill); transition: normal token; }
 toggle:selected, .switch:selected { background: var(--color-accent); }
@@ -205,18 +210,6 @@ row.mark, .panel-heading { color: var(--ink-muted); }
 swatch.glass { background: var(--ink-dim); border-color: var(--ink-body); color: var(--ink-subtle); }
 
 swatch.hover { border-color: var(--ink-dim); }
-
-dropdown {
-  background: var(--ink-raised);
-  color: var(--color-text-primary);
-  border-color: color-mix(in srgb, var(--color-text-primary) 7.059%, transparent);
-  border-width: hairline;
-}
-
-dropdown:selected {
-  background: var(--ink-strong);
-  border-color: color-mix(in srgb, var(--color-text-primary) 27.451%, transparent);
-}
 
 dropdown:disabled { background: var(--ink-faint); color: var(--ink-muted); }
 
@@ -444,12 +437,15 @@ hero-synopsis-size { font-size: 16; }
 
 .slider-segment, .mini-tile, .panel-thumb { border-radius: var(--radius-sm); }
 .slider-chapter { background: #000000; }
-.select { height: control-height; }
+
+.select, .select-field { height: control-height; }
 
 .select-field {
-  height: control-height;
   gap: var(--gap-snug);
   padding: 0 var(--space-4);
+  background: var(--color-input-background);
+  border: 1px solid var(--color-input-border);
+  border-radius: var(--radius-pill);
 }
 
 .select-row:focus, .panel-row:focus { background: var(--ink-soft); }
