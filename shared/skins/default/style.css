@@ -196,7 +196,9 @@ scrim.backdrop {
 
 row.divider { border-color: var(--ink-faint); }
 row.chevron { border-color: var(--ink-muted); }
-row.value { color: var(--ink-subtle); }
+row.value,
+.hero-meta,
+.watched .episode-title { color: var(--ink-subtle); }
 row.description { color: theme.settings.description; }
 row.description.compact { color: theme.settings.description.compact; }
 
@@ -204,7 +206,7 @@ row.description.wrapped {
   color: color-mix(in srgb, var(--color-text-primary) 39.216%, transparent);
 }
 
-row.mark { color: var(--ink-muted); }
+row.mark, .panel-heading { color: var(--ink-muted); }
 
 swatch.glass {
   background: var(--ink-dim);
@@ -257,7 +259,7 @@ popup {
 
 segmented, outline, well { background: var(--ink-faint); }
 segmented.indicator, dim { background: var(--ink-dim); }
-segmented.label { color: var(--ink-body); }
+segmented.label, .expanded-meta { color: var(--ink-body); }
 segmented.label:hover, segmented.label:selected { color: var(--ink-full); }
 stepper.button { background: var(--ink-soft); color: var(--ink-full); }
 stepper.button:hover, strong { background: var(--ink-strong); }
@@ -352,8 +354,6 @@ hero-synopsis-size { font-size: 16; }
   magnify: 0.18;
   magnify-span: 0.9;
 }
-
-.hero-meta, .watched .episode-title { color: var(--ink-subtle); }
 .shelf-title { color: #ffffff; }
 .chip { background: var(--ink-raised); color: var(--ink-body); border-radius: var(--radius-pill); }
 .chip:hover { color: var(--ink-full); }
@@ -365,8 +365,10 @@ hero-synopsis-size { font-size: 16; }
   background: var(--ink-strong);
 }
 .chip:focus { background: var(--ink-dim); }
-.chip:selected { background: #ffffff; }
-.chip:selected .chip-label { color: #000000; }
+.chip:selected, .current .episode-chip { background: #ffffff; }
+.chip:selected .chip-label,
+.current .episode-chip-label,
+.tab:selected .tab-label { color: #000000; }
 .chip-active { background: var(--ink-strong); border-radius: var(--radius-pill); }
 .divider { background: var(--ink-raised); height: 1px; }
 
@@ -418,11 +420,7 @@ hero-synopsis-size { font-size: 16; }
   padding: 4px 9px;
 }
 
-.current .episode-chip { background: #ffffff; }
-
 .episode-chip-label { color: var(--ink-text); }
-
-.current .episode-chip-label, .tab:selected .tab-label { color: #000000; }
 
 .episode-time {
   font-size: var(--text-label);
@@ -481,28 +479,27 @@ hero-synopsis-size { font-size: 16; }
   to { opacity: 1; }
 }
 
-/* Buttons: one set of classes for layout nodes and Rust widgets. Labels
-   inherit color and size from the button. */
+/* Buttons: one set of classes for layout nodes and Rust widgets. A variant
+   only swaps the two scoped colors; hover (except primary) and disabled are
+   derived by the engine (`states: auto`). Labels inherit color and size. */
 .btn-primary,
 .btn-secondary,
 .btn-selected,
 .btn-danger {
+  background: var(--btn-bg);
+  color: var(--btn-fg);
   border-radius: var(--radius-pill);
   height: control-height;
   font-size: label-size;
+  states: auto;
 }
 
-.btn-primary { background: var(--ink-full); color: var(--color-background); }
+.btn-primary { --btn-bg: var(--ink-full); --btn-fg: var(--color-background); }
+.btn-secondary { --btn-bg: color-mix(in srgb, var(--color-text-primary) 10.98%, transparent); --btn-fg: var(--color-text-primary); }
+.btn-selected { --btn-bg: var(--color-accent); --btn-fg: var(--color-accent-foreground); }
+.btn-danger { --btn-bg: var(--color-error); --btn-fg: var(--color-text-primary); }
+
 .btn-primary:hover { background: color-mix(in srgb, var(--color-text-primary) 88.235%, transparent); }
-
-.btn-secondary { background: color-mix(in srgb, var(--color-text-primary) 10.98%, transparent); color: var(--color-text-primary); }
-.btn-secondary:hover { background: color-mix(in srgb, var(--color-text-primary) 18.039%, transparent); }
-
-.btn-selected { background: var(--color-accent); color: var(--color-accent-foreground); }
-.btn-selected:hover { background: color-mix(in srgb, var(--color-accent) 85%, transparent); }
-
-.btn-danger { background: var(--color-error); color: var(--color-text-primary); }
-.btn-danger:hover { background: color-mix(in srgb, var(--color-error) 85%, transparent); }
 
 .btn-primary:focus { background: var(--ink-full); }
 .btn-secondary:focus { background: color-mix(in srgb, var(--color-text-primary) 18.039%, transparent); }
@@ -511,11 +508,6 @@ hero-synopsis-size { font-size: 16; }
 
 /* An (empty) rule opts the label into the color and size it inherits. */
 .btn-label {}
-
-.btn-primary:disabled,
-.btn-secondary:disabled,
-.btn-selected:disabled,
-.btn-danger:disabled { background: var(--ink-soft); color: var(--ink-dim); }
 
 .icon-btn {
   width: icon-button;
@@ -673,8 +665,6 @@ hero-synopsis-size { font-size: 16; }
 
 .mini-tile:hover .mini-controls { opacity: 1; }
 
-.panel-heading { color: var(--ink-muted); }
-
 .panel-thumb { border-radius: var(--radius-sm); }
 .panel-label { font-weight: 500; }
 .panel-detail { font-size: var(--text-label); color: var(--ink-muted); }
@@ -799,7 +789,7 @@ hero-synopsis-size { font-size: 16; }
 
 .watch-chat { gap: 6px; padding: 10px; }
 
-.chat-text:selected { color: var(--color-accent); }
+.chat-text:selected, .welcome-busy { color: var(--color-accent); }
 
 .watch-toggle {
   gap: 12px;
@@ -946,7 +936,6 @@ hero-synopsis-size { font-size: 16; }
 }
 
 .welcome-error-text { font-size: var(--text-meta); color: var(--color-error); }
-.welcome-busy { color: var(--color-accent); }
 
 .group-heading,
 .welcome-label,
@@ -960,8 +949,6 @@ hero-synopsis-size { font-size: 16; }
   background: linear-gradient(to bottom, color-mix(in srgb, var(--color-background) 0%, transparent) 0%, color-mix(in srgb, var(--color-background) 0%, transparent) 40%, color-mix(in srgb, var(--color-background) 90%, transparent) 100%);
   border-radius: var(--radius-md);
 }
-
-.expanded-meta { color: var(--ink-body); }
 
 .empty-title,
 .sources-episode { font-size: var(--text-subtitle); font-weight: 700; }
@@ -1068,23 +1055,32 @@ hero-synopsis-size { font-size: 16; }
 .sheet-row,
 .player-option,
 .panel-line,
-.menu-item {
+.menu-item,
+.field-row {
   gap: var(--space-10);
 }
 
 .row-text { gap: var(--space-2); flex-grow: 1; }
-.inline-row { gap: var(--space-12); }
+.inline-row,
+.profiles-heading,
+.skeleton-shelf,
+.page-snug,
+.thumb-strip,
+.strip-group,
+.modal-episode,
+.action-row { gap: var(--space-12); }
 
 .row-note {
   gap: var(--space-12);
   padding: 0px var(--space-16);
 }
-
-.field-row { gap: var(--space-10); }
 .field-input { width: 420px; }
 
 .code-area { height: 520px; flex-fill: 1; }
-.card-head { gap: var(--space-14); }
+.card-head,
+.watch-form,
+.screen-list,
+.page-dense { gap: var(--space-14); }
 
 .corner {
   align-items: flex-end;
@@ -1159,16 +1155,6 @@ hero-synopsis-size { font-size: 16; }
   align-items: center;
 }
 
-.profiles-heading,
-.skeleton-shelf,
-.page-snug,
-.thumb-strip,
-.strip-group,
-.modal-episode,
-.action-row {
-  gap: var(--space-12);
-}
-
 .profiles-grid,
 .profiles-cell { align-items: center; }
 
@@ -1185,7 +1171,9 @@ hero-synopsis-size { font-size: 16; }
   flex-grow: 1;
 }
 
-.profiles-shared { gap: var(--space-4); }
+.profiles-shared,
+.rating,
+.guide-row { gap: var(--space-4); }
 
 .profiles-toggle {
   gap: var(--space-12);
@@ -1245,7 +1233,9 @@ hero-synopsis-size { font-size: 16; }
 }
 
 .skeleton-title { width: 180px; height: 20px; }
-.tab-strip { gap: var(--space-20); }
+.tab-strip,
+.screen-detail,
+.shelf-stack { gap: var(--space-20); }
 .tab-strip-item { padding: var(--space-8) var(--space-4); }
 .day-cell { height: 88px; }
 .day-body { gap: var(--space-4); padding: var(--space-8); }
@@ -1332,7 +1322,8 @@ hero-synopsis-size { font-size: 16; }
 .panel-line-tight,
 .panel-chips,
 .guide-rows,
-.title-pair {
+.title-pair,
+.dot-row {
   gap: var(--space-6);
 }
 
@@ -1349,7 +1340,7 @@ hero-synopsis-size { font-size: 16; }
 .watch-join { padding: 0px 18px; justify-content: center; }
 .watch-copy { padding: 0px var(--space-14); justify-content: center; }
 
-.empty-state { gap: var(--space-8); padding: 0px var(--space-24); }
+.empty-state, .sheet-head { gap: var(--space-8); padding: 0px var(--space-24); }
 
 .sources-hero { height: 240px; }
 
@@ -1402,7 +1393,14 @@ hero-synopsis-size { font-size: 16; }
   justify-content: end;
 }
 
-.player-trailer-bar { gap: var(--space-16); }
+.player-trailer-bar,
+.sync-controls,
+.sources,
+.screen-browse,
+.shelf-row,
+.card-strip,
+.modal-content,
+.folder-shelves { gap: var(--space-16); }
 
 .player-panel-dock {
   padding: var(--space-16) var(--space-16) 104px var(--space-16);
@@ -1480,25 +1478,10 @@ hero-synopsis-size { font-size: 16; }
 
 .player-choice-wrap { padding: var(--space-8) var(--space-14); }
 
-.sheet-head {
-  gap: var(--space-8);
-  padding: 0px var(--space-24);
-}
-
 .sheet-chips {
   width: 100vw;
   gap: var(--space-8);
   padding: 0px var(--space-24);
-}
-
-.sync-controls,
-.sources,
-.screen-browse,
-.shelf-row,
-.card-strip,
-.modal-content,
-.folder-shelves {
-  gap: var(--space-16);
 }
 
 .sync-value { gap: var(--space-4); align-items: end; }
@@ -1509,10 +1492,6 @@ hero-synopsis-size { font-size: 16; }
 
 .stats-column { width: 260px; gap: var(--space-8); }
 .top-inset { height: 72px; }
-
-.watch-form, .screen-list, .page-dense { gap: var(--space-14); }
-
-.screen-detail, .shelf-stack { gap: var(--space-20); }
 .title-bar { justify-content: space-between; }
 .search-field { width: 320px; }
 
@@ -1555,9 +1534,6 @@ hero-synopsis-size { font-size: 16; }
 .modal-cast { width: 140px; gap: var(--space-6); }
 .modal-cast-photo { width: 140px; height: 210px; }
 .guide-body { padding: 0px 0px 0px var(--space-48); }
-
-.rating,
-.guide-row { gap: var(--space-4); }
 .guide-logo { width: 40px; height: 40px; }
 
 .dialog-field { width: 380px; }
@@ -1616,8 +1592,6 @@ hero-synopsis-size { font-size: 16; }
   height: 64px;
   padding: var(--space-24) var(--space-24) 0px var(--space-24);
 }
-
-.dot-row { gap: var(--space-6); }
 .dot { width: 10px; height: 10px; }
 
 @media (size: compact) {

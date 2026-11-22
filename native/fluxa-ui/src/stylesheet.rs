@@ -5,6 +5,7 @@ use std::sync::{Arc, Mutex, RwLock};
 mod css;
 mod defaults;
 mod parse;
+mod scoped;
 pub(crate) mod vars;
 
 const DEFAULT_SHEET: &str = include_str!("../../../shared/skins/default/style.css");
@@ -49,6 +50,7 @@ pub(crate) struct Style {
     pub order: i32,
     pub padding_box: Option<[f32; 4]>,
     pub gap_set: Option<f32>,
+    pub vars: u32,
 }
 
 pub(crate) const MAX_GRADIENT_STOPS: usize = 16;
@@ -134,6 +136,7 @@ impl Style {
             order: 0,
             padding_box: None,
             gap_set: None,
+            vars: 0,
         }
     }
 }
@@ -307,6 +310,8 @@ struct Patch {
     fill_space: Option<bool>,
     order: Option<i32>,
     padding_box: Option<[Length; 4]>,
+    vars: u32,
+    auto_states: Option<bool>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -494,6 +499,7 @@ pub(crate) struct Frame {
     pub text: Option<Color32>,
     pub font_size: Option<f32>,
     pub weight: Option<f32>,
+    pub vars: u32,
 }
 
 impl Frame {
@@ -504,6 +510,7 @@ impl Frame {
             text: None,
             font_size: None,
             weight: None,
+            vars: 0,
         }
     }
 
@@ -511,6 +518,7 @@ impl Frame {
         self.text = style.text_declared.then_some(style.text);
         self.font_size = style.font_size;
         self.weight = style.weight;
+        self.vars = style.vars;
         self
     }
 }
@@ -528,6 +536,7 @@ impl Scope {
             frame.text.map(|color| color.to_array()),
             frame.font_size.map(f32::to_bits),
             frame.weight.map(f32::to_bits),
+            frame.vars,
             frame.states,
         ));
         Self { frame, signature }
@@ -772,7 +781,8 @@ fn resolve_paint(paint: &Paint) -> Color32 {
 
 fn resolve_paint_at(paint: &Paint, depth: u8) -> Color32 {
     match paint {
-        Paint::Var(name) => crate::vars::raw(name)
+        Paint::Var(name) => scoped::lookup(name)
+            .or_else(|| crate::vars::raw(name))
             .filter(|_| depth < 4)
             .and_then(|value| parse_paint(value.trim()))
             .map_or(Color32::MAGENTA, |inner| {
@@ -1006,6 +1016,7 @@ fn mix(from: Style, to: Style, t: f32) -> Style {
         order: to.order,
         padding_box: to.padding_box,
         gap_set: to.gap_set,
+        vars: to.vars,
     }
 }
 
@@ -1193,11 +1204,7 @@ pub(crate) fn base_with(rule: &str, modifiers: &[&str]) -> Style {
         return style;
     }
     let sheet = sheet();
-    let mut style = Style::blank();
-    for layer in layers(&sheet, rule, modifiers) {
-        apply(&mut style, &layer.base);
-    }
-    inherit(&mut style);
+    let style = base_in(&sheet, rule, modifiers);
     MEMO.with(|memo| {
         memo.borrow_mut()
             .entries
@@ -1216,13 +1223,21 @@ pub(crate) fn base_with(rule: &str, modifiers: &[&str]) -> Style {
     style
 }
 
-pub(crate) fn color(rule: &str) -> Color32 {
-    let sheet = sheet();
+fn base_in(sheet: &Sheet, rule: &str, modifiers: &[&str]) -> Style {
+    let layers = layers(sheet, rule, modifiers);
+    let own = scoped::merge(layers.iter().map(|layer| layer.base.vars));
+    let _own = scoped::Own::enter(own);
     let mut style = Style::blank();
-    for layer in layers(&sheet, rule, &[]) {
+    for layer in layers {
         apply(&mut style, &layer.base);
     }
-    style.fill
+    style.vars = own;
+    inherit(&mut style);
+    style
+}
+
+pub(crate) fn color(rule: &str) -> Color32 {
+    base_in(&sheet(), rule, &[]).fill
 }
 
 fn chain<'a>(sheet: &'a Sheet, name: &str) -> Vec<&'a Rule> {
@@ -1316,7 +1331,17 @@ pub(crate) fn resolve_with(
     state: State,
     modifiers: &[&str],
 ) -> Style {
-    let sheet = sheet();
+    resolve_in(context, &sheet(), rule, id, state, modifiers)
+}
+
+fn resolve_in(
+    context: &crate::gfx::Context,
+    sheet: &Sheet,
+    rule: &str,
+    id: Id,
+    state: State,
+    modifiers: &[&str],
+) -> Style {
     if !sheet.rules.contains_key(canonical(rule)) {
         return Style {
             fill: Color32::MAGENTA,
@@ -1324,20 +1349,35 @@ pub(crate) fn resolve_with(
             ..Style::blank()
         };
     }
-    let layers = layers(&sheet, rule, modifiers);
-    let rules: Vec<&Rule> = kinds(&sheet, modifiers)
+    let layers = layers(sheet, rule, modifiers);
+    let rules: Vec<&Rule> = kinds(sheet, modifiers)
         .into_iter()
-        .chain(chain(&sheet, rule))
+        .chain(chain(sheet, rule))
         .collect();
     let pick = |field: fn(&Rule) -> Option<&str>| rules.iter().rev().find_map(|r| field(r));
+    let own = scoped::merge(layers.iter().map(|layer| layer.base.vars));
+    let _own = scoped::Own::enter(own);
     let mut base = Style::blank();
     for layer in &layers {
         apply(&mut base, &layer.base);
     }
+    base.vars = own;
     inherit(&mut base);
+    let derive = layers
+        .iter()
+        .rev()
+        .find_map(|layer| layer.base.auto_states)
+        .unwrap_or(false)
+        && base.gradient.is_none()
+        && layers.iter().any(|layer| layer.base.fill.is_some());
     if !state.enabled {
         for layer in &layers {
             apply(&mut base, &layer.disabled);
+        }
+        if derive && layers.iter().all(|layer| layer.disabled == Patch::default()) {
+            base.fill = ink(tone::soft());
+            base.text = ink(tone::dim());
+            base.text_declared = true;
         }
         return base;
     }
@@ -1356,7 +1396,9 @@ pub(crate) fn resolve_with(
         ("press", state.pressed, |l| &l.pressed),
     ];
     for (key, on, patch) in stages {
-        if key != "select" && layers.iter().all(|layer| *patch(layer) == Patch::default()) {
+        let undeclared = layers.iter().all(|layer| *patch(layer) == Patch::default());
+        let derived = derive && undeclared && key == "hover" && result.fill.a() > 0;
+        if key != "select" && undeclared && !derived {
             continue;
         }
         let t = crate::motion::ease(
@@ -1370,6 +1412,9 @@ pub(crate) fn resolve_with(
             let mut target = result;
             for layer in &layers {
                 apply(&mut target, patch(layer));
+            }
+            if derived {
+                target.fill = scoped::hover_fill(result.fill);
             }
             target.selected = if key == "select" {
                 1.0
@@ -1397,7 +1442,7 @@ pub(crate) fn resolve_with(
         }
     }
     match rules.iter().rev().find_map(|r| r.animation.as_ref()) {
-        Some(animation) => animate(context, &sheet, animation, result),
+        Some(animation) => animate(context, sheet, animation, result),
         None => result,
     }
 }
@@ -1684,6 +1729,139 @@ mod tests {
         assert!(own.font_size.is_some());
         assert_eq!(plain.text, Color32::from_rgb(1, 2, 3));
         assert_eq!(plain.weight, Some(700.0));
+    }
+
+    fn on(rule: &str, sheet: &Sheet, state: State, frames: &[Frame]) -> Style {
+        let context = crate::gfx::Context::default();
+        within(frames, || {
+            resolve_in(&context, sheet, rule, Id::new(("scoped", rule)), state, &[])
+        })
+    }
+
+    const LIVE: State = State {
+        hovered: false,
+        pressed: false,
+        focused: false,
+        enabled: true,
+        selected: false,
+    };
+
+    #[test]
+    fn scoped_custom_properties_resolve_per_element() {
+        let sheet = Sheet::parse(
+            ".a { --tone: #ff0000; background: var(--tone); }\n\
+             .b { --tone: #00ff00; background: var(--tone); }\n\
+             .c { background: var(--tone); }\n\
+             .d { --tone: var(--color-accent); background: var(--tone); }",
+        )
+        .expect("parses");
+        let fill = |rule| on(rule, &sheet, LIVE, &[]).fill;
+        assert_eq!(fill("a"), Color32::from_rgb(255, 0, 0));
+        assert_eq!(fill("b"), Color32::from_rgb(0, 255, 0));
+        assert_eq!(fill("d"), accent());
+        // Without a scoped declaration the :root table answers (unknown names are magenta).
+        assert_eq!(fill("c"), Color32::MAGENTA);
+    }
+
+    #[test]
+    fn scoped_properties_reach_descendants_and_nearest_wins() {
+        let sheet = Sheet::parse(
+            ".panel { --tone: #ff0000; }\n\
+             .inner { --tone: #0000ff; }\n\
+             .leaf { background: var(--tone); }",
+        )
+        .expect("parses");
+        let panel = on("panel", &sheet, LIVE, &[]);
+        assert_ne!(panel.vars, 0);
+        let outer = Frame::plain("panel".into(), 0).inheriting(&panel);
+        let inner = Frame::plain("inner".into(), 0)
+            .inheriting(&on("inner", &sheet, LIVE, std::slice::from_ref(&outer)));
+        let leaf = |frames: &[Frame]| on("leaf", &sheet, LIVE, frames).fill;
+        assert_eq!(leaf(&[outer.clone()]), Color32::from_rgb(255, 0, 0));
+        assert_eq!(leaf(&[outer, inner]), Color32::from_rgb(0, 0, 255));
+    }
+
+    #[test]
+    fn same_rule_scoped_properties_merge_across_selectors() {
+        let sheet = Sheet::parse(
+            ".a { --one: #010203; }\n.a { --two: #040506; background: var(--one); color: var(--two); }",
+        )
+        .expect("parses");
+        let style = on("a", &sheet, LIVE, &[]);
+        assert_eq!(style.fill, Color32::from_rgb(1, 2, 3));
+        assert_eq!(style.text, Color32::from_rgb(4, 5, 6));
+    }
+
+    #[test]
+    fn root_properties_keep_resolving_everywhere() {
+        let sheet = Sheet::parse(".a { background: var(--color-accent); }").expect("parses");
+        assert_eq!(on("a", &sheet, LIVE, &[]).fill, accent());
+    }
+
+    fn hovered() -> State {
+        State {
+            hovered: true,
+            ..LIVE
+        }
+    }
+
+    #[test]
+    fn derived_hover_matches_the_declared_hover_of_the_default_skin() {
+        let declared = Sheet::parse(
+            ".o { background: var(--color-accent); }\n\
+             .o:hover { background: color-mix(in srgb, var(--color-accent) 85%, transparent); }\n\
+             .e { background: var(--color-error); }\n\
+             .e:hover { background: color-mix(in srgb, var(--color-error) 85%, transparent); }\n\
+             .t { background: color-mix(in srgb, var(--color-text-primary) 10.98%, transparent); }\n\
+             .t:hover { background: color-mix(in srgb, var(--color-text-primary) 18.039%, transparent); }",
+        )
+        .expect("parses");
+        let derived = Sheet::parse(
+            ".o, .e, .t { states: auto; }\n\
+             .o { background: var(--color-accent); }\n\
+             .e { background: var(--color-error); }\n\
+             .t { background: color-mix(in srgb, var(--color-text-primary) 10.98%, transparent); }",
+        )
+        .expect("parses");
+        for rule in ["o", "e", "t"] {
+            assert_eq!(
+                on(rule, &derived, hovered(), &[]).fill,
+                on(rule, &declared, hovered(), &[]).fill,
+                "{rule}"
+            );
+            assert_ne!(
+                on(rule, &derived, hovered(), &[]).fill,
+                on(rule, &derived, LIVE, &[]).fill,
+                "{rule}"
+            );
+        }
+    }
+
+    #[test]
+    fn derived_disabled_is_the_shared_disabled_look() {
+        let sheet =
+            Sheet::parse(".a { states: auto; background: #123456; color: #ffffff; }")
+                .expect("parses");
+        let off = on("a", &sheet, State::default(), &[]);
+        assert_eq!(off.fill, ink(tone::soft()));
+        assert_eq!(off.text, ink(tone::dim()));
+    }
+
+    #[test]
+    fn states_stay_off_unless_requested_and_declared_variants_win() {
+        let plain = Sheet::parse(".a { background: #336699; }").expect("parses");
+        assert_eq!(
+            on("a", &plain, hovered(), &[]).fill,
+            on("a", &plain, LIVE, &[]).fill
+        );
+        let explicit = Sheet::parse(
+            ".a { states: auto; background: #336699; }\n.a:hover { background: #ffffff; }",
+        )
+        .expect("parses");
+        assert_eq!(
+            on("a", &explicit, hovered(), &[]).fill,
+            Color32::from_rgb(255, 255, 255)
+        );
     }
 
     #[test]

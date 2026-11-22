@@ -180,7 +180,14 @@ fn add_rule(
             None => slot,
         };
         for (name, value) in &props {
-            target.insert(name.clone(), value.clone());
+            match (name.as_str(), target.get_mut(name), value) {
+                ("vars", Some(Value::Object(earlier)), Value::Object(more)) => {
+                    earlier.extend(more.clone());
+                }
+                _ => {
+                    target.insert(name.clone(), value.clone());
+                }
+            }
         }
     }
     Ok(())
@@ -324,8 +331,10 @@ fn properties(
     vars: &HashMap<String, String>,
 ) -> Result<Map<String, Value>, String> {
     let mut props = Map::new();
+    let mut scoped = Map::new();
     for (name, raw) in declarations {
-        if name.starts_with("--") {
+        if let Some(custom) = name.strip_prefix("--") {
+            scoped.insert(custom.to_owned(), Value::String(raw.trim().to_owned()));
             continue;
         }
         let colour = matches!(
@@ -462,6 +471,9 @@ fn properties(
             (_, Some(number)) => serde_json::json!(number),
         };
         props.insert(name.clone(), parsed);
+    }
+    if !scoped.is_empty() {
+        props.insert("vars".to_owned(), Value::Object(scoped));
     }
     Ok(props)
 }

@@ -255,7 +255,24 @@ pub(super) fn parse_patch(rule: &str, value: &Value) -> Result<Patch, String> {
         Some(text) => Some(parse_shadow(rule, text)?),
         None => None,
     };
+    let custom: Vec<(String, String)> = value
+        .get("vars")
+        .and_then(Value::as_object)
+        .map(|object| {
+            object
+                .iter()
+                .filter_map(|(name, raw)| Some((name.clone(), raw.as_str()?.to_owned())))
+                .collect()
+        })
+        .unwrap_or_default();
     Ok(Patch {
+        vars: super::scoped::intern(custom),
+        auto_states: match value.get("states").and_then(Value::as_str) {
+            Some("auto") => Some(true),
+            Some("none") => Some(false),
+            Some(other) => return Err(format!("{rule}.states: expected auto or none, found {other}")),
+            None => None,
+        },
         gradient,
         shadow,
         margin: length("margin")?,

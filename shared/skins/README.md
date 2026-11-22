@@ -256,6 +256,18 @@ Component classes: buttons are `.btn-primary`, `.btn-secondary`, `.btn-selected`
 
 Colors, spacing, radii, icon sizes and motion durations are `:root` custom properties (`--color-surface`, `--color-accent`, `--space-16`, `--radius-md`, and so on; the full list is in `shared/skins/default/style.css`). Your skin overrides them in its own `:root` block, and `@media (theme: id)` switches rules for one built-in theme. Layout and component metrics (row heights, hero ratios, poster size clamps, player sizes and similar) are not in the stylesheet: the engine carries typed defaults for them in `native/fluxa-ui/src/stylesheet/defaults.rs`. A skin that wants a different value declares the same `--name` in `:root` (or inside `@media (size: compact|medium|tv)`), and that wins over the engine default. A user theme file can override numeric values under `vars`, colors under `colors` and durations under `motion`.
 
+Scoped custom properties: a `--name` declared in any rule (not only `:root`) applies to the elements that rule matches and to their descendants; the nearest declaration wins and `:root` answers when none does. Use them to build variants that only swap colors:
+
+```css
+.btn-primary, .btn-danger { background: var(--btn-bg); color: var(--btn-fg); states: auto; }
+.btn-primary { --btn-bg: var(--ink-full); --btn-fg: var(--color-background); }
+.btn-danger { --btn-bg: var(--color-error); --btn-fg: var(--color-text-primary); }
+```
+
+Scoped properties are read by the color properties (`background`, `color`, `border-color`, gradients and `color-mix()` stops); layout lengths still take `:root` values only. Declarations inside `:hover` and the other state blocks are ignored.
+
+Derived states: add `states: auto;` to a rule that declares a `background` (a solid color) and the engine fills in the states you did not write. `:hover`: an opaque background dims to 85 % opacity, a translucent one (alpha below about 90 %) gains 8 % of its remaining alpha, so a `color-mix(... 10.98%, transparent)` fill hovers at 18.04 %. `:disabled`: the shared disabled look (`--ink-soft` fill, `--ink-dim` text). Any `:hover` or `:disabled` you declare replaces the derived one, and `:focus`, `:pressed` and `:selected` are never derived. Without `states: auto` nothing is derived, so existing skins look the same (`states: none` turns it off again for a rule that inherits it).
+
 A rule that fails to parse is skipped and reported in the log (`style rule skipped: ...`); the rest of the stylesheet still applies. Start the app from a terminal with `FLUXA_SKIN` and watch the output while you work.
 
 ## constants.json and strings
