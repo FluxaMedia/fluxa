@@ -337,6 +337,10 @@ fn record_stats(timer: &FrameTimer, total: Duration) {
                 spans as f64 / frames,
                 outers as f64 / frames,
             ));
+            let (skipped, built, mismatched) = fluxa_ui::take_skips();
+            host_log(format!(
+                "Skin frames: skipped={skipped} built={built} mismatches={mismatched}"
+            ));
             host_log(format!(
                 "Draw per frame: jobs={:.0} vertices={:.0} indices={:.0} allocs={:.0} alloc-kb={:.0}",
                 PAINT_JOBS.swap(0, Relaxed) as f64 / frames,

@@ -270,8 +270,12 @@ fn rect_of(bits: [u32; 4]) -> Rect {
     )
 }
 
-pub fn skipped_builds() -> (u64, u64, u64) {
+pub(super) fn skipped_builds() -> (u64, u64, u64) {
     COUNTS.with(Cell::get)
+}
+
+pub fn take_skips() -> (u64, u64, u64) {
+    COUNTS.with(|counts| counts.replace((0, 0, 0)))
 }
 
 pub(crate) fn forget() {

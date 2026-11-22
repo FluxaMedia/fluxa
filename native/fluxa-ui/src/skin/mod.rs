@@ -40,7 +40,7 @@ pub use self::media::{
 };
 use self::pinned::*;
 use self::prefetch::*;
-pub use self::replay::skipped_builds;
+pub use self::replay::take_skips;
 use self::scroll::*;
 use self::style::*;
 use self::typography::{hex_color, text};
