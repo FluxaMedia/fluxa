@@ -261,6 +261,13 @@
       "since": 2
     },
     {
+      "name": "centered",
+      "element": "column row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
       "name": "chat-line",
       "element": "column",
       "meaning": "One message row in watch-together chat",
@@ -527,6 +534,20 @@
       "since": 1
     },
     {
+      "name": "dock-corner",
+      "element": "column row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
+      "name": "dock-end",
+      "element": "column row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
       "name": "dot",
       "element": "row",
       "meaning": "",
@@ -787,7 +808,7 @@
     },
     {
       "name": "fullscreen",
-      "element": "scroll stack",
+      "element": "column row scroll stack",
       "meaning": "",
       "stability": "internal",
       "since": 3
@@ -1092,6 +1113,13 @@
       "meaning": "",
       "stability": "internal",
       "since": 2
+    },
+    {
+      "name": "label-strong",
+      "element": "text",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
     },
     {
       "name": "landscape",
@@ -2760,6 +2788,13 @@
       "since": 2
     },
     {
+      "name": "surface-card",
+      "element": "column row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
       "name": "swatch",
       "element": "column",
       "meaning": "Color sample tile",
@@ -2825,6 +2860,20 @@
     {
       "name": "thumb-strip",
       "element": "scroll",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
+      "name": "tile",
+      "element": "column row stack",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
+      "name": "tile-faint",
+      "element": "column row",
       "meaning": "",
       "stability": "internal",
       "since": 3

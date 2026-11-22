@@ -1,6 +1,6 @@
 {
   "type": "column",
-  "class": "screen fullscreen-center",
+  "class": "screen fullscreen centered fullscreen-center",
   "children": [
     {
       "type": "column",

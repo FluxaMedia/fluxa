@@ -28,7 +28,7 @@
           ]
         }
       ],
-      "class": "fullscreen-center"
+      "class": "fullscreen centered fullscreen-center"
     }
   ],
   "class": "fullscreen"

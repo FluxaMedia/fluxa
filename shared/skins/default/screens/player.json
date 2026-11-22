@@ -76,10 +76,10 @@
               }
             }
           ],
-          "class": "player-loading-body"
+          "class": "centered player-loading-body"
         }
       ],
-      "class": "player-veil"
+      "class": "fullscreen player-veil"
     },
     {
       "type": "stack",
@@ -133,10 +133,10 @@
               ]
             }
           ],
-          "class": "player-loading-body"
+          "class": "centered player-loading-body"
         }
       ],
-      "class": "player-veil"
+      "class": "fullscreen player-veil"
     },
     {
       "type": "column",
@@ -147,7 +147,7 @@
           "op": "show"
         }
       },
-      "class": "player-veil"
+      "class": "fullscreen player-veil"
     },
     {
       "type": "column",
@@ -158,16 +158,16 @@
           "op": "hide"
         }
       },
-      "class": "player-veil"
+      "class": "fullscreen player-veil"
     },
     {
       "type": "column",
-      "class": "scrim-side player-veil",
+      "class": "scrim-side fullscreen player-veil",
       "when": "player.visible"
     },
     {
       "type": "column",
-      "class": "scrim-bottom player-veil",
+      "class": "scrim-bottom fullscreen player-veil",
       "when": "player.visible"
     },
     {
@@ -178,7 +178,7 @@
           "children": [
             {
               "type": "row",
-              "class": "icon-btn",
+              "class": "centered icon-btn",
               "children": [
                 {
                   "type": "icon",
@@ -213,7 +213,7 @@
             },
             {
               "type": "row",
-              "class": "icon-btn",
+              "class": "centered icon-btn",
               "children": [
                 {
                   "type": "icon",
@@ -235,7 +235,7 @@
         }
       ],
       "when": "player.visible && !player.trailer",
-      "class": "player-top"
+      "class": "fullscreen player-top"
     },
     {
       "type": "column",
@@ -326,7 +326,7 @@
           "children": [
             {
               "type": "row",
-              "class": "icon-btn",
+              "class": "centered icon-btn",
               "children": [
                 {
                   "type": "icon",
@@ -344,7 +344,7 @@
             },
             {
               "type": "row",
-              "class": "icon-btn",
+              "class": "centered icon-btn",
               "children": [
                 {
                   "type": "icon",
@@ -363,7 +363,7 @@
             },
             {
               "type": "row",
-              "class": "icon-btn",
+              "class": "centered icon-btn",
               "children": [
                 {
                   "type": "icon",
@@ -382,7 +382,7 @@
             },
             {
               "type": "row",
-              "class": "icon-btn",
+              "class": "centered icon-btn",
               "children": [
                 {
                   "type": "icon",
@@ -405,7 +405,7 @@
             },
             {
               "type": "row",
-              "class": "icon-btn",
+              "class": "centered icon-btn",
               "children": [
                 {
                   "type": "icon",
@@ -424,7 +424,7 @@
             },
             {
               "type": "row",
-              "class": "icon-btn",
+              "class": "centered icon-btn",
               "children": [
                 {
                   "type": "icon",
@@ -443,7 +443,7 @@
             },
             {
               "type": "row",
-              "class": "icon-btn",
+              "class": "centered icon-btn",
               "children": [
                 {
                   "type": "icon",
@@ -462,7 +462,7 @@
             },
             {
               "type": "row",
-              "class": "icon-btn",
+              "class": "centered icon-btn",
               "children": [
                 {
                   "type": "icon",
@@ -481,7 +481,7 @@
             },
             {
               "type": "row",
-              "class": "icon-btn",
+              "class": "centered icon-btn",
               "children": [
                 {
                   "type": "icon",
@@ -503,14 +503,14 @@
         }
       ],
       "when": "player.visible && player.hasVideo && !player.trailer",
-      "class": "player-bottom"
+      "class": "fullscreen player-bottom"
     },
     {
       "type": "column",
       "children": [
         {
           "type": "row",
-          "class": "icon-btn",
+          "class": "centered icon-btn",
           "children": [
             {
               "type": "icon",
@@ -528,7 +528,7 @@
         }
       ],
       "when": "player.trailer",
-      "class": "player-trailer-top"
+      "class": "fullscreen player-trailer-top"
     },
     {
       "type": "column",
@@ -538,7 +538,7 @@
           "children": [
             {
               "type": "row",
-              "class": "icon-btn",
+              "class": "centered icon-btn",
               "children": [
                 {
                   "type": "icon",
@@ -556,7 +556,7 @@
             },
             {
               "type": "row",
-              "class": "icon-btn",
+              "class": "centered icon-btn",
               "children": [
                 {
                   "type": "icon",
@@ -574,7 +574,7 @@
             },
             {
               "type": "row",
-              "class": "icon-btn",
+              "class": "centered icon-btn",
               "children": [
                 {
                   "type": "icon",
@@ -596,7 +596,7 @@
         }
       ],
       "when": "player.trailer && player.visible && player.hasVideo",
-      "class": "player-trailer-bottom"
+      "class": "fullscreen player-trailer-bottom"
     },
     {
       "type": "row",
@@ -611,7 +611,7 @@
               "children": [
                 {
                   "type": "row",
-                  "class": "icon-btn",
+                  "class": "centered icon-btn",
                   "when": "player.panel.hasBack",
                   "action": {
                     "name": "player_row",
@@ -636,7 +636,7 @@
                 },
                 {
                   "type": "row",
-                  "class": "icon-btn",
+                  "class": "centered icon-btn",
                   "action": {
                     "name": "player",
                     "args": {
@@ -703,7 +703,7 @@
                           {
                             "type": "text",
                             "text": "{column.heading}",
-                            "class": "panel-heading",
+                            "class": "label-strong panel-heading",
                             "style": "meta"
                           }
                         ],
@@ -842,7 +842,7 @@
                                 },
                                 {
                                   "type": "row",
-                                  "class": "step-btn",
+                                  "class": "centered step-btn",
                                   "action": {
                                     "name": "player_row",
                                     "args": {
@@ -871,7 +871,7 @@
                                 },
                                 {
                                   "type": "row",
-                                  "class": "step-btn",
+                                  "class": "centered step-btn",
                                   "action": {
                                     "name": "player_row",
                                     "args": {
@@ -935,7 +935,7 @@
                                   "as": "part",
                                   "template": {
                                     "type": "row",
-                                    "class": "choice-chip player-choice",
+                                    "class": "choice-chip centered player-choice",
                                     "props": {
                                       "selected": "{part.selected}"
                                     },
@@ -1100,7 +1100,7 @@
                                     },
                                     {
                                       "type": "row",
-                                      "class": "step-btn",
+                                      "class": "centered step-btn",
                                       "action": {
                                         "name": "player_row",
                                         "args": {
@@ -1129,7 +1129,7 @@
                                     },
                                     {
                                       "type": "row",
-                                      "class": "step-btn",
+                                      "class": "centered step-btn",
                                       "action": {
                                         "name": "player_row",
                                         "args": {
@@ -1193,7 +1193,7 @@
                                       "as": "part",
                                       "template": {
                                         "type": "row",
-                                        "class": "choice-chip player-choice",
+                                        "class": "choice-chip centered player-choice",
                                         "props": {
                                           "selected": "{part.selected}"
                                         },
@@ -1240,7 +1240,7 @@
                         "type": "text",
                         "text": "{column.heading}",
                         "when": "column.heading",
-                        "class": "panel-heading panel-heading-inset",
+                        "class": "label-strong panel-heading panel-heading-inset",
                         "style": "meta"
                       },
                       {
@@ -1376,7 +1376,7 @@
                                 },
                                 {
                                   "type": "row",
-                                  "class": "step-btn",
+                                  "class": "centered step-btn",
                                   "action": {
                                     "name": "player_row",
                                     "args": {
@@ -1405,7 +1405,7 @@
                                 },
                                 {
                                   "type": "row",
-                                  "class": "step-btn",
+                                  "class": "centered step-btn",
                                   "action": {
                                     "name": "player_row",
                                     "args": {
@@ -1469,7 +1469,7 @@
                                   "as": "part",
                                   "template": {
                                     "type": "row",
-                                    "class": "choice-chip player-choice",
+                                    "class": "choice-chip centered player-choice",
                                     "props": {
                                       "selected": "{part.selected}"
                                     },
@@ -1503,7 +1503,7 @@
           ]
         }
       ],
-      "class": "player-panel-dock"
+      "class": "fullscreen dock-end player-panel-dock"
     },
     {
       "type": "row",
@@ -1519,7 +1519,7 @@
               "children": [
                 {
                   "type": "row",
-                  "class": "icon-btn",
+                  "class": "centered icon-btn",
                   "when": "player.panel.sync.back",
                   "action": {
                     "name": "player_row",
@@ -1562,7 +1562,7 @@
                 },
                 {
                   "type": "row",
-                  "class": "icon-btn",
+                  "class": "centered icon-btn",
                   "action": {
                     "name": "player",
                     "args": {
@@ -1586,7 +1586,7 @@
               "children": [
                 {
                   "type": "row",
-                  "class": "icon-btn",
+                  "class": "centered icon-btn",
                   "action": {
                     "name": "player_row",
                     "args": {
@@ -1620,7 +1620,7 @@
                 },
                 {
                   "type": "row",
-                  "class": "icon-btn",
+                  "class": "centered icon-btn",
                   "action": {
                     "name": "player_row",
                     "args": {
@@ -1637,7 +1637,7 @@
                   ]
                 }
               ],
-              "class": "sync-controls"
+              "class": "centered sync-controls"
             },
             {
               "type": "text",
@@ -1784,7 +1784,7 @@
           ]
         }
       ],
-      "class": "player-sync-dock"
+      "class": "fullscreen dock-corner player-sync-dock"
     },
     {
       "type": "column",
@@ -1805,7 +1805,7 @@
                 },
                 {
                   "type": "row",
-                  "class": "icon-btn",
+                  "class": "centered icon-btn",
                   "action": {
                     "name": "player",
                     "args": {
@@ -1859,7 +1859,7 @@
           ]
         }
       ],
-      "class": "compact-only player-sheet-dock"
+      "class": "compact-only fullscreen player-sheet-dock"
     },
     {
       "type": "row",
@@ -1879,7 +1879,7 @@
           ]
         }
       ],
-      "class": "player-watch-dock"
+      "class": "fullscreen player-watch-dock"
     },
     {
       "type": "column",
@@ -1967,7 +1967,7 @@
           ]
         }
       ],
-      "class": "player-prompts"
+      "class": "fullscreen dock-end player-prompts"
     },
     {
       "type": "column",
@@ -1989,7 +1989,7 @@
           ]
         }
       ],
-      "class": "player-warnings"
+      "class": "fullscreen player-warnings"
     },
     {
       "type": "stack",
@@ -2040,10 +2040,10 @@
               }
             }
           ],
-          "class": "player-pause-info"
+          "class": "dock-corner player-pause-info"
         }
       ],
-      "class": "player-veil"
+      "class": "fullscreen player-veil"
     },
     {
       "type": "row",
@@ -2124,7 +2124,7 @@
           ]
         }
       ],
-      "class": "player-stats-dock"
+      "class": "fullscreen dock-corner player-stats-dock"
     },
     {
       "type": "column",
@@ -2132,7 +2132,7 @@
       "props": {
         "tint": "{player.dimTint}"
       },
-      "class": "player-veil"
+      "class": "fullscreen player-veil"
     }
   ],
   "class": "player-layer"

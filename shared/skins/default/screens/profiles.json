@@ -3,7 +3,7 @@
   "children": [
     {
       "type": "column",
-      "class": "screen wide-only profiles-select",
+      "class": "screen wide-only fullscreen centered profiles-select",
       "children": [
         {
           "type": "row",
@@ -15,7 +15,7 @@
             },
             {
               "type": "row",
-              "class": "icon-btn",
+              "class": "centered icon-btn",
               "children": [
                 {
                   "type": "icon",
@@ -32,7 +32,7 @@
               }
             }
           ],
-          "class": "profiles-heading"
+          "class": "centered profiles-heading"
         },
         {
           "type": "column",
@@ -100,7 +100,7 @@
     },
     {
       "type": "column",
-      "class": "screen compact-only profiles-select-compact",
+      "class": "screen compact-only fullscreen profiles-select-compact",
       "children": [
         {
           "type": "row",
@@ -112,7 +112,7 @@
             },
             {
               "type": "row",
-              "class": "icon-btn",
+              "class": "centered icon-btn",
               "children": [
                 {
                   "type": "icon",
@@ -129,7 +129,7 @@
               }
             }
           ],
-          "class": "profiles-heading"
+          "class": "centered profiles-heading"
         },
         {
           "type": "column",
@@ -198,7 +198,7 @@
     {
       "type": "column",
       "when": "profiles.isForm",
-      "class": "screen profiles-form-page",
+      "class": "screen fullscreen profiles-form-page",
       "children": [
         {
           "type": "column",
@@ -209,7 +209,7 @@
               "children": [
                 {
                   "type": "row",
-                  "class": "icon-btn",
+                  "class": "centered icon-btn",
                   "action": {
                     "name": "profiles",
                     "args": {
@@ -528,7 +528,7 @@
     {
       "type": "column",
       "when": "profiles.isAvatars",
-      "class": "screen profiles-form-page",
+      "class": "screen fullscreen profiles-form-page",
       "children": [
         {
           "type": "column",
@@ -539,7 +539,7 @@
               "children": [
                 {
                   "type": "row",
-                  "class": "icon-btn",
+                  "class": "centered icon-btn",
                   "action": {
                     "name": "profiles",
                     "args": {
@@ -609,7 +609,7 @@
                         "as": "avatar",
                         "template": {
                           "type": "row",
-                          "class": "avatar-choice",
+                          "class": "centered avatar-choice",
                           "props": {
                             "selected": "{avatar.selected}"
                           },
@@ -648,7 +648,7 @@
                         "as": "avatar",
                         "template": {
                           "type": "row",
-                          "class": "avatar-choice",
+                          "class": "centered avatar-choice",
                           "props": {
                             "selected": "{avatar.selected}"
                           },
@@ -687,7 +687,7 @@
     {
       "type": "column",
       "when": "profiles.isSettings",
-      "class": "screen profiles-form-page",
+      "class": "screen fullscreen profiles-form-page",
       "children": [
         {
           "type": "column",
@@ -698,7 +698,7 @@
               "children": [
                 {
                   "type": "row",
-                  "class": "icon-btn",
+                  "class": "centered icon-btn",
                   "action": {
                     "name": "profiles",
                     "args": {
@@ -1015,7 +1015,7 @@
               ]
             }
           ],
-          "class": "fullscreen-center"
+          "class": "fullscreen centered fullscreen-center"
         }
       ],
       "class": "fullscreen"
@@ -1095,7 +1095,7 @@
               ]
             }
           ],
-          "class": "fullscreen-center"
+          "class": "fullscreen centered fullscreen-center"
         }
       ],
       "class": "fullscreen"

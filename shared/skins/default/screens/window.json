@@ -3,7 +3,7 @@
   "children": [
     {
       "type": "row",
-      "class": "icon-btn",
+      "class": "centered icon-btn",
       "action": {
         "name": "window",
         "args": {

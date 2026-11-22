@@ -28,11 +28,11 @@
           "children": [
             {
               "type": "row",
-              "class": "mini-controls",
+              "class": "centered mini-controls",
               "children": [
                 {
                   "type": "row",
-                  "class": "icon-btn",
+                  "class": "centered icon-btn",
                   "action": {
                     "name": "player",
                     "args": {
@@ -50,7 +50,7 @@
                 },
                 {
                   "type": "row",
-                  "class": "icon-btn",
+                  "class": "centered icon-btn",
                   "action": {
                     "name": "player",
                     "args": {
@@ -68,7 +68,7 @@
                 },
                 {
                   "type": "row",
-                  "class": "icon-btn",
+                  "class": "centered icon-btn",
                   "action": {
                     "name": "player",
                     "args": {

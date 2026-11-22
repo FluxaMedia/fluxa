@@ -28,7 +28,7 @@
             },
             {
               "type": "row",
-              "class": "icon-btn",
+              "class": "centered icon-btn",
               "children": [
                 {
                   "type": "icon",
@@ -46,7 +46,7 @@
             },
             {
               "type": "row",
-              "class": "icon-btn",
+              "class": "centered icon-btn",
               "children": [
                 {
                   "type": "icon",

@@ -60,7 +60,7 @@
                                   "style": "meta muted"
                                 }
                               ],
-                              "class": "modal-banner-info fill-space"
+                              "class": "dock-corner modal-banner-info fill-space"
                             }
                           ],
                           "class": "modal-banner"
@@ -98,7 +98,7 @@
                                 },
                                 {
                                   "type": "row",
-                                  "class": "icon-btn",
+                                  "class": "centered icon-btn",
                                   "action": {
                                     "name": "modal",
                                     "args": {
@@ -116,7 +116,7 @@
                                 },
                                 {
                                   "type": "row",
-                                  "class": "icon-btn",
+                                  "class": "centered icon-btn",
                                   "action": {
                                     "name": "modal",
                                     "args": {
@@ -301,7 +301,7 @@
               ]
             }
           ],
-          "class": "fullscreen-center"
+          "class": "fullscreen centered fullscreen-center"
         }
       ],
       "class": "fullscreen"

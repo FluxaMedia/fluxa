@@ -37,7 +37,7 @@
           ]
         }
       ],
-      "class": "empty-page"
+      "class": "centered empty-page"
     },
     {
       "type": "pager",

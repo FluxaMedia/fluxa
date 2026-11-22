@@ -25,11 +25,11 @@
           ]
         }
       ],
-      "class": "fullscreen-center wide-only"
+      "class": "fullscreen centered fullscreen-center wide-only"
     },
     {
       "type": "column",
-      "class": "player-black compact-only",
+      "class": "fullscreen player-black compact-only",
       "children": [
         {
           "include": "sources_body"

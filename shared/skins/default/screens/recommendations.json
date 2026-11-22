@@ -132,14 +132,14 @@
           "class": "reco-card"
         }
       ],
-      "class": "reco-corner"
+      "class": "fullscreen dock-end reco-corner"
     },
     {
       "type": "row",
       "children": [
         {
           "type": "row",
-          "class": "icon-btn",
+          "class": "centered icon-btn",
           "action": {
             "name": "node",
             "args": {
@@ -157,8 +157,8 @@
           ]
         }
       ],
-      "class": "reco-top"
+      "class": "dock-corner reco-top"
     }
   ],
-  "class": "player-black"
+  "class": "fullscreen player-black"
 }
