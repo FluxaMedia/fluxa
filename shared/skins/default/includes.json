@@ -156,7 +156,7 @@
             "type": "image",
             "when": "!card.collectionShape",
             "src": "{card.artworkUrl}",
-            "class": "poster-art {card.shape}",
+            "class": "poster-art {card.shape} surface solid",
             "props": {
               "posterOnly": true,
               "overlayCard": "{card.id}",
@@ -167,7 +167,7 @@
             "type": "image",
             "when": "card.collectionShape",
             "src": "{card.artworkUrl}",
-            "class": "poster-art {card.collectionShape}",
+            "class": "poster-art {card.collectionShape} surface solid",
             "props": {
               "fit": "contain",
               "posterOnly": true
@@ -176,7 +176,7 @@
           {
             "type": "image",
             "when": "card.collectionShape && card.motionUrl && card.motionEnabled",
-            "class": "poster-art {card.collectionShape}",
+            "class": "poster-art {card.collectionShape} surface solid",
             "props": {
               "motion": "{card.motionUrl}",
               "autoplay": "{home.gifAutoplayEnabled}",
@@ -186,7 +186,7 @@
           {
             "type": "image",
             "src": "{card.backdropUrl}",
-            "class": "expanded-art",
+            "class": "expanded-art surface solid",
             "props": {
               "expandedOnly": true,
               "fallback": "{card.artworkUrl}"
@@ -197,7 +197,7 @@
             "type": "image",
             "when": "!card.backdropUrl",
             "src": "{card.artworkUrl}",
-            "class": "expanded-art",
+            "class": "expanded-art surface solid",
             "props": {
               "expandedOnly": true,
               "fallback": "{card.artworkUrl}"
@@ -521,35 +521,35 @@
         "children": [
           {
             "type": "column",
-            "class": "tile-faint skeleton-card"
+            "class": "tile-faint skeleton-card surface"
           },
           {
             "type": "column",
-            "class": "tile-faint skeleton-card"
+            "class": "tile-faint skeleton-card surface"
           },
           {
             "type": "column",
-            "class": "tile-faint skeleton-card"
+            "class": "tile-faint skeleton-card surface"
           },
           {
             "type": "column",
-            "class": "tile-faint skeleton-card"
+            "class": "tile-faint skeleton-card surface"
           },
           {
             "type": "column",
-            "class": "tile-faint skeleton-card"
+            "class": "tile-faint skeleton-card surface"
           },
           {
             "type": "column",
-            "class": "tile-faint skeleton-card"
+            "class": "tile-faint skeleton-card surface"
           },
           {
             "type": "column",
-            "class": "tile-faint skeleton-card"
+            "class": "tile-faint skeleton-card surface"
           },
           {
             "type": "column",
-            "class": "tile-faint skeleton-card"
+            "class": "tile-faint skeleton-card surface"
           }
         ],
         "class": "shelf-row"
@@ -687,7 +687,7 @@
   },
   "download_row": {
     "type": "row",
-    "class": "tile download-row",
+    "class": "tile download-row surface soft",
     "children": [
       {
         "type": "column",
@@ -758,7 +758,7 @@
   },
   "download_group": {
     "type": "row",
-    "class": "tile download-row",
+    "class": "tile download-row surface soft",
     "action": {
       "name": "downloads",
       "args": {
@@ -1014,7 +1014,7 @@
   },
   "episode_card": {
     "type": "column",
-    "class": "episode {ep.state}",
+    "class": "episode {ep.state} surface lg bordered",
     "action": {
       "name": "detail",
       "args": {
@@ -1031,7 +1031,7 @@
           {
             "type": "image",
             "src": "{ep.thumb}",
-            "class": "episode-thumb",
+            "class": "episode-thumb surface solid",
             "props": {
               "fit": "cover"
             }
@@ -1678,7 +1678,7 @@
     "children": [
       {
         "type": "image",
-        "class": "avatar-img",
+        "class": "avatar-img surface solid pill",
         "src": "{image}",
         "width": "{size}",
         "height": "{size}"
@@ -1854,7 +1854,7 @@
         "children": [
           {
             "type": "row",
-            "class": "select-field",
+            "class": "select-field surface solid pill",
             "children": [
               {
                 "each": "options",
@@ -1936,7 +1936,7 @@
         "children": [
           {
             "type": "row",
-            "class": "select-field",
+            "class": "select-field surface solid pill",
             "children": [
               {
                 "each": "options",
@@ -1981,7 +1981,7 @@
         "children": [
           {
             "type": "row",
-            "class": "select-field",
+            "class": "select-field surface solid pill",
             "children": [
               {
                 "each": "options",
@@ -2065,7 +2065,7 @@
         "children": [
           {
             "type": "row",
-            "class": "select-field",
+            "class": "select-field surface solid pill",
             "children": [
               {
                 "each": "options",
@@ -2763,7 +2763,7 @@
           {
             "type": "row",
             "tag": "section",
-            "class": "tile-faint code",
+            "class": "tile-faint code surface",
             "children": [
               {
                 "type": "text",
@@ -2967,7 +2967,7 @@
           {
             "type": "column",
             "tag": "section",
-            "class": "tile-faint chat",
+            "class": "tile-faint chat surface",
             "children": [
               {
                 "each": "w.chat",
@@ -4240,7 +4240,7 @@
                 "as": "s",
                 "template": {
                   "type": "row",
-                  "class": "surface-card source-row",
+                  "class": "surface-card source-row surface lg bordered",
                   "action": {
                     "name": "node",
                     "args": {

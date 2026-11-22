@@ -93,6 +93,13 @@
       "since": 2
     },
     {
+      "name": "bordered",
+      "element": "column row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 6
+    },
+    {
       "name": "bottom-bar",
       "element": "column",
       "meaning": "",
@@ -350,13 +357,6 @@
       "meaning": "",
       "stability": "internal",
       "since": 2
-    },
-    {
-      "name": "day",
-      "element": "",
-      "meaning": "Calendar day cell",
-      "stability": "internal",
-      "since": 1
     },
     {
       "name": "day-blank",
@@ -709,13 +709,6 @@
       "since": 6
     },
     {
-      "name": "guide-cell",
-      "element": "",
-      "meaning": "Programme cell in the live TV guide",
-      "stability": "internal",
-      "since": 1
-    },
-    {
       "name": "guide-cell-live",
       "element": "",
       "meaning": "Programme cell that is airing now",
@@ -865,6 +858,13 @@
     {
       "name": "lead",
       "element": "spacer",
+      "meaning": "",
+      "stability": "internal",
+      "since": 6
+    },
+    {
+      "name": "lg",
+      "element": "column row",
       "meaning": "",
       "stability": "internal",
       "since": 6
@@ -1299,6 +1299,13 @@
     {
       "name": "picker",
       "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 6
+    },
+    {
+      "name": "pill",
+      "element": "image row",
       "meaning": "",
       "stability": "internal",
       "since": 6
@@ -1773,6 +1780,20 @@
       "since": 6
     },
     {
+      "name": "soft",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 6
+    },
+    {
+      "name": "solid",
+      "element": "image row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 6
+    },
+    {
       "name": "source-logo",
       "element": "image",
       "meaning": "",
@@ -1876,6 +1897,13 @@
       "meaning": "",
       "stability": "internal",
       "since": 2
+    },
+    {
+      "name": "surface",
+      "element": "column image row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 6
     },
     {
       "name": "surface-card",

@@ -844,7 +844,7 @@
                                 },
                                 {
                                   "type": "row",
-                                  "class": "step-btn",
+                                  "class": "step-btn surface pill",
                                   "action": {
                                     "name": "player_row",
                                     "args": {
@@ -873,7 +873,7 @@
                                 },
                                 {
                                   "type": "row",
-                                  "class": "step-btn",
+                                  "class": "step-btn surface pill",
                                   "action": {
                                     "name": "player_row",
                                     "args": {
@@ -937,7 +937,7 @@
                                   "as": "part",
                                   "template": {
                                     "type": "row",
-                                    "class": "choice-chip",
+                                    "class": "choice-chip surface pill",
                                     "props": {
                                       "selected": "{part.selected}"
                                     },
@@ -1102,7 +1102,7 @@
                                     },
                                     {
                                       "type": "row",
-                                      "class": "step-btn",
+                                      "class": "step-btn surface pill",
                                       "action": {
                                         "name": "player_row",
                                         "args": {
@@ -1131,7 +1131,7 @@
                                     },
                                     {
                                       "type": "row",
-                                      "class": "step-btn",
+                                      "class": "step-btn surface pill",
                                       "action": {
                                         "name": "player_row",
                                         "args": {
@@ -1195,7 +1195,7 @@
                                       "as": "part",
                                       "template": {
                                         "type": "row",
-                                        "class": "choice-chip",
+                                        "class": "choice-chip surface pill",
                                         "props": {
                                           "selected": "{part.selected}"
                                         },
@@ -1377,7 +1377,7 @@
                                 },
                                 {
                                   "type": "row",
-                                  "class": "step-btn",
+                                  "class": "step-btn surface pill",
                                   "action": {
                                     "name": "player_row",
                                     "args": {
@@ -1406,7 +1406,7 @@
                                 },
                                 {
                                   "type": "row",
-                                  "class": "step-btn",
+                                  "class": "step-btn surface pill",
                                   "action": {
                                     "name": "player_row",
                                     "args": {
@@ -1470,7 +1470,7 @@
                                   "as": "part",
                                   "template": {
                                     "type": "row",
-                                    "class": "choice-chip",
+                                    "class": "choice-chip surface pill",
                                     "props": {
                                       "selected": "{part.selected}"
                                     },
@@ -1837,7 +1837,7 @@
                   "as": "chip",
                   "template": {
                     "type": "row",
-                    "class": "choice-chip",
+                    "class": "choice-chip surface pill",
                     "props": {
                       "selected": "{chip.selected}"
                     },

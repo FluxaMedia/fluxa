@@ -38,7 +38,7 @@ pub fn calendar_data(calendar: &CalendarModel) -> serde_json::Value {
             let date = format!("{:04}-{:02}-{:02}", calendar.year, calendar.month, day);
             cells.push(serde_json::json!({
                 "blank": false,
-                "class": "day",
+                "class": "day surface soft",
                 "day": day,
                 "count": entries.len(),
                 "today": calendar.today.as_deref() == Some(date.as_str()),

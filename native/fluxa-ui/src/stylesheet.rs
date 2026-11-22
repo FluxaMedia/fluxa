@@ -2241,4 +2241,17 @@ mod tests {
             on("b", &Sheet::parse(".b { background: #336699; }\n.b:hover { background: #ffffff; }").unwrap(), hovered(), &[]).fill
         );
     }
+
+    #[test]
+    fn shared_class_modifiers_combine_with_a_specific_class() {
+        let sheet = Sheet::parse(
+            ".thumb { width: 10px; }\n.surface { background: #111111; }\n.surface.raised { background: #222222; }\n.surface.pill { border-radius: 99px; }",
+        )
+        .expect("parses");
+        let context = crate::gfx::Context::default();
+        let look = resolve_in(&context, &sheet, "thumb", Id::new("t"), LIVE, &["surface", "raised", "pill"]);
+        assert_eq!(look.fill, Color32::from_rgb(0x22, 0x22, 0x22));
+        let bare = resolve_in(&context, &sheet, "surface", Id::new("u"), LIVE, &["thumb", "raised"]);
+        assert_eq!(bare.fill, Color32::from_rgb(0x22, 0x22, 0x22));
+    }
 }

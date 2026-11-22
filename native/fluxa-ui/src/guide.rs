@@ -200,7 +200,7 @@ pub fn guide_data(guide: &GuideModel) -> serde_json::Value {
                     "width": (scale(end - start) - 4.0).max(4.0).to_string(),
                     "title": programme.title,
                     "time": clock(programme.start_ms, guide.utc_offset_ms),
-                    "class": if live { "guide-cell-live" } else { "guide-cell" },
+                    "class": if live { "guide-cell-live" } else { "guide-cell surface soft" },
                     "node": (NODE_GUIDE_CELL_BASE + index as u64 * NODE_GUIDE_ROW_STRIDE + slot as u64).to_string(),
                 }));
                 cursor = end;
