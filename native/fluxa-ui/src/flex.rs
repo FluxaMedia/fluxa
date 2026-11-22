@@ -170,8 +170,9 @@ pub(crate) struct Node {
     padding: Insets,
     gap: f32,
     line_gap: f32,
-    align: Align,
-    justify: Justify,
+    align: Option<Align>,
+    justify: Option<Justify>,
+    placement: (Option<Align>, Option<Align>),
     wrap: bool,
     pan: Option<u64>,
     children: Vec<Node>,
@@ -390,8 +391,9 @@ impl Node {
             padding: Insets::default(),
             gap: 0.0,
             line_gap: 0.0,
-            align: Align::Stretch,
-            justify: Justify::Start,
+            align: None,
+            justify: None,
+            placement: (None, None),
             wrap: false,
             pan: None,
             children: Vec::new(),
@@ -496,17 +498,22 @@ impl Node {
     }
 
     pub fn align(mut self, align: Align) -> Self {
-        self.align = align;
+        self.align = Some(align);
         self
     }
 
     pub fn justify(mut self, justify: Justify) -> Self {
-        self.justify = justify;
+        self.justify = Some(justify);
         self
     }
 
     pub fn wrap(mut self) -> Self {
         self.wrap = true;
+        self
+    }
+
+    pub fn placed(mut self, horizontal: Option<Align>, vertical: Option<Align>) -> Self {
+        self.placement = (horizontal, vertical);
         self
     }
 
@@ -712,17 +719,18 @@ impl Node {
         let children = match &node.kind {
             Kind::Leaf(_) | Kind::Text(_) => Vec::new(),
             Kind::Flex(axis) => node.solve_flex(*axis, inner),
-            Kind::Stack(align) => node
+            Kind::Stack(origin) => node
                 .children
                 .iter()
                 .map(|child| {
-                    let outer = child.outer_size();
-                    let size = if child.grow > 0.0 {
-                        inner.size()
-                    } else {
-                        outer.min(inner.size())
-                    };
-                    child.place(align.align_size_within_rect(size, inner))
+                    let horizontal = child.placement.0.or(child.align_self).or(node.align);
+                    let vertical = child.placement.1.or(match node.justify {
+                        Some(Justify::Center) => Some(Align::Center),
+                        Some(Justify::End) => Some(Align::End),
+                        Some(_) => Some(Align::Start),
+                        None => None,
+                    });
+                    child.place(node.stack_slot(*origin, child, inner, (horizontal, vertical)))
                 })
                 .collect(),
         };
@@ -746,6 +754,40 @@ impl Node {
             layered: matches!(self.kind, Kind::Stack(_)),
             pan,
         }
+    }
+
+    fn stack_slot(
+        &self,
+        origin: Align2,
+        child: &Node,
+        inner: Rect,
+        (horizontal, vertical): (Option<Align>, Option<Align>),
+    ) -> Rect {
+        let outer = child.outer_size();
+        let mut size = if child.grow > 0.0 {
+            inner.size()
+        } else {
+            outer.min(inner.size())
+        };
+        if horizontal == Some(Align::Stretch) && child.width.is_none() {
+            size.x = inner.width();
+        }
+        if vertical == Some(Align::Stretch) && child.height.is_none() {
+            size.y = inner.height();
+        }
+        let base = origin.align_size_within_rect(size, inner);
+        let free = inner.size() - size;
+        let place = |axis: Option<Align>, free: f32, at: f32, start: f32| match axis {
+            Some(Align::Start | Align::Stretch) => start,
+            Some(Align::Center) => start + free * 0.5,
+            Some(Align::End) => start + free,
+            None => at,
+        };
+        let min = Pos2::new(
+            place(horizontal, free.x, base.min.x, inner.left()),
+            place(vertical, free.y, base.min.y, inner.top()),
+        );
+        Rect::from_min_size(min, size)
     }
 
     fn relative(&self) -> bool {
@@ -913,7 +955,7 @@ impl Node {
         }
 
         let free = free.max(0.0);
-        let (mut cursor, gap) = match self.justify {
+        let (mut cursor, gap) = match self.justify.unwrap_or(Justify::Start) {
             Justify::Start => (0.0, self.gap),
             Justify::Center => (free * 0.5, self.gap),
             Justify::End => (free, self.gap),
@@ -932,7 +974,7 @@ impl Node {
         let mut slots = Vec::with_capacity(count);
         for (&index, length) in line.iter().zip(lengths) {
             let child = &self.children[index];
-            let align = child.align_self.unwrap_or(self.align);
+            let align = child.align_self.or(self.align).unwrap_or(Align::Stretch);
             let mut wanted = cross(axis, child.outer_size());
             if axis == Axis::Row && child.height.is_none() {
                 let inner = length - child.margin.width() - child.padding.width();
@@ -1376,5 +1418,63 @@ mod tests {
         );
         assert_eq!(out[0].left(), 5.0);
         assert_eq!(out[0].width(), 90.0);
+    }
+
+    #[test]
+    fn stack_keeps_children_top_left_by_default() {
+        let placed = stack(Align2::LEFT_TOP, [boxed(20.0, 10.0).id(0)]).solve(bounds(100.0, 50.0));
+        assert_eq!(placed.find(0).unwrap().min, Pos2::ZERO);
+    }
+
+    #[test]
+    fn stack_align_and_justify_place_every_child() {
+        let placed = stack(Align2::LEFT_TOP, [boxed(20.0, 10.0).id(0)])
+            .align(Align::End)
+            .justify(Justify::Center)
+            .solve(bounds(100.0, 50.0));
+        assert_eq!(placed.find(0).unwrap().min, Pos2::new(80.0, 20.0));
+    }
+
+    #[test]
+    fn stack_align_stretch_widens_children_without_a_width() {
+        let placed = stack(
+            Align2::LEFT_TOP,
+            [boxed(20.0, 10.0).id(0), boxed(20.0, 10.0).width(30.0).id(1)],
+        )
+        .align(Align::Stretch)
+        .solve(bounds(100.0, 50.0));
+        assert_eq!(placed.find(0).unwrap().width(), 100.0);
+        assert_eq!(placed.find(0).unwrap().height(), 10.0);
+        assert_eq!(placed.find(1).unwrap().width(), 30.0);
+    }
+
+    #[test]
+    fn stack_child_placed_at_a_corner_sits_there() {
+        let placed = stack(
+            Align2::LEFT_TOP,
+            [
+                boxed(20.0, 10.0)
+                    .placed(Some(Align::End), Some(Align::End))
+                    .id(0),
+                boxed(20.0, 10.0).id(1),
+            ],
+        )
+        .solve(bounds(100.0, 50.0));
+        assert_eq!(placed.find(0).unwrap().max, Pos2::new(100.0, 50.0));
+        assert_eq!(placed.find(1).unwrap().min, Pos2::ZERO);
+    }
+
+    #[test]
+    fn stack_child_placement_beats_the_stack_alignment() {
+        let placed = stack(
+            Align2::LEFT_TOP,
+            [boxed(20.0, 10.0).placed(Some(Align::Start), None).id(0)],
+        )
+        .align(Align::End)
+        .justify(Justify::End)
+        .solve(bounds(100.0, 50.0));
+        let rect = placed.find(0).unwrap();
+        assert_eq!(rect.left(), 0.0);
+        assert_eq!(rect.bottom(), 50.0);
     }
 }

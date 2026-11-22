@@ -183,6 +183,10 @@ impl<'a> Item<'a> {
         self.with(|node| node.height_pct(share))
     }
 
+    pub fn placed(self, horizontal: Option<Align>, vertical: Option<Align>) -> Self {
+        self.with(|node| node.placed(horizontal, vertical))
+    }
+
     pub fn min_width(self, value: f32) -> Self {
         self.with(|node| node.min_width(value))
     }
