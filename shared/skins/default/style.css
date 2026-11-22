@@ -437,7 +437,6 @@
 button.primary {
   background: color-mix(in srgb, var(--color-text-primary) 100%, transparent);
   color: var(--color-background);
-  transition: fast;
 }
 
 button.primary:hover {
@@ -449,7 +448,6 @@ button.primary:disabled { background: var(--ink-soft); color: var(--ink-dim); }
 button.secondary {
   background: color-mix(in srgb, var(--color-text-primary) 10.98%, transparent);
   color: var(--color-text-primary);
-  transition: fast;
 }
 
 button.secondary:hover {
@@ -461,7 +459,6 @@ button.secondary:disabled { background: var(--ink-soft); color: var(--ink-dim); 
 button.selected {
   background: var(--color-accent);
   color: var(--color-accent-foreground);
-  transition: fast;
 }
 
 button.selected:hover {
@@ -473,7 +470,6 @@ button.selected:disabled { background: var(--ink-soft); color: var(--ink-dim); }
 button.danger {
   background: var(--color-error);
   color: var(--color-text-primary);
-  transition: fast;
 }
 
 button.danger:hover {
@@ -486,7 +482,6 @@ chip {
   background: var(--ink-faint);
   color: var(--ink-body);
   border-radius: pill;
-  transition: fast;
 }
 
 chip:hover { background: var(--ink-raised); color: var(--ink-full); }
@@ -500,7 +495,6 @@ chip.selected {
 icon.plain {
   background: #00000000;
   border-radius: pill;
-  transition: fast;
 }
 
 icon.plain:hover, track { background: var(--ink-soft); }
@@ -564,7 +558,6 @@ dropdown {
   color: var(--color-text-primary);
   border-color: color-mix(in srgb, var(--color-text-primary) 7.059%, transparent);
   border-width: hairline;
-  transition: fast;
 }
 
 dropdown:hover { background: var(--ink-strong); }
@@ -873,7 +866,6 @@ hero-synopsis-size { font-size: 16; }
   background: ink/255;
   border-radius: var(--radius-pill);
   height: control-height;
-  transition: fast;
   align-items: center;
 }
 
@@ -894,7 +886,6 @@ hero-synopsis-size { font-size: 16; }
   background: ink/28;
   border-radius: var(--radius-pill);
   height: control-height;
-  transition: fast;
   align-items: center;
 }
 
@@ -927,7 +918,6 @@ hero-synopsis-size { font-size: 16; }
   width: icon-button;
   height: icon-button;
   border-radius: var(--radius-pill);
-  transition: fast;
 }
 
 .icon-btn:hover, .select-row:hover, .panel-row:hover { background: ink/faint; }
@@ -943,7 +933,6 @@ hero-synopsis-size { font-size: 16; }
 .switch {
   background: ink/soft;
   border-radius: var(--radius-pill);
-  transition: fast;
   width: 46px;
   height: 28px;
   padding: var(--space-4);

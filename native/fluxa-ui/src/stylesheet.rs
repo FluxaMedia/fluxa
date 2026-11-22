@@ -1071,7 +1071,7 @@ fn seconds(name: Option<&str>) -> f32 {
             Some(ms) => ms.parse::<f32>().unwrap_or(0.0) / 1000.0,
             None => other.trim_end_matches('s').parse().unwrap_or(0.0),
         },
-        None => 0.0,
+        None => crate::motion::fast(),
     }
 }
 
@@ -1663,6 +1663,12 @@ mod tests {
         assert_eq!(own.font_size, Some(21.0));
         assert_eq!(plain.text, Color32::from_rgb(1, 2, 3));
         assert_eq!(plain.weight, Some(700.0));
+    }
+
+    #[test]
+    fn missing_transition_uses_the_fast_token() {
+        assert_eq!(seconds(None), crate::motion::fast());
+        assert_eq!(seconds(Some("0s")), 0.0);
     }
 
     #[test]
