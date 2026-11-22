@@ -490,3 +490,285 @@ fn column_children_stretch_across_unless_the_class_says_otherwise() {
     let (_, started) = render(&tile("start-col"));
     assert_eq!(started[0].1.width(), 0.0);
 }
+
+fn sweep_positions() -> Vec<Option<Pos2>> {
+    let mut path = vec![Some(Pos2::new(200.0, 300.0)); 4];
+    for step in 0..14 {
+        path.push(Some(Pos2::new(
+            60.0 + step as f32 * 85.0,
+            160.0 + step as f32 * 30.0,
+        )));
+        path.push(Some(Pos2::new(
+            60.0 + step as f32 * 85.0,
+            160.0 + step as f32 * 30.0,
+        )));
+        path.push(Some(Pos2::new(
+            60.0 + step as f32 * 85.0,
+            160.0 + step as f32 * 30.0,
+        )));
+    }
+    path.extend(vec![Some(Pos2::new(640.0, 400.0)); 4]);
+    path.push(None);
+    path.extend(vec![None; 3]);
+    path
+}
+
+struct Dump {
+    output: Option<crate::gfx::RunOutput>,
+    focus: Vec<(u64, Rect)>,
+    targets: String,
+}
+
+impl Drop for Dump {
+    fn drop(&mut self) {
+        if let Some(output) = self.output.take() {
+            output.drop_without_applying_deltas();
+        }
+    }
+}
+
+fn run_sweep(mode: replay::Mode, tree: &Arc<Vec<Resolved>>, path: &[Option<Pos2>]) -> Vec<Dump> {
+    replay::force_mode(Some(mode));
+    let viewport = Viewport::new(1280, 800, UiFormFactor::Desktop);
+    let context = crate::gfx::Context::default();
+    context.set_fonts(crate::fonts::definitions());
+    let mut assets = NoAssets;
+    let mut last = None;
+    let mut dumps = Vec::new();
+    for (tick, pos) in path.iter().enumerate() {
+        let mut events = Vec::new();
+        if *pos != last {
+            events.push(match pos {
+                Some(pos) => crate::gfx::Event::PointerMoved(*pos),
+                None => crate::gfx::Event::PointerGone,
+            });
+        }
+        last = *pos;
+        let mut frame = None;
+        crate::begin_focus_frame(&context, None);
+        let output = context.run_ui(
+            crate::gfx::RawInput {
+                screen_rect: Some(Rect::from_min_size(Pos2::ZERO, Vec2::new(1280.0, 800.0))),
+                time: Some(tick as f64 / 60.0),
+                events,
+                ..Default::default()
+            },
+            |ui| frame = Some(draw_skin(ui.ctx(), viewport, tree, &mut assets)),
+        );
+        let frame = frame.unwrap();
+        dumps.push(Dump {
+            output: Some(output),
+            focus: crate::take_focus_targets(&context).0,
+            targets: format!("{:?}{:?}", frame.targets.len(), frame.layout),
+        });
+    }
+    replay::force_mode(None);
+    dumps
+}
+
+#[test]
+fn skipping_frames_keeps_every_frame_identical_across_a_pointer_sweep() {
+    let tree = Arc::new(sample_tree(3, 12));
+    let path = sweep_positions();
+    let reference = run_sweep(replay::Mode::Off, &tree, &path);
+    let (skipped_before, _, _) = replay::skipped_builds();
+    let skipping = run_sweep(replay::Mode::On, &tree, &path);
+    let (skipped_after, _, _) = replay::skipped_builds();
+    assert_eq!(reference.len(), skipping.len());
+    for (frame, (a, b)) in reference.iter().zip(&skipping).enumerate() {
+        assert!(
+            a.output
+                .as_ref()
+                .unwrap()
+                .same_paint(b.output.as_ref().unwrap()),
+            "paint differs at frame {frame}"
+        );
+        assert_eq!(a.focus, b.focus, "focus targets differ at frame {frame}");
+        assert_eq!(a.targets, b.targets, "layout differs at frame {frame}");
+    }
+    assert!(skipped_after > skipped_before, "nothing was skipped");
+}
+
+struct Rig {
+    context: crate::gfx::Context,
+    tick: u32,
+}
+
+struct Shot {
+    tree: Arc<Vec<Resolved>>,
+    width: u32,
+    opacity: f32,
+    reserved: u64,
+    events: Vec<crate::gfx::Event>,
+    ppp: f32,
+}
+
+impl Rig {
+    fn new() -> Self {
+        let context = crate::gfx::Context::default();
+        context.set_fonts(crate::fonts::definitions());
+        replay::force_mode(Some(replay::Mode::On));
+        Self { context, tick: 0 }
+    }
+
+    fn frame(&mut self, shot: &Shot) -> bool {
+        let viewport = Viewport::new(shot.width, 800, UiFormFactor::Desktop);
+        let before = replay::skipped_builds().0;
+        let mut assets = NoAssets;
+        crate::begin_focus_frame(&self.context, None);
+        self.context.set_ppp_for_test(shot.ppp);
+        self.tick += 1;
+        let output = self.context.run_ui(
+            crate::gfx::RawInput {
+                screen_rect: Some(Rect::from_min_size(
+                    Pos2::ZERO,
+                    Vec2::new(shot.width as f32, 800.0),
+                )),
+                time: Some(self.tick as f64 / 60.0),
+                events: shot.events.clone(),
+                ..Default::default()
+            },
+            |ui| {
+                if shot.reserved > 0 {
+                    draw_skin_pinned(ui.ctx(), viewport, &shot.tree, &mut assets, shot.reserved);
+                } else {
+                    draw_skin_faded(ui.ctx(), viewport, &shot.tree, &mut assets, shot.opacity);
+                }
+            },
+        );
+        output.drop_without_applying_deltas();
+        let _ = crate::take_focus_targets(&self.context);
+        replay::skipped_builds().0 > before
+    }
+}
+
+impl Drop for Rig {
+    fn drop(&mut self) {
+        replay::force_mode(None);
+    }
+}
+
+impl Shot {
+    fn new(tree: &Arc<Vec<Resolved>>) -> Self {
+        Self {
+            tree: tree.clone(),
+            width: 1280,
+            opacity: 1.0,
+            reserved: 0,
+            events: Vec::new(),
+            ppp: 1.0,
+        }
+    }
+}
+
+fn settle(rig: &mut Rig, shot: &Shot) {
+    for _ in 0..40 {
+        rig.frame(shot);
+    }
+    assert!(rig.frame(shot), "an unchanged frame should be skipped");
+}
+
+#[test]
+fn unchanged_frame_is_skipped_after_it_settles() {
+    let tree = Arc::new(sample_tree(2, 6));
+    let mut rig = Rig::new();
+    settle(&mut rig, &Shot::new(&tree));
+}
+
+#[test]
+fn a_new_tree_is_never_skipped() {
+    let tree = Arc::new(sample_tree(2, 6));
+    let mut rig = Rig::new();
+    settle(&mut rig, &Shot::new(&tree));
+    let other = Arc::new(tree.as_ref().clone());
+    assert!(!rig.frame(&Shot::new(&other)));
+}
+
+#[test]
+fn a_resized_viewport_is_never_skipped() {
+    let tree = Arc::new(sample_tree(2, 6));
+    let mut rig = Rig::new();
+    settle(&mut rig, &Shot::new(&tree));
+    let mut shot = Shot::new(&tree);
+    shot.width = 1100;
+    assert!(!rig.frame(&shot));
+}
+
+#[test]
+fn a_scale_change_is_never_skipped() {
+    let tree = Arc::new(sample_tree(2, 6));
+    let mut rig = Rig::new();
+    settle(&mut rig, &Shot::new(&tree));
+    let mut shot = Shot::new(&tree);
+    shot.ppp = 2.0;
+    assert!(!rig.frame(&shot));
+}
+
+#[test]
+fn a_different_opacity_is_never_skipped() {
+    let tree = Arc::new(sample_tree(2, 6));
+    let mut rig = Rig::new();
+    settle(&mut rig, &Shot::new(&tree));
+    let mut shot = Shot::new(&tree);
+    shot.opacity = 0.5;
+    assert!(!rig.frame(&shot));
+}
+
+#[test]
+fn a_moved_pointer_is_never_skipped() {
+    let tree = Arc::new(sample_tree(2, 6));
+    let mut rig = Rig::new();
+    settle(&mut rig, &Shot::new(&tree));
+    let mut shot = Shot::new(&tree);
+    shot.events = vec![crate::gfx::Event::PointerMoved(Pos2::new(300.0, 300.0))];
+    assert!(!rig.frame(&shot));
+    shot.events.clear();
+    assert!(!rig.frame(&shot));
+    assert!(rig.frame(&shot));
+}
+
+#[test]
+fn a_key_event_is_never_skipped() {
+    let tree = Arc::new(sample_tree(2, 6));
+    let mut rig = Rig::new();
+    settle(&mut rig, &Shot::new(&tree));
+    let mut shot = Shot::new(&tree);
+    shot.events = vec![crate::gfx::Event::Key {
+        key: crate::gfx::Key::ArrowDown,
+        physical_key: None,
+        pressed: true,
+        repeat: false,
+        modifiers: Default::default(),
+    }];
+    assert!(!rig.frame(&shot));
+}
+
+#[test]
+fn a_global_setting_change_is_never_skipped() {
+    let tree = Arc::new(sample_tree(2, 6));
+    let mut rig = Rig::new();
+    settle(&mut rig, &Shot::new(&tree));
+    crate::set_liquid_glass(true);
+    let skipped = rig.frame(&Shot::new(&tree));
+    crate::set_liquid_glass(false);
+    assert!(!skipped);
+}
+
+#[test]
+fn a_stylesheet_change_is_never_skipped() {
+    let tree = Arc::new(sample_tree(2, 6));
+    let mut rig = Rig::new();
+    settle(&mut rig, &Shot::new(&tree));
+    crate::capture::bump_epoch();
+    assert!(!rig.frame(&Shot::new(&tree)));
+}
+
+#[test]
+fn a_different_node_slot_range_is_never_skipped() {
+    let tree = Arc::new(sample_tree(2, 6));
+    let mut rig = Rig::new();
+    settle(&mut rig, &Shot::new(&tree));
+    let mut shot = Shot::new(&tree);
+    shot.reserved = 4;
+    assert!(!rig.frame(&shot));
+}

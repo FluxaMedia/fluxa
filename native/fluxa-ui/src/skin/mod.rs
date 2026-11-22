@@ -19,6 +19,7 @@ mod indicator;
 mod media;
 mod pinned;
 mod prefetch;
+mod replay;
 mod scroll;
 mod style;
 #[cfg(test)]
@@ -39,6 +40,7 @@ pub use self::media::{
 };
 use self::pinned::*;
 use self::prefetch::*;
+pub use self::replay::skipped_builds;
 use self::scroll::*;
 use self::style::*;
 use self::typography::{hex_color, text};
@@ -276,6 +278,10 @@ fn draw_tree(
         if opacity < 1.0 {
             ui.multiply_opacity(opacity);
         }
+        let plan = replay::begin(ui, &env, tree, viewport, opaque, first_slot);
+        if matches!(plan, replay::Plan::Replayed) {
+            return;
+        }
         let (pinned, flowing): (Vec<_>, Vec<_>) =
             tree.iter().partition(|node| node.kind == "fixed");
         let items = flowing
@@ -290,6 +296,9 @@ fn draw_tree(
             .collect();
         let root = layout_items::column(items).padding(safe);
         kit::lay(ui, vec![root]);
+        if let replay::Plan::Build(session) = plan {
+            session.finish(ui, &env);
+        }
     };
     if opaque {
         kit::screen_body(context, viewport, "fluxa-skin", (), body);
@@ -701,10 +710,11 @@ fn sheet_style<'a, A: HomeAssets>(
     if let Some(found) = env.styles.borrow().get(&memo) {
         return *found;
     }
-    let style = class_parts(node, env.positions.get(&node.key).copied()).map(|(rule, modifiers)| {
-        let chain = plain_frames(&env.ancestors.borrow());
-        crate::stylesheet::within(&chain, || crate::stylesheet::base_with(rule, modifiers))
-    });
+    let style =
+        class_parts(node, env.positions.get(&node.key).copied()).map(|(rule, modifiers)| {
+            let chain = plain_frames(&env.ancestors.borrow());
+            crate::stylesheet::within(&chain, || crate::stylesheet::base_with(rule, modifiers))
+        });
     env.styles.borrow_mut().insert(memo, style);
     timer.add(&crate::stats::STYLE_NS);
     style
