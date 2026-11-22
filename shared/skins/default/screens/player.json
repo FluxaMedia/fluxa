@@ -1,5 +1,6 @@
 {
   "type": "stack",
+  "class": "player",
   "children": [
     {
       "type": "stack",
@@ -22,8 +23,6 @@
             {
               "type": "column",
               "class": "player-loading-mark",
-              "gap": 14,
-              "align": "center",
               "children": [
                 {
                   "include": "title_logo",
@@ -51,14 +50,11 @@
             {
               "type": "column",
               "class": "progress-track",
-              "width": 240,
-              "height": 3,
               "when": "player.hasLoadProgress && !player.error",
               "children": [
                 {
                   "type": "column",
                   "class": "progress-bar",
-                  "height": 3,
                   "props": {
                     "span": "{player.loadProgress}"
                   }
@@ -81,14 +77,10 @@
               }
             }
           ],
-          "class": "centered",
-          "gap": 14,
-          "padding": 24,
-          "fill": true
+          "class": "fill-space centered splash"
         }
       ],
-      "class": "fullscreen",
-      "fill": true
+      "class": "fullscreen fill-space"
     },
     {
       "type": "stack",
@@ -104,8 +96,6 @@
             {
               "type": "column",
               "class": "player-loading-mark",
-              "gap": 14,
-              "align": "center",
               "children": [
                 {
                   "include": "title_logo",
@@ -132,14 +122,11 @@
             {
               "type": "column",
               "class": "progress-track",
-              "width": 240,
-              "height": 3,
               "when": "player.hasLoadProgress",
               "children": [
                 {
                   "type": "column",
                   "class": "progress-bar",
-                  "height": 3,
                   "props": {
                     "span": "{player.loadProgress}"
                   }
@@ -147,14 +134,10 @@
               ]
             }
           ],
-          "class": "centered",
-          "gap": 14,
-          "padding": 24,
-          "fill": true
+          "class": "fill-space centered splash"
         }
       ],
-      "class": "fullscreen",
-      "fill": true
+      "class": "fullscreen fill-space"
     },
     {
       "type": "column",
@@ -165,8 +148,7 @@
           "op": "show"
         }
       },
-      "class": "fullscreen",
-      "fill": true
+      "class": "fullscreen fill-space"
     },
     {
       "type": "column",
@@ -177,19 +159,16 @@
           "op": "hide"
         }
       },
-      "class": "fullscreen",
-      "fill": true
+      "class": "fullscreen fill-space"
     },
     {
       "type": "column",
-      "class": "scrim-side fullscreen",
-      "fill": true,
+      "class": "scrim-side fullscreen fill-space",
       "when": "player.visible"
     },
     {
       "type": "column",
-      "class": "scrim-bottom fullscreen",
-      "fill": true,
+      "class": "scrim-bottom fullscreen fill-space",
       "when": "player.visible"
     },
     {
@@ -197,6 +176,7 @@
       "children": [
         {
           "type": "row",
+          "tag": "section",
           "children": [
             {
               "type": "row",
@@ -218,6 +198,7 @@
             },
             {
               "type": "column",
+              "tag": "div",
               "children": [
                 {
                   "type": "text",
@@ -230,9 +211,7 @@
                   "text": "{player.episode}",
                   "when": "player.episode"
                 }
-              ],
-              "gap": 2,
-              "grow": 1
+              ]
             },
             {
               "type": "row",
@@ -253,19 +232,18 @@
                 }
               }
             }
-          ],
-          "gap": 12
+          ]
         }
       ],
       "when": "player.visible && !player.trailer",
-      "class": "fullscreen",
-      "padding": "20 24"
+      "class": "fullscreen top-bar"
     },
     {
       "type": "column",
       "children": [
         {
           "type": "row",
+          "tag": "section",
           "children": [
             {
               "type": "text",
@@ -285,6 +263,8 @@
                   "children": [
                     {
                       "type": "stack",
+                      "tag": "span",
+                      "class": "bar",
                       "children": [
                         {
                           "type": "column",
@@ -329,12 +309,10 @@
                             }
                           }
                         }
-                      ],
-                      "height": 4
+                      ]
                     }
                   ],
-                  "justify": "center",
-                  "fill": true
+                  "class": "fill-space rail"
                 }
               ]
             },
@@ -343,11 +321,11 @@
               "tag": "small",
               "text": "-{player.remaining}"
             }
-          ],
-          "gap": 12
+          ]
         },
         {
           "type": "row",
+          "tag": "section",
           "children": [
             {
               "type": "row",
@@ -426,7 +404,7 @@
             },
             {
               "type": "spacer",
-              "grow": 1
+              "class": "grow"
             },
             {
               "type": "row",
@@ -523,15 +501,11 @@
                 }
               }
             }
-          ],
-          "gap": 12
+          ]
         }
       ],
       "when": "player.visible && player.hasVideo && !player.trailer",
-      "class": "fullscreen",
-      "gap": 8,
-      "padding": "0 24 20 24",
-      "justify": "end"
+      "class": "fullscreen bottom-bar"
     },
     {
       "type": "column",
@@ -556,15 +530,15 @@
         }
       ],
       "when": "player.trailer",
-      "class": "fullscreen",
-      "padding": "20 24",
-      "align": "start"
+      "class": "fullscreen back-bar"
     },
     {
       "type": "column",
       "children": [
         {
           "type": "row",
+          "tag": "section",
+          "class": "trailer-actions",
           "children": [
             {
               "type": "row",
@@ -621,15 +595,11 @@
               },
               "when": "player.audioSubtitles"
             }
-          ],
-          "gap": 16
+          ]
         }
       ],
       "when": "player.trailer && player.visible && player.hasVideo",
-      "class": "fullscreen",
-      "padding": "0 24 28 24",
-      "align": "center",
-      "justify": "end"
+      "class": "fullscreen trailer-bar"
     },
     {
       "type": "row",
@@ -637,12 +607,11 @@
       "children": [
         {
           "type": "column",
-          "class": "popover player-panel",
-          "gap": 2,
-          "padding": 12,
+          "class": "popover player-panel panel-list",
           "children": [
             {
               "type": "row",
+              "tag": "header",
               "children": [
                 {
                   "type": "row",
@@ -688,16 +657,14 @@
                   ]
                 }
               ],
-              "when": "player.panel.title || player.panel.hasBack",
-              "gap": 8,
-              "padding": "6 8 6 8"
+              "when": "player.panel.title || player.panel.hasBack"
             },
             {
               "type": "text",
               "tag": "small",
               "text": "{player.panel.message}",
               "when": "player.panel.message",
-              "padding": "0 8 8 8"
+              "class": "panel-note"
             },
             {
               "type": "row",
@@ -705,6 +672,7 @@
               "children": [
                 {
                   "type": "row",
+                  "tag": "section",
                   "props": {
                     "tint": "{player.panel.look.background}"
                   },
@@ -716,12 +684,10 @@
                         "color": "{player.panel.look.text}"
                       }
                     }
-                  ],
-                  "padding": "6 12"
+                  ]
                 }
               ],
-              "padding": 12,
-              "justify": "center"
+              "class": "look"
             },
             {
               "type": "row",
@@ -731,6 +697,7 @@
                   "as": "column",
                   "template": {
                     "type": "column",
+                    "tag": "section",
                     "width": "{const.panelWidth}",
                     "children": [
                       {
@@ -743,8 +710,7 @@
                             "class": "label-strong panel-heading",
                             "style": "meta"
                           }
-                        ],
-                        "padding": "10 12 6 12"
+                        ]
                       },
                       {
                         "each": "column.rows",
@@ -755,7 +721,6 @@
                             {
                               "type": "row",
                               "class": "panel-row",
-                              "gap": 10,
                               "props": {
                                 "selected": "{row.selected}"
                               },
@@ -772,8 +737,6 @@
                                   "when": "row.thumb",
                                   "src": "{row.thumb}",
                                   "class": "panel-thumb",
-                                  "width": 96,
-                                  "height": 54,
                                   "props": {
                                     "fit": "cover"
                                   }
@@ -788,6 +751,7 @@
                                 },
                                 {
                                   "type": "column",
+                                  "tag": "div",
                                   "children": [
                                     {
                                       "type": "text",
@@ -808,6 +772,7 @@
                                     },
                                     {
                                       "type": "row",
+                                      "tag": "ul",
                                       "when": "row.chips",
                                       "props": {
                                         "wrap": true
@@ -819,7 +784,6 @@
                                           "template": {
                                             "type": "row",
                                             "class": "chip",
-                                            "padding": "2 8",
                                             "children": [
                                               {
                                                 "type": "text",
@@ -829,12 +793,9 @@
                                             ]
                                           }
                                         }
-                                      ],
-                                      "gap": 6
+                                      ]
                                     }
-                                  ],
-                                  "gap": 2,
-                                  "grow": 1
+                                  ]
                                 },
                                 {
                                   "type": "text",
@@ -871,8 +832,6 @@
                             },
                             {
                               "type": "row",
-                              "padding": "8 12",
-                              "gap": 10,
                               "when": "row.value_kind",
                               "children": [
                                 {
@@ -885,7 +844,7 @@
                                 },
                                 {
                                   "type": "row",
-                                  "class": "centered step-btn",
+                                  "class": "step-btn",
                                   "action": {
                                     "name": "player_row",
                                     "args": {
@@ -910,12 +869,11 @@
                                       "text": "{row.value}"
                                     }
                                   ],
-                                  "width": 64,
-                                  "justify": "center"
+                                  "class": "readout"
                                 },
                                 {
                                   "type": "row",
-                                  "class": "centered step-btn",
+                                  "class": "step-btn",
                                   "action": {
                                     "name": "player_row",
                                     "args": {
@@ -932,12 +890,11 @@
                                     }
                                   ]
                                 }
-                              ]
+                              ],
+                              "class": "option"
                             },
                             {
                               "type": "row",
-                              "padding": "8 12",
-                              "gap": 10,
                               "when": "row.swatches",
                               "children": [
                                 {
@@ -963,12 +920,11 @@
                                     }
                                   }
                                 }
-                              ]
+                              ],
+                              "class": "option"
                             },
                             {
                               "type": "row",
-                              "padding": "8 12",
-                              "gap": 6,
                               "when": "row.choices",
                               "children": [
                                 {
@@ -981,8 +937,7 @@
                                   "as": "part",
                                   "template": {
                                     "type": "row",
-                                    "class": "choice-chip centered",
-                                    "padding": "0 10",
+                                    "class": "choice-chip",
                                     "props": {
                                       "selected": "{part.selected}"
                                     },
@@ -1001,7 +956,8 @@
                                     ]
                                   }
                                 }
-                              ]
+                              ],
+                              "class": "option chip-row"
                             }
                           ]
                         },
@@ -1023,7 +979,6 @@
                                 {
                                   "type": "row",
                                   "class": "panel-row",
-                                  "gap": 10,
                                   "props": {
                                     "selected": "{row.selected}"
                                   },
@@ -1040,8 +995,6 @@
                                       "when": "row.thumb",
                                       "src": "{row.thumb}",
                                       "class": "panel-thumb",
-                                      "width": 96,
-                                      "height": 54,
                                       "props": {
                                         "fit": "cover"
                                       }
@@ -1056,6 +1009,7 @@
                                     },
                                     {
                                       "type": "column",
+                                      "tag": "div",
                                       "children": [
                                         {
                                           "type": "text",
@@ -1076,6 +1030,7 @@
                                         },
                                         {
                                           "type": "row",
+                                          "tag": "ul",
                                           "when": "row.chips",
                                           "props": {
                                             "wrap": true
@@ -1087,7 +1042,6 @@
                                               "template": {
                                                 "type": "row",
                                                 "class": "chip",
-                                                "padding": "2 8",
                                                 "children": [
                                                   {
                                                     "type": "text",
@@ -1097,12 +1051,9 @@
                                                 ]
                                               }
                                             }
-                                          ],
-                                          "gap": 6
+                                          ]
                                         }
-                                      ],
-                                      "gap": 2,
-                                      "grow": 1
+                                      ]
                                     },
                                     {
                                       "type": "text",
@@ -1139,8 +1090,6 @@
                                 },
                                 {
                                   "type": "row",
-                                  "padding": "8 12",
-                                  "gap": 10,
                                   "when": "row.value_kind",
                                   "children": [
                                     {
@@ -1153,7 +1102,7 @@
                                     },
                                     {
                                       "type": "row",
-                                      "class": "centered step-btn",
+                                      "class": "step-btn",
                                       "action": {
                                         "name": "player_row",
                                         "args": {
@@ -1178,12 +1127,11 @@
                                           "text": "{row.value}"
                                         }
                                       ],
-                                      "width": 64,
-                                      "justify": "center"
+                                      "class": "readout"
                                     },
                                     {
                                       "type": "row",
-                                      "class": "centered step-btn",
+                                      "class": "step-btn",
                                       "action": {
                                         "name": "player_row",
                                         "args": {
@@ -1200,12 +1148,11 @@
                                         }
                                       ]
                                     }
-                                  ]
+                                  ],
+                                  "class": "option"
                                 },
                                 {
                                   "type": "row",
-                                  "padding": "8 12",
-                                  "gap": 10,
                                   "when": "row.swatches",
                                   "children": [
                                     {
@@ -1231,12 +1178,11 @@
                                         }
                                       }
                                     }
-                                  ]
+                                  ],
+                                  "class": "option"
                                 },
                                 {
                                   "type": "row",
-                                  "padding": "8 12",
-                                  "gap": 6,
                                   "when": "row.choices",
                                   "children": [
                                     {
@@ -1249,8 +1195,7 @@
                                       "as": "part",
                                       "template": {
                                         "type": "row",
-                                        "class": "choice-chip centered",
-                                        "padding": "0 10",
+                                        "class": "choice-chip",
                                         "props": {
                                           "selected": "{part.selected}"
                                         },
@@ -1269,22 +1214,20 @@
                                         ]
                                       }
                                     }
-                                  ]
+                                  ],
+                                  "class": "option chip-row"
                                 }
                               ]
                             }
                           }
                         ],
-                        "height": "42vh"
+                        "class": "panel-scroll"
                       }
-                    ],
-                    "gap": 2
+                    ]
                   }
                 }
               ],
-              "class": "wide-only",
-              "gap": 20,
-              "align": "start"
+              "class": "wide-only panel-columns"
             },
             {
               "type": "column",
@@ -1300,7 +1243,6 @@
                         "text": "{column.heading}",
                         "when": "column.heading",
                         "class": "label-strong panel-heading",
-                        "padding": "10 12 4 12",
                         "style": "meta"
                       },
                       {
@@ -1312,7 +1254,6 @@
                             {
                               "type": "row",
                               "class": "panel-row",
-                              "gap": 10,
                               "props": {
                                 "selected": "{row.selected}"
                               },
@@ -1329,8 +1270,6 @@
                                   "when": "row.thumb",
                                   "src": "{row.thumb}",
                                   "class": "panel-thumb",
-                                  "width": 96,
-                                  "height": 54,
                                   "props": {
                                     "fit": "cover"
                                   }
@@ -1345,6 +1284,7 @@
                                 },
                                 {
                                   "type": "column",
+                                  "tag": "div",
                                   "children": [
                                     {
                                       "type": "text",
@@ -1365,6 +1305,7 @@
                                     },
                                     {
                                       "type": "row",
+                                      "tag": "ul",
                                       "when": "row.chips",
                                       "props": {
                                         "wrap": true
@@ -1376,7 +1317,6 @@
                                           "template": {
                                             "type": "row",
                                             "class": "chip",
-                                            "padding": "2 8",
                                             "children": [
                                               {
                                                 "type": "text",
@@ -1386,12 +1326,9 @@
                                             ]
                                           }
                                         }
-                                      ],
-                                      "gap": 6
+                                      ]
                                     }
-                                  ],
-                                  "gap": 2,
-                                  "grow": 1
+                                  ]
                                 },
                                 {
                                   "type": "text",
@@ -1428,8 +1365,6 @@
                             },
                             {
                               "type": "row",
-                              "padding": "8 12",
-                              "gap": 10,
                               "when": "row.value_kind",
                               "children": [
                                 {
@@ -1442,7 +1377,7 @@
                                 },
                                 {
                                   "type": "row",
-                                  "class": "centered step-btn",
+                                  "class": "step-btn",
                                   "action": {
                                     "name": "player_row",
                                     "args": {
@@ -1467,12 +1402,11 @@
                                       "text": "{row.value}"
                                     }
                                   ],
-                                  "width": 64,
-                                  "justify": "center"
+                                  "class": "readout"
                                 },
                                 {
                                   "type": "row",
-                                  "class": "centered step-btn",
+                                  "class": "step-btn",
                                   "action": {
                                     "name": "player_row",
                                     "args": {
@@ -1489,12 +1423,11 @@
                                     }
                                   ]
                                 }
-                              ]
+                              ],
+                              "class": "option"
                             },
                             {
                               "type": "row",
-                              "padding": "8 12",
-                              "gap": 10,
                               "when": "row.swatches",
                               "children": [
                                 {
@@ -1520,12 +1453,11 @@
                                     }
                                   }
                                 }
-                              ]
+                              ],
+                              "class": "option"
                             },
                             {
                               "type": "row",
-                              "padding": "8 12",
-                              "gap": 6,
                               "when": "row.choices",
                               "children": [
                                 {
@@ -1538,8 +1470,7 @@
                                   "as": "part",
                                   "template": {
                                     "type": "row",
-                                    "class": "choice-chip centered",
-                                    "padding": "0 10",
+                                    "class": "choice-chip",
                                     "props": {
                                       "selected": "{part.selected}"
                                     },
@@ -1558,13 +1489,14 @@
                                     ]
                                   }
                                 }
-                              ]
+                              ],
+                              "class": "option chip-row"
                             }
                           ]
                         }
                       }
                     ],
-                    "gap": 2
+                    "class": "method-list"
                   }
                 }
               ],
@@ -1573,10 +1505,7 @@
           ]
         }
       ],
-      "class": "fullscreen",
-      "align": "end",
-      "justify": "end",
-      "padding": "16 16 104 16"
+      "class": "fullscreen panel-layer"
     },
     {
       "type": "row",
@@ -1584,13 +1513,12 @@
       "children": [
         {
           "type": "column",
-          "class": "popover player-panel",
-          "gap": 12,
-          "padding": 16,
+          "class": "popover player-panel panel-form",
           "width": "{const.panelWidth}",
           "children": [
             {
               "type": "row",
+              "tag": "header",
               "children": [
                 {
                   "type": "row",
@@ -1653,9 +1581,7 @@
                     }
                   ]
                 }
-              ],
-              "gap": 8,
-              "align": "center"
+              ]
             },
             {
               "type": "row",
@@ -1692,8 +1618,7 @@
                       "text": "{player.panel.sync.reading.suffix}"
                     }
                   ],
-                  "gap": 4,
-                  "align": "end"
+                  "class": "reading"
                 },
                 {
                   "type": "row",
@@ -1714,8 +1639,7 @@
                   ]
                 }
               ],
-              "class": "centered",
-              "gap": 16
+              "class": "stepper-row"
             },
             {
               "type": "text",
@@ -1736,6 +1660,7 @@
               "children": [
                 {
                   "type": "column",
+                  "tag": "div",
                   "children": [
                     {
                       "type": "text",
@@ -1750,9 +1675,7 @@
                         "lines": 2
                       }
                     }
-                  ],
-                  "gap": 2,
-                  "grow": 1
+                  ]
                 }
               ]
             },
@@ -1765,7 +1688,6 @@
                   "template": {
                     "type": "row",
                     "class": "panel-row",
-                    "gap": 10,
                     "props": {
                       "selected": "{item.selected}"
                     },
@@ -1778,6 +1700,7 @@
                     "children": [
                       {
                         "type": "column",
+                        "tag": "div",
                         "children": [
                           {
                             "type": "text",
@@ -1795,9 +1718,7 @@
                               "lines": 2
                             }
                           }
-                        ],
-                        "gap": 2,
-                        "grow": 1
+                        ]
                       },
                       {
                         "type": "icon",
@@ -1816,7 +1737,6 @@
                   "template": {
                     "type": "row",
                     "class": "panel-row",
-                    "gap": 10,
                     "props": {
                       "selected": "{item.selected}"
                     },
@@ -1829,6 +1749,7 @@
                     "children": [
                       {
                         "type": "column",
+                        "tag": "div",
                         "children": [
                           {
                             "type": "text",
@@ -1846,9 +1767,7 @@
                               "lines": 2
                             }
                           }
-                        ],
-                        "gap": 2,
-                        "grow": 1
+                        ]
                       },
                       {
                         "type": "icon",
@@ -1862,15 +1781,12 @@
                   }
                 }
               ],
-              "gap": 2
+              "class": "method-list"
             }
           ]
         }
       ],
-      "class": "fullscreen",
-      "align": "start",
-      "justify": "end",
-      "padding": 16
+      "class": "fullscreen sync-layer"
     },
     {
       "type": "column",
@@ -1878,9 +1794,7 @@
       "children": [
         {
           "type": "column",
-          "class": "popover player-panel",
-          "gap": 12,
-          "padding": "16 0 24 0",
+          "class": "popover player-panel panel-sheet",
           "children": [
             {
               "type": "row",
@@ -1910,8 +1824,7 @@
                   ]
                 }
               ],
-              "gap": 8,
-              "padding": "0 24"
+              "class": "sheet-head"
             },
             {
               "type": "row",
@@ -1925,7 +1838,6 @@
                   "template": {
                     "type": "row",
                     "class": "choice-chip",
-                    "padding": "8 14",
                     "props": {
                       "selected": "{chip.selected}"
                     },
@@ -1944,16 +1856,12 @@
                   }
                 }
               ],
-              "width": "100vw",
-              "gap": 8,
-              "padding": "0 24"
+              "class": "chip-grid"
             }
           ]
         }
       ],
-      "class": "compact-only fullscreen",
-      "padding": 0,
-      "justify": "end"
+      "class": "compact-only fullscreen sheet-layer"
     },
     {
       "type": "row",
@@ -1961,9 +1869,7 @@
       "children": [
         {
           "type": "column",
-          "class": "popover player-panel",
-          "gap": 12,
-          "padding": 16,
+          "class": "popover player-panel panel-form",
           "width": "{const.panelWidth}",
           "children": [
             {
@@ -1975,9 +1881,7 @@
           ]
         }
       ],
-      "class": "fullscreen",
-      "padding": 16,
-      "justify": "end"
+      "class": "fullscreen watch-layer"
     },
     {
       "type": "column",
@@ -2003,17 +1907,14 @@
         {
           "type": "column",
           "when": "player.next",
-          "class": "popover player-panel",
-          "gap": 8,
-          "padding": 16,
+          "class": "popover player-panel panel-next",
           "width": "{const.panelWidth}",
           "children": [
             {
               "type": "image",
               "when": "player.next.thumb",
               "src": "{player.next.thumb}",
-              "class": "next-thumb",
-              "height": 140
+              "class": "next-thumb"
             },
             {
               "type": "text",
@@ -2027,6 +1928,7 @@
             },
             {
               "type": "row",
+              "tag": "footer",
               "children": [
                 {
                   "type": "row",
@@ -2063,18 +1965,12 @@
                     }
                   ]
                 }
-              ],
-              "gap": 8,
-              "align": "center"
+              ]
             }
           ]
         }
       ],
-      "class": "fullscreen",
-      "align": "end",
-      "justify": "end",
-      "gap": 10,
-      "padding": "0 24 96 24"
+      "class": "fullscreen skip-layer"
     },
     {
       "type": "column",
@@ -2083,9 +1979,6 @@
         {
           "type": "column",
           "class": "warning-box",
-          "gap": 4,
-          "padding": "10 12",
-          "align": "start",
           "children": [
             {
               "each": "player.warnings",
@@ -2099,9 +1992,7 @@
           ]
         }
       ],
-      "class": "fullscreen",
-      "padding": "72 24",
-      "align": "start"
+      "class": "fullscreen warn-layer"
     },
     {
       "type": "stack",
@@ -2152,15 +2043,10 @@
               }
             }
           ],
-          "align": "start",
-          "justify": "end",
-          "gap": 10,
-          "padding": "0 0 64 64",
-          "fill": true
+          "class": "fill-space pause-copy"
         }
       ],
-      "class": "fullscreen",
-      "fill": true
+      "class": "fullscreen fill-space"
     },
     {
       "type": "row",
@@ -2169,15 +2055,13 @@
         {
           "type": "row",
           "class": "stats-panel",
-          "gap": 14,
-          "padding": 14,
-          "align": "start",
           "children": [
             {
               "each": "player.stats.columns",
               "as": "column",
               "template": {
                 "type": "column",
+                "tag": "section",
                 "children": [
                   {
                     "type": "text",
@@ -2201,6 +2085,7 @@
                           "as": "row",
                           "template": {
                             "type": "row",
+                            "tag": "footer",
                             "children": [
                               {
                                 "type": "text",
@@ -2229,27 +2114,20 @@
                                 "text": "{row.to}",
                                 "style": "meta"
                               }
-                            ],
-                            "gap": 8,
-                            "align": "center"
+                            ]
                           }
                         }
                       ],
-                      "gap": 2
+                      "class": "method-list"
                     }
                   }
-                ],
-                "width": 260,
-                "gap": 8
+                ]
               }
             }
           ]
         }
       ],
-      "class": "fullscreen",
-      "align": "start",
-      "justify": "end",
-      "padding": "72 24 0 0"
+      "class": "fullscreen stats-layer"
     },
     {
       "type": "column",
@@ -2257,10 +2135,7 @@
       "props": {
         "tint": "{player.dimTint}"
       },
-      "class": "fullscreen",
-      "fill": true
+      "class": "fullscreen fill-space"
     }
-  ],
-  "width": "100vw",
-  "height": "100vh"
+  ]
 }

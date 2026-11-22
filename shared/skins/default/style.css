@@ -207,6 +207,7 @@ row.description.wrapped {
 }
 
 row.mark, .panel-heading { color: var(--ink-muted); }
+.panel-heading { padding: .625rem .75rem .375rem; }
 
 swatch.glass {
   background: var(--ink-dim);
@@ -584,6 +585,7 @@ hero-synopsis-size { font-size: 16; }
 .card-preview { box-shadow: 0 14px 36px rgba(0, 0, 0, 0.55); }
 
 .preview-art, .next-thumb { border-radius: var(--radius-md); }
+.next-thumb { height: 140px; }
 .menu-scrim { background: rgba(0, 0, 0, 0.35); }
 
 .modal-hero-scrim {
@@ -626,13 +628,14 @@ hero-synopsis-size { font-size: 16; }
 
 .mini-tile:hover .mini-controls { opacity: 1; }
 
-.panel-thumb { border-radius: var(--radius-sm); }
+.panel-thumb { border-radius: var(--radius-sm); width: 96px; height: 54px; }
 .panel-label { font-weight: 500; }
 .panel-detail { font-size: var(--text-label); color: var(--ink-muted); }
 
 .panel-row {
   border-radius: var(--radius-md);
   padding: 10px 12px;
+  gap: .625rem;
 }
 
 .hero-skeleton {
@@ -671,11 +674,16 @@ hero-synopsis-size { font-size: 16; }
   border-radius: var(--radius-pill);
   width: 28px;
   height: 28px;
+  align-items: center;
+  justify-content: center;
 }
 
 .step-btn:hover, .source-row:hover { background: var(--ink-soft); }
 
 .choice-chip {
+  padding: 0 .625rem;
+  align-items: center;
+  justify-content: center;
   height: 28px;
   background: var(--ink-faint);
   border-radius: var(--radius-pill);
@@ -693,6 +701,9 @@ hero-synopsis-size { font-size: 16; }
 .swatch:selected { border: 2px solid #ffffff; }
 
 .warning-box {
+  gap: .25rem;
+  padding: .625rem .75rem;
+  align-items: flex-start;
   background: rgba(0, 0, 0, 0.68);
   border-radius: var(--radius-md);
 }
@@ -799,6 +810,9 @@ hero-synopsis-size { font-size: 16; }
 }
 
 .stats-panel {
+  gap: .875rem;
+  padding: .875rem;
+  align-items: flex-start;
   background: var(--color-surface);
   border: 1px solid var(--ink-faint);
   border-radius: var(--radius-md);
@@ -1193,5 +1207,53 @@ button:focus { background: color-mix(in srgb, var(--color-text-primary) 18.039%,
 .choices { width: 88vw; }
 .identity-tile { gap: .5rem; align-items: center; }
 .spaced { padding: .75rem 0 0; }
+
+/* ==== Player ============================================================ */
+.player { width: 100vw; height: 100vh; }
+.splash { gap: .875rem; padding: 1.5rem; }
+.player-loading-mark { gap: .875rem; align-items: center; }
+.splash .progress-track { width: 15rem; height: 3px; }
+.splash .progress-bar { height: 3px; }
+.top-bar { padding: 1.25rem 1.5rem; }
+.top-bar section, .bottom-bar section { gap: .75rem; }
+.back-bar { padding: 1.25rem 1.5rem; align-items: flex-start; }
+.bottom-bar { gap: .5rem; padding: 0 1.5rem 1.25rem; justify-content: flex-end; }
+.trailer-bar { padding: 0 1.5rem 1.75rem; align-items: center; justify-content: flex-end; }
+.trailer-actions { gap: 1rem; }
+.rail { justify-content: center; }
+.panel-layer { align-items: flex-end; justify-content: flex-end; padding: 1rem 1rem 6.5rem; }
+.sync-layer { align-items: flex-start; justify-content: flex-end; padding: 1rem; }
+.sheet-layer { justify-content: flex-end; }
+.watch-layer { justify-content: flex-end; padding: 1rem; }
+.skip-layer { align-items: flex-end; justify-content: flex-end; gap: .625rem; padding: 0 1.5rem 6rem; }
+.warn-layer { padding: 4.5rem 1.5rem; align-items: flex-start; }
+.stats-layer { align-items: flex-start; justify-content: flex-end; padding: 4.5rem 1.5rem 0 0; }
+.pause-copy { align-items: flex-start; justify-content: flex-end; gap: .625rem; padding: 0 0 4rem 4rem; }
+.panel-list { gap: .125rem; padding: .75rem; }
+.panel-form { gap: .75rem; padding: 1rem; }
+.panel-sheet { gap: .75rem; padding: 1rem 0 1.5rem; }
+.panel-next { gap: .5rem; padding: 1rem; }
+.player-panel header { gap: .5rem; padding: .375rem .5rem; }
+.player-panel footer { gap: .5rem; }
+.sheet-head { gap: .5rem; padding: 0 1.5rem; }
+.chip-grid { width: 100vw; gap: .5rem; padding: 0 1.5rem; }
+.panel-note { padding: 0 .5rem .5rem; }
+.look { padding: .75rem; justify-content: center; }
+.look section { padding: .375rem .75rem; }
+.panel-columns { gap: 1.25rem; align-items: flex-start; }
+.panel-columns section { gap: .125rem; }
+.panel-scroll { height: 42vh; }
+.panel-row ul { gap: .375rem; }
+.panel-row .chip { padding: .125rem .5rem; }
+.option { padding: .5rem .75rem; gap: .625rem; }
+.chip-row { gap: .375rem; }
+.readout { width: 4rem; justify-content: center; }
+.panel-sheet .choice-chip { padding: .5rem .875rem; }
+.stepper-row { gap: 1rem; justify-content: center; align-items: center; }
+.reading { gap: .25rem; align-items: flex-end; }
+.method-list { gap: .125rem; }
+.stats-panel section { width: 16.25rem; gap: .5rem; }
+.stats-panel li { gap: .125rem; }
+.stats-panel dl { gap: .5rem; align-items: center; }
 
 /* ==== end of settings section ============================================ */
