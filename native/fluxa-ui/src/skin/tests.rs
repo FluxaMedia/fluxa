@@ -375,3 +375,31 @@ fn row_children_center_across_unless_the_class_says_otherwise() {
     assert_eq!(targets.len(), 1);
     assert_eq!(targets[0].1.min.y, 20.0);
 }
+
+fn sized_target(css: &str, class: &str) -> Rect {
+    crate::reload_styles_with(css).unwrap();
+    let tree = skin_from(json!({
+        "type": "column",
+        "children": [{
+            "type": "row",
+            "class": class,
+            "action": {"name": "back"},
+            "children": []
+        }]
+    }));
+    let (_, targets) = render(&tree);
+    assert_eq!(targets.len(), 1);
+    targets[0].1
+}
+
+#[test]
+fn ratio_with_only_a_width_sets_the_height() {
+    let rect = sized_target(".thumb { width: 160px; aspect-ratio: 16 / 9; }", "thumb");
+    assert_eq!(rect.size(), Vec2::new(160.0, 90.0));
+}
+
+#[test]
+fn ratio_with_only_a_height_sets_the_width() {
+    let rect = sized_target(".art { height: 210px; aspect-ratio: 2 / 3; }", "art");
+    assert_eq!(rect.size(), Vec2::new(140.0, 210.0));
+}

@@ -159,6 +159,7 @@ pub(crate) struct Node {
     min_h: Option<f32>,
     max_w: Option<f32>,
     max_h: Option<f32>,
+    aspect: Option<f32>,
     basis: Option<f32>,
     grow: f32,
     shrink: f32,
@@ -376,6 +377,7 @@ impl Node {
             min_h: None,
             max_w: None,
             max_h: None,
+            aspect: None,
             basis: None,
             grow: 0.0,
             shrink: 1.0,
@@ -430,6 +432,11 @@ impl Node {
 
     pub fn max_width(mut self, value: f32) -> Self {
         self.max_w = Some(value);
+        self
+    }
+
+    pub fn aspect(mut self, ratio: f32) -> Self {
+        self.aspect = Some(ratio).filter(|ratio| *ratio > 0.0);
         self
     }
 
@@ -620,14 +627,28 @@ impl Node {
             content.x + self.padding.width(),
             content.y + self.padding.height(),
         );
-        let w = self.width.unwrap_or(padded.x);
-        let h = self.height.unwrap_or(padded.y);
-        Vec2::new(
+        let clamp_w = |w: f32| {
             w.min(self.max_w.unwrap_or(f32::INFINITY))
-                .max(self.min_w.unwrap_or(0.0)),
+                .max(self.min_w.unwrap_or(0.0))
+        };
+        let clamp_h = |h: f32| {
             h.min(self.max_h.unwrap_or(f32::INFINITY))
-                .max(self.min_h.unwrap_or(0.0)),
-        )
+                .max(self.min_h.unwrap_or(0.0))
+        };
+        match (self.aspect, self.width, self.height) {
+            (Some(ratio), Some(width), None) => {
+                let w = clamp_w(width);
+                Vec2::new(w, clamp_h(w / ratio))
+            }
+            (Some(ratio), None, Some(height)) => {
+                let h = clamp_h(height);
+                Vec2::new(clamp_w(h * ratio), h)
+            }
+            _ => Vec2::new(
+                clamp_w(self.width.unwrap_or(padded.x)),
+                clamp_h(self.height.unwrap_or(padded.y)),
+            ),
+        }
     }
 
     pub fn grows(&self) -> bool {
@@ -881,7 +902,20 @@ impl Node {
                     wanted = size.y + child.padding.height() + child.margin.height();
                 }
             }
-            let stretch = align == Align::Stretch && child.fixed_cross(axis).is_none();
+            if let Some(ratio) = child.aspect.filter(|_| child.fixed_cross(axis).is_none()) {
+                let main_margin = match axis {
+                    Axis::Row => child.margin.width(),
+                    Axis::Column => child.margin.height(),
+                };
+                let inner = length - main_margin;
+                wanted = match axis {
+                    Axis::Row => inner / ratio + child.margin.height(),
+                    Axis::Column => inner * ratio + child.margin.width(),
+                };
+            }
+            let stretch = align == Align::Stretch
+                && child.fixed_cross(axis).is_none()
+                && child.aspect.is_none();
             let size = if stretch {
                 cross_avail
             } else {
@@ -1190,5 +1224,50 @@ mod tests {
         let last_line = placed.find(3).unwrap();
         let below = placed.find(9).unwrap();
         assert!(below.top() >= last_line.bottom());
+    }
+
+    #[test]
+    fn aspect_derives_height_from_width() {
+        let tree = boxed(0.0, 0.0).width(160.0).aspect(16.0 / 9.0);
+        assert_eq!(tree.outer_size(), Vec2::new(160.0, 90.0));
+    }
+
+    #[test]
+    fn aspect_derives_width_from_height() {
+        let tree = boxed(0.0, 0.0).height(210.0).aspect(2.0 / 3.0);
+        assert_eq!(tree.outer_size(), Vec2::new(140.0, 210.0));
+    }
+
+    #[test]
+    fn aspect_follows_the_max_width_clamp() {
+        let tree = boxed(0.0, 0.0)
+            .width(900.0)
+            .max_width(400.0)
+            .aspect(16.0 / 9.0);
+        assert_eq!(tree.outer_size(), Vec2::new(400.0, 225.0));
+    }
+
+    #[test]
+    fn explicit_width_and_height_beat_the_ratio() {
+        let tree = boxed(0.0, 0.0).width(100.0).height(10.0).aspect(2.0);
+        assert_eq!(tree.outer_size(), Vec2::new(100.0, 10.0));
+    }
+
+    #[test]
+    fn aspect_item_that_grows_in_a_row_takes_its_height_from_the_final_width() {
+        let out = rects(
+            row([boxed(0.0, 0.0).grow(1.0).aspect(2.0)]).align(Align::Start),
+            bounds(200.0, 400.0),
+        );
+        assert_eq!(out[0].size(), Vec2::new(200.0, 100.0));
+    }
+
+    #[test]
+    fn aspect_item_in_a_stretching_column_is_not_stretched_taller_than_its_ratio() {
+        let out = rects(
+            column([boxed(0.0, 0.0).width(100.0).aspect(2.0)]).align(Align::Stretch),
+            bounds(300.0, 400.0),
+        );
+        assert_eq!(out[0].size(), Vec2::new(100.0, 50.0));
     }
 }

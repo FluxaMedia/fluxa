@@ -754,16 +754,18 @@ fn frame<'a>(
         .or(style
             .and_then(|style| style.width_vw)
             .map(|share| share * view.x));
-    let mut height = node
+    let height = node
         .height
         .or(node.height_vh.map(|share| share * view.y))
         .or(style.and_then(|style| style.height))
         .or(style
             .and_then(|style| style.height_vh)
             .map(|share| share * view.y));
-    if let (Some(ratio), None) = (aspect, height) {
+    if aspect.is_some() && height.is_none() {
         width = width.or(parent);
-        height = width.map(|width| width / ratio);
+    }
+    if let Some(ratio) = aspect {
+        item = item.aspect(ratio);
     }
     if let Some(width) = width {
         item = item.width(width);
