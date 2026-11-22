@@ -20,5 +20,5 @@
       ]
     }
   ],
-  "class": "desktop-only window-strip"
+  "class": "desktop-only layer right window-strip"
 }

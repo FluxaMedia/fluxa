@@ -358,6 +358,10 @@ pub(super) fn parse_patch(rule: &str, value: &Value) -> Result<Patch, String> {
             Some(other) => return Err(format!("{rule}.justify: unknown {other}")),
             None => None,
         },
+        place: match value.get("place").and_then(Value::as_str) {
+            Some(words) => Some(place(rule, words)?),
+            None => None,
+        },
         grow: value
             .get("grow")
             .and_then(Value::as_f64)
@@ -532,4 +536,25 @@ fn parse_shadow(rule: &str, text: &str) -> Result<GlowSpec, String> {
         spread: lengths.get(3).copied().unwrap_or(0.0),
         color,
     })
+}
+
+fn place(rule: &str, words: &str) -> Result<super::Place, String> {
+    let mut place = super::Place {
+        vertical: None,
+        horizontal: None,
+    };
+    for word in words.split_whitespace() {
+        match word {
+            "top" => place.vertical = Some(super::Alignment::Start),
+            "bottom" => place.vertical = Some(super::Alignment::End),
+            "left" => place.horizontal = Some(super::Alignment::Start),
+            "right" => place.horizontal = Some(super::Alignment::End),
+            "center" => {
+                place.vertical = place.vertical.or(Some(super::Alignment::Center));
+                place.horizontal = place.horizontal.or(Some(super::Alignment::Center));
+            }
+            other => return Err(format!("{rule}.place: unknown {other}")),
+        }
+    }
+    Ok(place)
 }

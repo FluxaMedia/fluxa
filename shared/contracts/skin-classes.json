@@ -44,13 +44,6 @@
       "since": 5
     },
     {
-      "name": "back-bar",
-      "element": "column",
-      "meaning": "",
-      "stability": "internal",
-      "since": 6
-    },
-    {
       "name": "backdrop",
       "element": "",
       "meaning": "",
@@ -100,8 +93,29 @@
       "since": 6
     },
     {
-      "name": "bottom-bar",
+      "name": "bottom",
       "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 6
+    },
+    {
+      "name": "bottom-center",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 6
+    },
+    {
+      "name": "bottom-left",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 6
+    },
+    {
+      "name": "bottom-right",
+      "element": "column row",
       "meaning": "",
       "stability": "internal",
       "since": 6
@@ -140,13 +154,6 @@
       "meaning": "",
       "stability": "internal",
       "since": 2
-    },
-    {
-      "name": "caption",
-      "element": "column",
-      "meaning": "",
-      "stability": "internal",
-      "since": 6
     },
     {
       "name": "card-badge",
@@ -308,13 +315,6 @@
       "meaning": "Gradient over continue-watching artwork",
       "stability": "internal",
       "since": 1
-    },
-    {
-      "name": "copy",
-      "element": "column",
-      "meaning": "",
-      "stability": "internal",
-      "since": 6
     },
     {
       "name": "copy-logo",
@@ -560,13 +560,6 @@
       "meaning": "Backdrop of an expanded card",
       "stability": "internal",
       "since": 1
-    },
-    {
-      "name": "expanded-copy",
-      "element": "column",
-      "meaning": "",
-      "stability": "internal",
-      "since": 6
     },
     {
       "name": "expanded-mark",
@@ -849,8 +842,22 @@
       "since": 1
     },
     {
+      "name": "layer",
+      "element": "column row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 6
+    },
+    {
       "name": "lead",
       "element": "spacer",
+      "meaning": "",
+      "stability": "internal",
+      "since": 6
+    },
+    {
+      "name": "left",
+      "element": "column",
       "meaning": "",
       "stability": "internal",
       "since": 6
@@ -1262,13 +1269,6 @@
       "since": 1
     },
     {
-      "name": "pause-copy",
-      "element": "column",
-      "meaning": "",
-      "stability": "internal",
-      "since": 6
-    },
-    {
       "name": "phone",
       "element": "column",
       "meaning": "",
@@ -1516,6 +1516,13 @@
     {
       "name": "results",
       "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 6
+    },
+    {
+      "name": "right",
+      "element": "row",
       "meaning": "",
       "stability": "internal",
       "since": 6
@@ -1857,13 +1864,6 @@
       "since": 1
     },
     {
-      "name": "stats-layer",
-      "element": "row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 6
-    },
-    {
       "name": "stats-panel",
       "element": "row",
       "meaning": "Playback statistics panel",
@@ -1918,13 +1918,6 @@
       "meaning": "On/off toggle",
       "stability": "stable",
       "since": 1
-    },
-    {
-      "name": "sync-layer",
-      "element": "row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 6
     },
     {
       "name": "synopsis",
@@ -2018,8 +2011,15 @@
       "since": 6
     },
     {
-      "name": "top-bar",
+      "name": "top-left",
       "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 6
+    },
+    {
+      "name": "top-right",
+      "element": "row",
       "meaning": "",
       "stability": "internal",
       "since": 6
@@ -2041,13 +2041,6 @@
     {
       "name": "trailer-actions",
       "element": "row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 6
-    },
-    {
-      "name": "trailer-bar",
-      "element": "column",
       "meaning": "",
       "stability": "internal",
       "since": 6
@@ -2088,25 +2081,11 @@
       "since": 6
     },
     {
-      "name": "warn-layer",
-      "element": "column",
-      "meaning": "",
-      "stability": "internal",
-      "since": 6
-    },
-    {
       "name": "warning-box",
       "element": "column",
       "meaning": "Highlighted warning message",
       "stability": "internal",
       "since": 1
-    },
-    {
-      "name": "watch-layer",
-      "element": "row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 6
     },
     {
       "name": "watched",

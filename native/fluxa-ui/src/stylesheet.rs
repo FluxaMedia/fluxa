@@ -44,6 +44,7 @@ pub(crate) struct Style {
     pub magnify: f32,
     pub reach: f32,
     pub justify: Option<Justify>,
+    pub place: Option<Place>,
     pub grow: Option<f32>,
     pub hidden: bool,
     pub fill_space: bool,
@@ -83,6 +84,12 @@ pub(crate) enum Alignment {
     Center,
     End,
     Stretch,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) struct Place {
+    pub vertical: Option<Alignment>,
+    pub horizontal: Option<Alignment>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -130,6 +137,7 @@ impl Style {
             magnify: 0.0,
             reach: 1.0,
             justify: None,
+            place: None,
             grow: None,
             hidden: false,
             fill_space: false,
@@ -346,6 +354,7 @@ struct Patch {
     magnify: Option<f32>,
     reach: Option<f32>,
     justify: Option<Justify>,
+    place: Option<Place>,
     grow: Option<f32>,
     hidden: Option<bool>,
     fill_space: Option<bool>,
@@ -1008,6 +1017,9 @@ fn apply(style: &mut Style, patch: &Patch) {
     if let Some(justify) = patch.justify {
         style.justify = Some(justify);
     }
+    if let Some(place) = patch.place {
+        style.place = Some(place);
+    }
     if let Some(grow) = patch.grow {
         style.grow = Some(grow);
     }
@@ -1059,6 +1071,7 @@ fn mix(from: Style, to: Style, t: f32) -> Style {
         magnify: to.magnify,
         reach: to.reach,
         justify: to.justify,
+        place: to.place,
         grow: to.grow,
         hidden: to.hidden,
         fill_space: to.fill_space,
@@ -1980,6 +1993,22 @@ mod tests {
             .as_ref()
             .expect("gradient");
         assert_eq!(gradient.stops.len(), 2);
+    }
+
+    #[test]
+    fn place_names_corners_without_an_axis() {
+        let sheet =
+            Sheet::parse(".a { place: bottom right; } .b { place: center; } .c { place: top; }")
+                .expect("parses");
+        let a = sheet.rules["a"].layer.base.place.expect("place");
+        assert_eq!(a.vertical, Some(Alignment::End));
+        assert_eq!(a.horizontal, Some(Alignment::End));
+        let b = sheet.rules["b"].layer.base.place.expect("place");
+        assert_eq!(b.vertical, Some(Alignment::Center));
+        assert_eq!(b.horizontal, Some(Alignment::Center));
+        let c = sheet.rules["c"].layer.base.place.expect("place");
+        assert_eq!(c.vertical, Some(Alignment::Start));
+        assert_eq!(c.horizontal, None);
     }
 
     #[test]

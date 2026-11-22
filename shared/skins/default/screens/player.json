@@ -236,7 +236,7 @@
         }
       ],
       "when": "player.visible && !player.trailer",
-      "class": "fullscreen top-bar"
+      "class": "fullscreen layer"
     },
     {
       "type": "column",
@@ -505,7 +505,7 @@
         }
       ],
       "when": "player.visible && player.hasVideo && !player.trailer",
-      "class": "fullscreen bottom-bar"
+      "class": "fullscreen layer bottom"
     },
     {
       "type": "column",
@@ -530,7 +530,7 @@
         }
       ],
       "when": "player.trailer",
-      "class": "fullscreen back-bar"
+      "class": "fullscreen layer top-left"
     },
     {
       "type": "column",
@@ -599,7 +599,7 @@
         }
       ],
       "when": "player.trailer && player.visible && player.hasVideo",
-      "class": "fullscreen trailer-bar"
+      "class": "fullscreen layer bottom-center"
     },
     {
       "type": "row",
@@ -1505,7 +1505,7 @@
           ]
         }
       ],
-      "class": "fullscreen panel-layer"
+      "class": "fullscreen layer bottom-right panel-layer"
     },
     {
       "type": "row",
@@ -1786,7 +1786,7 @@
           ]
         }
       ],
-      "class": "fullscreen sync-layer"
+      "class": "fullscreen layer top-right"
     },
     {
       "type": "column",
@@ -1881,7 +1881,7 @@
           ]
         }
       ],
-      "class": "fullscreen watch-layer"
+      "class": "fullscreen layer right"
     },
     {
       "type": "column",
@@ -1970,7 +1970,7 @@
           ]
         }
       ],
-      "class": "fullscreen skip-layer"
+      "class": "fullscreen layer bottom-right skip-layer"
     },
     {
       "type": "column",
@@ -1992,7 +1992,7 @@
           ]
         }
       ],
-      "class": "fullscreen warn-layer"
+      "class": "fullscreen layer left"
     },
     {
       "type": "stack",
@@ -2043,7 +2043,7 @@
               }
             }
           ],
-          "class": "fill-space pause-copy"
+          "class": "fill-space layer bottom-left"
         }
       ],
       "class": "fullscreen fill-space"
@@ -2127,7 +2127,7 @@
           ]
         }
       ],
-      "class": "fullscreen stats-layer"
+      "class": "fullscreen layer top-right"
     },
     {
       "type": "column",

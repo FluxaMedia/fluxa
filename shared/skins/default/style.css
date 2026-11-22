@@ -505,7 +505,6 @@ hero-synopsis-size { font-size: 16; }
 .title-slot { align-items: flex-start; }
 .editor { height: 32.5rem; }
 .logo, .rows figure { width: 3rem; height: 3rem; }
-.expanded-copy { gap: var(--gap-snug); padding: var(--space-4); align-items: flex-start; justify-content: flex-end; }
 .welcome-subtitle { font-size: var(--text-md); color: var(--ink-subtle); }
 
 .player-loading-scrim {
@@ -733,7 +732,6 @@ button:focus { scale: 1.04; }
 .card-preview .actions { gap: var(--gap-snug); }
 .badges { padding: var(--space-2); align-items: flex-start; }
 .badges .card-badge { padding: var(--space-1); }
-.caption { gap: var(--gap-tight); padding: var(--space-4); justify-content: flex-end; }
 .bar { height: 4px; }
 
 /* ==== Library, discover ================================================= */
@@ -783,7 +781,6 @@ button:focus { scale: 1.04; }
 .toast-gauge { gap: var(--gap-base); padding: 0 var(--space-5); }
 .gauge-track { width: 6px; height: 34vh; justify-content: flex-end; }
 .gauge-fill { width: 6px; }
-.window-strip { width: 100vw; padding: var(--space-4) var(--space-4) 0 0; justify-content: flex-end; }
 .panel-box, .splash { gap: var(--gap-base); padding: var(--space-5); }
 .panel-box li { padding: var(--space-2) var(--space-1); }
 
@@ -808,7 +805,6 @@ button:focus { scale: 1.04; }
 .modal-art { width: 160px; height: 90px; }
 .mini-poster { width: 8.75rem; gap: var(--gap-snug); }
 .mini-poster-art { width: 140px; height: 210px; }
-.reco .copy { align-items: flex-end; justify-content: flex-end; padding: 0 var(--space-8) var(--space-8); }
 .reco-text { width: 35rem; gap: var(--gap-base); align-items: flex-start; }
 
 .dots .chip, .dots .chip-active { width: 10px; height: 10px; padding: 0; }
@@ -840,17 +836,18 @@ button:focus { scale: 1.04; }
 
 .splash .progress-track { width: 15rem; height: 3px; }
 .splash .progress-bar { height: 3px; }
-.top-bar, .back-bar { padding: var(--space-5); }
-.back-bar, .warn-layer, .sync-layer { align-items: flex-start; }
-.bottom-bar, .trailer-bar { gap: var(--gap-snug); padding: 0 var(--space-5) var(--space-5); justify-content: flex-end; }
-.trailer-bar { align-items: center; }
-
-.panel-layer, .skip-layer { align-items: flex-end; justify-content: flex-end; gap: var(--gap-base); padding: var(--space-4) var(--space-5) var(--space-9); }
-.sync-layer, .watch-layer { justify-content: flex-end; padding: var(--space-4); }
+.layer { gap: var(--gap-base); padding: var(--space-5); }
+.layer.top-left { place: top left; }
+.layer.top-right { place: top right; }
+.layer.left { place: left; }
+.layer.right { place: right; }
+.layer.bottom { place: bottom; }
+.layer.bottom-left { place: bottom left; }
+.layer.bottom-center { place: bottom center; }
+.layer.bottom-right { place: bottom right; }
+.panel-layer, .skip-layer { padding-bottom: var(--space-9); }
+.window-strip { width: 100vw; }
 .episode footer, .mini-tile footer, .sheet-layer { justify-content: flex-end; }
-.warn-layer { padding: var(--space-8) var(--space-5); }
-.stats-layer { align-items: flex-start; justify-content: flex-end; padding: var(--space-8) var(--space-5) 0 0; }
-.pause-copy { align-items: flex-start; justify-content: flex-end; gap: var(--gap-base); padding: 0 0 var(--space-8) var(--space-8); }
 .entry, .panel-list { gap: var(--gap-tight); padding: var(--space-4); }
 
 .panel-sheet { gap: var(--gap-base); padding: var(--space-4) 0 var(--space-5); }

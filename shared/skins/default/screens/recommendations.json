@@ -16,7 +16,7 @@
     {
       "type": "column",
       "tag": "section",
-      "class": "fullscreen copy",
+      "class": "fullscreen layer bottom-right",
       "children": [
         {
           "type": "column",

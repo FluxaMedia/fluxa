@@ -795,6 +795,21 @@ fn frame<'a>(
             bottom,
         });
     }
+    let placed = style.and_then(|style| style.place).map(|place| {
+        let (cross, main) = if node.kind == "row" {
+            (place.vertical, place.horizontal)
+        } else {
+            (place.horizontal, place.vertical)
+        };
+        (
+            cross,
+            main.map(|main| match main {
+                Alignment::Center => StyleJustify::Center,
+                Alignment::End => StyleJustify::End,
+                _ => StyleJustify::Start,
+            }),
+        )
+    });
     let align = node
         .align
         .map(|align| match align {
@@ -804,6 +819,7 @@ fn frame<'a>(
             Align::Stretch => Alignment::Stretch,
         })
         .or(style.and_then(|style| style.align))
+        .or(placed.and_then(|(cross, _)| cross))
         .or((node.kind == "row").then_some(Alignment::Center));
     if let Some(align) = align {
         item = item.align(match align {
@@ -823,7 +839,8 @@ fn frame<'a>(
             Justify::SpaceAround => StyleJustify::SpaceAround,
             Justify::SpaceEvenly => StyleJustify::SpaceEvenly,
         })
-        .or(style.and_then(|style| style.justify));
+        .or(style.and_then(|style| style.justify))
+        .or(placed.and_then(|(_, main)| main));
     if let Some(justify) = justify {
         item = item.justify(match justify {
             StyleJustify::Start => FlexJustify::Start,

@@ -223,7 +223,7 @@
           {
             "type": "column",
             "tag": "section",
-            "class": "fill-space expanded-copy",
+            "class": "fill-space layer bottom-left",
             "props": {
               "expandedOnly": true
             },
@@ -1792,7 +1792,7 @@
       {
         "type": "column",
         "tag": "footer",
-        "class": "caption fill-space",
+        "class": "layer bottom fill-space",
         "children": [
           {
             "type": "text",
