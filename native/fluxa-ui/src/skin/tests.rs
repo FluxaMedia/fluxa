@@ -425,3 +425,49 @@ fn full_width_row_inside_a_padded_column_stops_at_the_padding() {
     let frame_width = 1280.0;
     assert_eq!(targets[0].1.width(), frame_width - 40.0);
 }
+
+fn corner_tree(stack_class: &str, child_class: &str) -> Vec<Resolved> {
+    skin_from(json!({
+        "type": "column",
+        "children": [{
+            "type": "stack",
+            "class": stack_class,
+            "children": [{
+                "type": "row",
+                "class": child_class,
+                "action": {"name": "back"},
+                "children": []
+            }]
+        }]
+    }))
+}
+
+#[test]
+fn stack_class_place_moves_its_children_to_the_corner() {
+    crate::reload_styles_with(
+        ".scene { width: 400px; height: 300px; place: bottom right; } .tile { width: 50px; height: 20px; }",
+    )
+    .unwrap();
+    let (_, targets) = render(&corner_tree("scene", "tile"));
+    assert_eq!(targets[0].1.max, Pos2::new(400.0, 300.0));
+}
+
+#[test]
+fn stack_child_class_place_overrides_the_stack_default() {
+    crate::reload_styles_with(
+        ".scene { width: 400px; height: 300px; } .tile { width: 50px; height: 20px; place: bottom right; }",
+    )
+    .unwrap();
+    let (_, targets) = render(&corner_tree("scene", "tile"));
+    assert_eq!(targets[0].1.max, Pos2::new(400.0, 300.0));
+}
+
+#[test]
+fn stack_children_stay_top_left_without_a_place() {
+    crate::reload_styles_with(
+        ".scene { width: 400px; height: 300px; } .tile { width: 50px; height: 20px; }",
+    )
+    .unwrap();
+    let (_, targets) = render(&corner_tree("scene", "tile"));
+    assert_eq!(targets[0].1.min, Pos2::ZERO);
+}

@@ -830,6 +830,17 @@ fn frame<'a>(
             }),
         )
     });
+    if let Some(place) = style.and_then(|style| style.place) {
+        let flex = |align: Option<Alignment>| {
+            align.map(|align| match align {
+                Alignment::Start => FlexAlign::Start,
+                Alignment::Center => FlexAlign::Center,
+                Alignment::End => FlexAlign::End,
+                Alignment::Stretch => FlexAlign::Stretch,
+            })
+        };
+        item = item.placed(flex(place.horizontal), flex(place.vertical));
+    }
     let align = node
         .align
         .map(|align| match align {
