@@ -66,3 +66,13 @@ pub(crate) fn side_inset(width: f32, form_factor: UiFormFactor) -> f32 {
     let (rail, expanded) = widths(form_factor);
     if mode == EXPANDED { expanded } else { rail }
 }
+
+pub(crate) fn state_sig(hasher: &mut impl std::hash::Hasher) {
+    use std::hash::Hash;
+    LIVE.load(Ordering::Relaxed).hash(hasher);
+    MODE.load(Ordering::Relaxed).hash(hasher);
+    FOCUSED.load(Ordering::Relaxed).hash(hasher);
+    if let Ok(query) = QUERY.read() {
+        query.hash(hasher);
+    }
+}

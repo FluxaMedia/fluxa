@@ -416,3 +416,10 @@ mod mount_tests {
         });
     }
 }
+
+pub(crate) fn state_sig(hasher: &mut impl std::hash::Hasher) {
+    use std::hash::Hash;
+    REDUCED
+        .load(std::sync::atomic::Ordering::Relaxed)
+        .hash(hasher);
+}

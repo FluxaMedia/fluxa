@@ -349,3 +349,8 @@ pub fn navigation_label_size() -> f32 {
 pub fn navigation_icon_size() -> f32 {
     crate::vars::px("navigation-icon")
 }
+
+pub(crate) fn state_sig(hasher: &mut impl std::hash::Hasher) {
+    use std::hash::Hash;
+    INPUT.load(Ordering::Relaxed).hash(hasher);
+}

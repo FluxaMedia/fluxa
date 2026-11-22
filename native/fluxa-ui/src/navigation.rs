@@ -104,3 +104,12 @@ pub fn is_navigation_node(node: u64) -> bool {
             | NODE_UPDATE_OPEN
     )
 }
+
+pub(crate) fn state_sig(hasher: &mut impl std::hash::Hasher) {
+    use std::hash::Hash;
+    TOP_LABELS.load(Ordering::Relaxed).hash(hasher);
+    NAV_BOTTOM.load(Ordering::Relaxed).hash(hasher);
+    if let Ok(language) = NAV_LANGUAGE.read() {
+        language.hash(hasher);
+    }
+}

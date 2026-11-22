@@ -27,6 +27,7 @@ mod haptics;
 mod home;
 mod home_category;
 mod ime;
+mod inputs;
 mod interact;
 mod kit;
 mod layout;
@@ -322,3 +323,12 @@ fn setting_default(key: &str) -> Option<&'static serde_json::Value> {
 mod frame_cost;
 #[cfg(test)]
 mod tests;
+
+pub(crate) fn strings_sig(hasher: &mut impl std::hash::Hasher) {
+    if let Ok(tables) = SKIN_STRINGS.read() {
+        for (code, table) in tables.iter() {
+            code.hash(hasher);
+            (std::sync::Arc::as_ptr(table) as usize).hash(hasher);
+        }
+    }
+}

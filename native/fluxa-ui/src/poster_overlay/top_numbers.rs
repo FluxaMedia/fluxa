@@ -165,3 +165,8 @@ impl super::super::SettingsModel {
         })
     }
 }
+
+pub(crate) fn top_numbers_sig(hasher: &mut impl std::hash::Hasher) {
+    use std::hash::Hash;
+    format!("{:?}", current_numbers()).hash(hasher);
+}

@@ -115,3 +115,8 @@ pub(crate) fn apply(model: &mut HomeModel, enabled: bool) {
 }
 
 const HERO_SLIDES: usize = 5;
+
+pub(crate) fn state_sig(hasher: &mut impl std::hash::Hasher) {
+    use std::hash::Hash;
+    ACTIVE.load(Ordering::Relaxed).hash(hasher);
+}

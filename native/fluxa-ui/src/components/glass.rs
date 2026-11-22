@@ -127,3 +127,8 @@ pub(crate) fn glass_shape(rect: Rect, radius: f32, fill: Color32) -> crate::gfx:
         }),
     })
 }
+
+pub(crate) fn glass_sig(hasher: &mut impl std::hash::Hasher) {
+    use std::hash::Hash;
+    liquid_glass().hash(hasher);
+}

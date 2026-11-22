@@ -62,3 +62,10 @@ pub(crate) fn update_data() -> serde_json::Value {
         None => serde_json::json!({"active": false, "icon": "", "ring": -1.0}),
     }
 }
+
+pub(crate) fn state_sig(hasher: &mut impl std::hash::Hasher) {
+    use std::hash::Hash;
+    if let Ok(state) = STATE.lock() {
+        format!("{state:?}").hash(hasher);
+    }
+}

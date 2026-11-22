@@ -1091,3 +1091,8 @@ mod tests {
         );
     }
 }
+
+pub(crate) fn state_sig(hasher: &mut impl std::hash::Hasher) {
+    use std::hash::Hash;
+    landscape().hash(hasher);
+}
