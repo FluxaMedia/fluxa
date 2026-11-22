@@ -372,11 +372,9 @@ hero-synopsis-size { font-size: 16; }
 .scrim-bottom, .modal-hero-scrim { background: var(--fade-surface); }
 .continue-scrim, .expanded-scrim { border-radius: var(--radius-md); }
 
-.progress-track { background: var(--color-surface-raised); border-radius: var(--radius-sm); }
-
 .skeleton-card { width: poster-width; height: poster-height; animation: skeleton-pulse 1.2s infinite alternate; }
 
-.skeleton-bar, .slider-track { background: var(--ink-faint); border-radius: var(--radius-sm); }
+.skeleton-bar, .progress-track, .slider-track, .gauge-track { background: var(--ink-faint); border-radius: var(--radius-sm); }
 .skeleton-bar { height: 20px; animation: skeleton-pulse 1.2s infinite alternate; }
 
 @keyframes skeleton-pulse {
@@ -390,7 +388,7 @@ hero-synopsis-size { font-size: 16; }
 .icon-btn.small { width: 28px; height: 28px; }
 .icon-btn:focus { background: var(--ink-soft); scale: 1.08; }
 
-.play-progress, .progress-bar, .slider-fill { background: var(--color-accent); border-radius: var(--radius-sm); }
+.play-progress, .progress-bar, .slider-fill, .gauge-fill { background: var(--color-accent); border-radius: var(--radius-sm); }
 .play-progress { height: 3px; align-items: flex-start; }
 
 .switch { width: 46px; height: 28px; padding: var(--space-1); }
@@ -574,10 +572,6 @@ hero-synopsis-size { font-size: 16; }
 }
 
 .player-buffering-veil { background: rgba(0, 0, 0, 0.43); }
-
-.gauge-track { background: var(--ink-dim); border-radius: var(--radius-sm); }
-
-.gauge-fill { background: #ffffff; border-radius: var(--radius-sm); }
 
 .stats-panel { gap: var(--gap-base); padding: var(--space-4); align-items: flex-start; border-radius: var(--radius-md); }
 
