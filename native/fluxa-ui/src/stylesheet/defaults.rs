@@ -46,6 +46,7 @@ pub(super) fn layers() -> Vec<(Option<&'static str>, Vec<(String, String)>)> {
 }
 
 const BASE: &[(&str, V)] = &[
+    ("root-font-size", V::Px(16.0)),
     ("pill-ratio", V::Num(0.5)),
     ("button-border", V::Px(18.0)),
     ("background-dim", V::Px(140.0)),

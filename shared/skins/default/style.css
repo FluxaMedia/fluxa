@@ -670,22 +670,7 @@ hero-synopsis-size { font-size: 16; }
   animation: skeleton-pulse 1.2s infinite alternate;
 }
 
-.setting-row {
-  height: 56px;
-  background: var(--ink-faint);
-  border: 1px solid var(--ink-soft);
-  border-radius: var(--radius-lg);
-  transition: 0.15s;
-  gap: var(--space-12);
-  padding: 0px var(--space-16);
-}
-.profile-row {
-  background: var(--ink-faint);
-  border: 1px solid var(--ink-soft);
-  border-radius: var(--radius-lg);
-  transition: 0.15s;
-}
-.setting-row:hover, .hub-row:hover, .avatar-choice:selected { background: var(--ink-soft); }
+.avatar-choice:selected { background: var(--ink-soft); }
 
 .setting-hint {
   font-size: var(--text-label);
@@ -695,62 +680,13 @@ hero-synopsis-size { font-size: 16; }
 
 .side-heading { color: var(--ink-dim); }
 
-.side-item {
-  border-radius: var(--radius-md);
-  color: var(--ink-muted);
-  transition: 0.15s;
-  gap: 12px;
-  padding: 10px 14px;
-}
-
-.side-item:hover { background: var(--ink-soft); color: var(--ink-full); }
-.side-item:focus, .hub-row:focus { background: var(--ink-raised); }
-.side-item:selected { background: var(--ink-raised); color: var(--ink-full); }
-
-.setting-label,
-.side-label {
+.setting-label {
   font-size: var(--text-body);
   font-weight: 500;
   flex-grow: 1;
 }
 
-.back-link {
-  border-radius: var(--radius-pill);
-  color: var(--ink-muted);
-  gap: 6px;
-  padding: 13px 16px 13px 10px;
-}
-
-.back-link:hover { background: var(--ink-soft); color: var(--ink-full); }
-
-.hub-row {
-  transition: 0.15s;
-  gap: 16px;
-  padding: 14px 16px;
-}
-
 .switch:selected .knob { background: #0b0b0d; }
-
-.side-panel {
-  background: var(--ink-faint);
-  border: 1px solid var(--ink-soft);
-  width: 280px;
-  gap: var(--space-12);
-  padding: 96px var(--space-16);
-}
-
-.settings-page {
-  max-width: 1040px;
-  padding: 96px 56px var(--page-end) 56px;
-  flex-grow: 1;
-}
-
-.settings-wide { height: 100vh; align-items: start; }
-
-.settings-compact {
-  gap: var(--space-16);
-  padding: var(--space-48) var(--page-padding) var(--page-end) var(--page-padding);
-}
 
 .profile-form { max-width: 528px; }
 
@@ -809,14 +745,6 @@ hero-synopsis-size { font-size: 16; }
   color: var(--color-background);
 }
 
-.profile-name { font-size: var(--text-subtitle); font-weight: 600; }
-
-.setting-danger {
-  font-size: var(--text-body);
-  font-weight: 500;
-  color: var(--color-error);
-}
-
 .version-chip {
   background: var(--ink-soft);
   border-radius: var(--radius-pill);
@@ -830,13 +758,6 @@ hero-synopsis-size { font-size: 16; }
   background: var(--ink-soft);
   border-radius: var(--radius-pill);
   font-size: var(--text-label);
-}
-
-.setting-danger-note { font-size: var(--text-label); color: var(--color-error); }
-
-.keycap {
-  background: var(--ink-raised);
-  border-radius: var(--radius-sm);
 }
 
 .source-row {
@@ -965,7 +886,6 @@ hero-synopsis-size { font-size: 16; }
 
 .compact-only,
 .tv-only,
-.settings-compact,
 .nav-dock { display: none; }
 
 .surface-card {
@@ -1070,8 +990,86 @@ hero-synopsis-size { font-size: 16; }
   .wide-only,
     .desktop-only { display: none; }
 
-  .settings-compact,
-    .nav-dock { display: flex; }
+  .nav-dock { display: flex; }
+}
 
+/* ==== Settings screen: HTML-style CSS =====================================
+   Nodes carry a tag (h1 h2 h3 p small label span li a button ...) and are
+   styled by tag; a container class styles its children (`.rows li`). Lengths
+   are rem, so each form factor scales by changing only the root size. */
+:root { font-size: 16px; }
+
+@media (size: compact) { :root { font-size: 15px; } }
+
+h1 { font-size: 1.625rem; font-weight: 700; }
+h2 { font-size: .8125rem; font-weight: 600; }
+h3 { font-size: 1.125rem; font-weight: 600; }
+p { font-size: .875rem; }
+small { font-size: .8125rem; }
+label { font-size: 1rem; font-weight: 500; }
+h2, p, small { color: var(--ink-subtle); }
+.danger { color: var(--color-error); }
+span {}
+
+main { max-width: 65rem; padding: 6rem 3.5rem 3rem; flex-grow: 1; }
+nav { width: 17.5rem; gap: .75rem; padding: 6rem 1rem; background: var(--ink-faint); border: 1px solid var(--ink-soft); }
+nav section { gap: .125rem; }
+nav h2 { color: var(--ink-dim); }
+header { gap: .375rem; }
+ul { gap: .5rem; }
+div { flex-grow: 1; gap: .125rem; }
+.actions { gap: .75rem; align-items: center; }
+.inset { padding: 0 1rem; }
+.entry { gap: .25rem; padding: .75rem 1rem; }
+.settings-wide { height: 100vh; align-items: start; }
+.settings-compact { gap: 1rem; padding: 3rem 1.5rem 7rem; display: none; }
+
+.rows li {
+  height: 3.5rem;
+  padding: 0 1rem;
+  gap: .75rem;
+  align-items: center;
+  font-size: 1rem;
+  font-weight: 500;
+  background: var(--ink-faint);
+  border: 1px solid var(--ink-soft);
+  border-radius: var(--radius-lg);
+  transition: .15s;
+}
+.rows li label { flex-grow: 1; }
+.hub { height: 4.5rem; gap: 1rem; }
+.profile { height: 5.5rem; gap: .875rem; }
+
+form, article { gap: .625rem; padding: 1rem; background: var(--ink-soft); border-radius: var(--radius-md); font-size: 1rem; font-weight: 500; }
+article { background: var(--ink-faint); border: 1px solid var(--ink-soft); border-radius: var(--radius-lg); }
+.flush { padding: .375rem 0; gap: 0; }
+figure { width: 3rem; height: 3rem; background: var(--ink-soft); border-radius: var(--radius-md); }
+.keycap { height: 2rem; padding: 0 .75rem; background: var(--ink-raised); border-radius: var(--radius-sm); }
+
+a { gap: .75rem; padding: .625rem .875rem; border-radius: var(--radius-md); color: var(--ink-muted); font-size: 1rem; font-weight: 500; transition: .15s; }
+.back { gap: .375rem; padding: .8125rem 1rem .8125rem .625rem; border-radius: var(--radius-pill); }
+
+button {
+  --btn-bg: color-mix(in srgb, var(--color-text-primary) 10.98%, transparent);
+  --btn-fg: var(--color-text-primary);
+  background: var(--btn-bg);
+  color: var(--btn-fg);
+  height: 2.25rem;
+  padding: 0 1rem;
+  justify-content: center;
+  border-radius: var(--radius-pill);
+  font-size: .9375rem;
+  states: auto;
+}
+.primary { --btn-bg: var(--ink-full); --btn-fg: var(--color-background); }
+
+a:hover, .rows li:hover { background: var(--ink-soft); }
+a:hover, a:selected { color: var(--ink-full); }
+a:focus, a:selected, .rows li:focus { background: var(--ink-raised); }
+button:focus { scale: 1.04; }
+
+@media (size: compact), (max-height: 479px) {
+  .settings-compact { display: flex; }
   .settings-wide { display: none; }
 }
+/* ==== end of settings section ============================================ */

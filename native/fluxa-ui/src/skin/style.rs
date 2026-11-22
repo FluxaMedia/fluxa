@@ -144,6 +144,24 @@ pub(super) fn compute_class_parts(
     ))
 }
 
+/// The ancestor chain as style scopes without interaction state, for layout
+/// styles: descendant selectors (`.rows li`) then size and space their nodes too.
+pub(super) fn plain_frames(chain: &[std::rc::Rc<Ancestor>]) -> Vec<crate::stylesheet::Frame> {
+    chain
+        .iter()
+        .flat_map(|ancestor| {
+            ancestor.classes.iter().enumerate().map(|(at, class)| {
+                let frame = crate::stylesheet::Frame::plain(std::sync::Arc::clone(class), 0);
+                if at == 0 {
+                    frame.inheriting(&ancestor.inherited)
+                } else {
+                    frame
+                }
+            })
+        })
+        .collect()
+}
+
 pub(super) fn ancestor_states(
     context: &crate::gfx::Context,
     chain: &[std::rc::Rc<Ancestor>],

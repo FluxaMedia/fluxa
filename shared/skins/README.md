@@ -172,6 +172,7 @@ A node is exactly one of a primitive or component (`type`), an `include`, or an 
 | `each`, `as`, `limit`, `template` | repeat `template` for every item of an array; `as` names the item (default `item`), `index` is always bound |
 | `text`, `src`, `i18n` | strings with `{expression}` bindings, or a language key |
 | `style`, `class` | named text styles and stylesheet classes |
+| `tag` | semantic element name (`h1`, `h2`, `h3`, `p`, `small`, `label`, `span`, `li`, `ul`, `a`, `button`, `nav`, `main`, `form`, `article`, ...). It acts as the node's first, lowest-priority class, so CSS can style it as `h1 { ... }` or `.rows li small { ... }` and a `class` still overrides it. The settings screen is written this way |
 | `props` | component properties, checked against the contract |
 | `action` | `{ "name": "open_detail", "args": { "id": "{card.id}" } }` |
 | `width`, `height`, `grow`, `gap`, `padding`, `align`, `justify`, `fill` | flex layout |
@@ -269,6 +270,22 @@ Scoped custom properties: a `--name` declared in any rule (not only `:root`) app
 Scoped properties are read by the color properties (`background`, `color`, `border-color`, gradients and `color-mix()` stops); layout lengths still take `:root` values only. Declarations inside `:hover` and the other state blocks are ignored.
 
 Derived states: add `states: auto;` to a rule that declares a `background` (a solid color) and the engine fills in the states you did not write. `:hover`: an opaque background dims to 85 % opacity, a translucent one (alpha below about 90 %) gains 8 % of its remaining alpha, so a `color-mix(... 10.98%, transparent)` fill hovers at 18.04 %. `:disabled`: the shared disabled look (`--ink-soft` fill, `--ink-dim` text). Any `:hover` or `:disabled` you declare replaces the derived one, and `:focus`, `:pressed` and `:selected` are never derived. Without `states: auto` nothing is derived, so existing skins look the same (`states: none` turns it off again for a rule that inherits it).
+
+HTML-style CSS: a node's `tag` is a selector, so text roles and rows are styled once by element rather than by a class per node, and containers style their children with descendant selectors (a node is matched against every ancestor class and tag; `>` is accepted and behaves like a descendant combinator):
+
+```css
+:root { font-size: 16px; }              /* what 1rem means */
+@media (size: compact) { :root { font-size: 15px; } }
+
+h1 { font-size: 1.625rem; font-weight: 700; }
+small { font-size: .8125rem; color: var(--ink-subtle); }
+.rows li { height: 3.5rem; padding: 0 1rem; gap: .75rem; align-items: center; }
+.rows li label { flex-grow: 1; }
+.rows li:hover, a:hover { background: var(--ink-soft); }
+button:focus { scale: 1.04; }
+```
+
+`rem` is a multiple of the root font size (`font-size` on `:root` or `html`, 16px when unset, and a media block may change it per form factor so a whole screen scales by one number). `em` is a multiple of the element's own font size (of the inherited one when used for `font-size` itself). Both work in `font-size`, `padding`, `margin`, `gap`, `width`, `height`, `max-width` and `column-width`; `px` keeps working everywhere, and `border-radius` stays in `px`/tokens. Layout declared in CSS (`gap`, `padding`, `height`, `justify-content`, ...) applies to nodes through descendant selectors too, not only through the node's own class. A text node needs a tag or class with a rule to inherit color and size from its parent (`span {}` is the empty rule for plain labels).
 
 A rule that fails to parse is skipped and reported in the log (`style rule skipped: ...`); the rest of the stylesheet still applies. Start the app from a terminal with `FLUXA_SKIN` and watch the output while you work.
 

@@ -145,6 +145,10 @@ impl Style {
 enum Length {
     Space(Space),
     Px(f32),
+    /// Multiples of the root font size (`:root { font-size }`), written `1.5rem`.
+    Rem(f32),
+    /// Multiples of the element's own font size, or the parent's for `font-size`.
+    Em(f32),
     Metric(Metric),
 }
 
@@ -169,11 +173,31 @@ enum Metric {
     CardPadding,
 }
 
+/// The root font size every `rem` is measured against. Skins set it once on
+/// `:root` and change it per form factor in a media block.
+fn root_font_size() -> f32 {
+    crate::vars::px("root-font-size").max(1.0)
+}
+
+/// The font size an element inherits, or the root size outside any scope.
+fn inherited_font_size() -> f32 {
+    SCOPES
+        .with(|stack| stack.borrow().iter().rev().find_map(|scope| scope.frame.font_size))
+        .unwrap_or_else(root_font_size)
+}
+
 impl Length {
     fn px(self) -> f32 {
+        self.at(root_font_size())
+    }
+
+    /// Resolve against `em`, the font size that `em` units refer to here.
+    fn at(self, em: f32) -> f32 {
         match self {
             Length::Space(space) => space.px(),
             Length::Px(px) => px,
+            Length::Rem(rem) => rem * root_font_size(),
+            Length::Em(factor) => factor * em,
             Length::Metric(metric) => match metric {
                 Metric::PosterWidth => crate::metrics::theme().poster_width,
                 Metric::PosterHeight => crate::metrics::theme().poster_height,
@@ -199,6 +223,7 @@ impl Length {
     fn parse(value: &Value) -> Option<Self> {
         match value {
             Value::Number(number) => number.as_f64().map(|px| Length::Px(px as f32)),
+            Value::String(text) if relative(text).is_some() => relative(text),
             Value::String(text) => Some(Length::Space(match text.as_str() {
                 "s2" => Space::S2,
                 "s4" => Space::S4,
@@ -234,6 +259,19 @@ impl Length {
             _ => None,
         }
     }
+}
+
+/// `1.5rem` / `.75em`: a relative length, or `None` for any other text.
+fn relative(text: &str) -> Option<Length> {
+    let text = text.trim();
+    if let Some(number) = text.strip_suffix("rem") {
+        return number.trim().parse().ok().map(Length::Rem);
+    }
+    text.strip_suffix("em")?
+        .trim()
+        .parse()
+        .ok()
+        .map(Length::Em)
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -842,6 +880,10 @@ fn resolve_paint_at(paint: &Paint, depth: u8) -> Color32 {
 }
 
 fn apply(style: &mut Style, patch: &Patch) {
+    if let Some(size) = patch.font_size {
+        style.font_size = Some(size.at(inherited_font_size()));
+    }
+    let em = style.font_size.unwrap_or_else(inherited_font_size);
     if let Some(paint) = &patch.fill {
         style.fill = resolve_paint(paint);
         style.gradient = None;
@@ -873,19 +915,19 @@ fn apply(style: &mut Style, patch: &Patch) {
         });
     }
     if let Some(margin) = patch.margin {
-        style.margin = margin.px();
+        style.margin = margin.at(em);
     }
     if let Some(blur) = patch.backdrop {
         style.backdrop = blur;
     }
     if let Some(width) = patch.width {
-        style.width = Some(width.px());
+        style.width = Some(width.at(em));
     }
     if let Some(height) = patch.height {
-        style.height = Some(height.px());
+        style.height = Some(height.at(em));
     }
     if let Some(width) = patch.column_width {
-        style.column_width = Some(width.px());
+        style.column_width = Some(width.at(em));
     }
     if let Some(columns) = patch.columns {
         style.columns = Some(columns);
@@ -931,24 +973,21 @@ fn apply(style: &mut Style, patch: &Patch) {
         style.stroke = stroke;
     }
     if let Some(padding) = patch.padding {
-        style.padding = padding.px();
+        style.padding = padding.at(em);
         style.padding_box = Some([style.padding; 4]);
     }
     if let Some(sides) = patch.padding_box {
-        style.padding_box = Some(sides.map(Length::px));
+        style.padding_box = Some(sides.map(|length| length.at(em)));
     }
     if let Some(gap) = patch.gap {
-        style.gap = gap.px();
+        style.gap = gap.at(em);
         style.gap_set = Some(style.gap);
     }
     if let Some(opacity) = patch.opacity {
         style.opacity = opacity;
     }
     if let Some(width) = patch.max_width {
-        style.max_width = Some(width.px());
-    }
-    if let Some(size) = patch.font_size {
-        style.font_size = Some(size.px());
+        style.max_width = Some(width.at(em));
     }
     if let Some(direction) = patch.direction {
         style.direction = Some(direction);
@@ -1106,6 +1145,17 @@ pub(crate) fn look(context: &crate::gfx::Context, rule: &str) -> Style {
 /// (`.slide` is `.grow`, `.about-name` is `.page-title`, ...).
 const ALIASES: &[(&str, &str)] = &[
     ("button.primary", "btn-primary"),
+    ("setting-row", "li"),
+    ("profile-row", "profile"),
+    ("hub-row", "hub"),
+    ("side-item", "a"),
+    ("back-link", "back"),
+    ("side-label", "span"),
+    ("side-panel", "nav"),
+    ("settings-page", "main"),
+    ("profile-name", "h3"),
+    ("setting-danger", "danger"),
+    ("setting-danger-note", "danger"),
     ("btn-secondary", "btn-secondary"),
     ("button.selected", "btn-selected"),
     ("button.danger", "btn-danger"),
@@ -2084,5 +2134,53 @@ mod tests {
         assert!(variants.iter().any(|v| v.modifiers == ["last-child"]));
         assert_eq!(sheet.rules["glass"].layer.base.backdrop, Some(12.0));
         assert!(Sheet::parse(".a:bogus { opacity: 1; }").is_err());
+    }
+
+    #[test]
+    fn rem_follows_the_root_size_and_em_the_inherited_one() {
+        let sheet = Sheet::parse(
+            ".a { padding: 1.5rem; gap: .5rem; font-size: 1.25rem; width: 10em; }\n\
+             .b { padding: .5rem 1em; margin: 2rem; max-width: 20.5px; }",
+        )
+        .unwrap();
+        let root = root_font_size();
+        let mut a = Style::blank();
+        apply(&mut a, &sheet.rules["a"].layer.base);
+        assert_eq!(a.padding, 1.5 * root);
+        assert_eq!(a.gap, 0.5 * root);
+        assert_eq!(a.font_size, Some(1.25 * root));
+        // `em` on a non-font property uses the element's own font size.
+        assert_eq!(a.width, Some(10.0 * 1.25 * root));
+        let parent = Frame::plain("p".into(), 0).inheriting(&Style {
+            font_size: Some(20.0),
+            ..Style::blank()
+        });
+        let mut b = Style::blank();
+        within(&[parent], || apply(&mut b, &sheet.rules["b"].layer.base));
+        assert_eq!(b.padding_box, Some([0.5 * root, 20.0, 0.5 * root, 20.0]));
+        assert_eq!(b.margin, 2.0 * root);
+        assert_eq!(b.max_width, Some(20.5));
+    }
+
+    #[test]
+    fn tag_selectors_and_descendant_containers_style_layout() {
+        let sheet = Sheet::parse(
+            "li { height: 3rem; }\n.rows li { padding: 0 1rem; gap: .5rem; }\n\
+             .rows li:hover { background: #ffffff; }\n.rows li small { font-size: .75rem; }",
+        )
+        .unwrap();
+        let lone = base_in(&sheet, "li", &[]);
+        assert_eq!(lone.padding_box, None);
+        let frames = [Frame::plain("rows".into(), 0)];
+        let inside = within(&frames, || base_in(&sheet, "li", &[]));
+        let root = root_font_size();
+        assert_eq!(inside.height, Some(3.0 * root));
+        assert_eq!(inside.padding_box, Some([0.0, root, 0.0, root]));
+        assert_eq!(inside.gap, 0.5 * root);
+        let nested = [Frame::plain("rows".into(), 0), Frame::plain("li".into(), 0)];
+        let small = within(&nested, || base_in(&sheet, "small", &[]));
+        assert_eq!(small.font_size, Some(0.75 * root));
+        let loose = within(&frames, || base_in(&sheet, "small", &[]));
+        assert_eq!(loose.font_size, None);
     }
 }

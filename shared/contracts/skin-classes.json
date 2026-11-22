@@ -1,6 +1,13 @@
 {
-  "version": 4,
+  "version": 5,
   "classes": [
+    {
+      "name": "actions",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 5
+    },
     {
       "name": "addon-chip",
       "element": "text",
@@ -30,11 +37,11 @@
       "since": 1
     },
     {
-      "name": "back-link",
+      "name": "back",
       "element": "row",
-      "meaning": "Back navigation row on detail-style pages",
-      "stability": "stable",
-      "since": 1
+      "meaning": "",
+      "stability": "internal",
+      "since": 5
     },
     {
       "name": "backdrop",
@@ -227,7 +234,7 @@
     },
     {
       "name": "danger",
-      "element": "",
+      "element": "text",
       "meaning": "",
       "stability": "internal",
       "since": 2
@@ -255,7 +262,7 @@
     },
     {
       "name": "day-grid",
-      "element": "grid",
+      "element": "grid scroll",
       "meaning": "",
       "stability": "internal",
       "since": 3
@@ -308,6 +315,13 @@
       "meaning": "Title of an empty state",
       "stability": "internal",
       "since": 1
+    },
+    {
+      "name": "entry",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 5
     },
     {
       "name": "episode",
@@ -408,6 +422,13 @@
       "since": 2
     },
     {
+      "name": "flush",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 5
+    },
+    {
       "name": "focus-ring",
       "element": "",
       "meaning": "Outline drawn around the focused element",
@@ -465,7 +486,7 @@
     },
     {
       "name": "grow",
-      "element": "input text",
+      "element": "column input scroll spacer text",
       "meaning": "",
       "stability": "internal",
       "since": 2
@@ -541,11 +562,11 @@
       "since": 2
     },
     {
-      "name": "hub-row",
+      "name": "hub",
       "element": "row",
-      "meaning": "Row of hub entries",
+      "meaning": "",
       "stability": "internal",
-      "since": 1
+      "since": 5
     },
     {
       "name": "icon-btn",
@@ -560,6 +581,13 @@
       "meaning": "",
       "stability": "internal",
       "since": 2
+    },
+    {
+      "name": "inset",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 5
     },
     {
       "name": "keycap",
@@ -787,7 +815,7 @@
     },
     {
       "name": "page-snug",
-      "element": "page",
+      "element": "page scroll",
       "meaning": "",
       "stability": "internal",
       "since": 3
@@ -920,10 +948,17 @@
     },
     {
       "name": "primary",
-      "element": "",
+      "element": "row",
       "meaning": "",
       "stability": "internal",
       "since": 2
+    },
+    {
+      "name": "profile",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 5
     },
     {
       "name": "profile-form",
@@ -931,20 +966,6 @@
       "meaning": "Profile editor form",
       "stability": "internal",
       "since": 1
-    },
-    {
-      "name": "profile-name",
-      "element": "text",
-      "meaning": "Profile name text",
-      "stability": "stable",
-      "since": 1
-    },
-    {
-      "name": "profile-row",
-      "element": "row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
     },
     {
       "name": "profile-tile",
@@ -1017,13 +1038,6 @@
       "since": 1
     },
     {
-      "name": "secondary",
-      "element": "",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
       "name": "section",
       "element": "column",
       "meaning": "",
@@ -1066,20 +1080,6 @@
       "since": 2
     },
     {
-      "name": "setting-danger",
-      "element": "text",
-      "meaning": "Label of a destructive setting",
-      "stability": "internal",
-      "since": 1
-    },
-    {
-      "name": "setting-danger-note",
-      "element": "text",
-      "meaning": "Warning text under a destructive setting",
-      "stability": "internal",
-      "since": 1
-    },
-    {
       "name": "setting-hint",
       "element": "text",
       "meaning": "Help text under a setting",
@@ -1094,25 +1094,11 @@
       "since": 1
     },
     {
-      "name": "setting-row",
-      "element": "row",
-      "meaning": "One row in a settings page",
-      "stability": "stable",
-      "since": 1
-    },
-    {
       "name": "settings-compact",
       "element": "column",
       "meaning": "",
       "stability": "internal",
       "since": 2
-    },
-    {
-      "name": "settings-page",
-      "element": "column",
-      "meaning": "Container of a settings page",
-      "stability": "stable",
-      "since": 1
     },
     {
       "name": "settings-wide",
@@ -1130,7 +1116,7 @@
     },
     {
       "name": "shelf-row",
-      "element": "row scroll",
+      "element": "column row scroll",
       "meaning": "",
       "stability": "internal",
       "since": 3
@@ -1144,30 +1130,9 @@
     },
     {
       "name": "side-heading",
-      "element": "text",
+      "element": "icon",
       "meaning": "Section heading in the side panel",
       "stability": "internal",
-      "since": 1
-    },
-    {
-      "name": "side-item",
-      "element": "row",
-      "meaning": "Entry in the side panel",
-      "stability": "stable",
-      "since": 1
-    },
-    {
-      "name": "side-label",
-      "element": "text",
-      "meaning": "Text of a side panel entry",
-      "stability": "stable",
-      "since": 1
-    },
-    {
-      "name": "side-panel",
-      "element": "column",
-      "meaning": "Side navigation panel",
-      "stability": "stable",
       "since": 1
     },
     {
@@ -1200,7 +1165,7 @@
     },
     {
       "name": "slider-chapter",
-      "element": "column",
+      "element": "column stack",
       "meaning": "Chapter marker on a slider",
       "stability": "internal",
       "since": 1
@@ -1277,7 +1242,7 @@
     },
     {
       "name": "surface-card",
-      "element": "column row",
+      "element": "row",
       "meaning": "",
       "stability": "internal",
       "since": 3
@@ -1319,7 +1284,7 @@
     },
     {
       "name": "tile",
-      "element": "column row stack",
+      "element": "row",
       "meaning": "",
       "stability": "internal",
       "since": 3
@@ -2985,6 +2950,72 @@
       "since": 1,
       "removedIn": 4,
       "replacement": "group-heading"
+    },
+    {
+      "name": "back-link",
+      "since": 1,
+      "removedIn": 5,
+      "replacement": "a.back (tag a, class back)"
+    },
+    {
+      "name": "profile-name",
+      "since": 1,
+      "removedIn": 5,
+      "replacement": "h3"
+    },
+    {
+      "name": "setting-row",
+      "since": 1,
+      "removedIn": 5,
+      "replacement": "li (tag, inside a .rows container)"
+    },
+    {
+      "name": "settings-page",
+      "since": 1,
+      "removedIn": 5,
+      "replacement": "main"
+    },
+    {
+      "name": "side-item",
+      "since": 1,
+      "removedIn": 5,
+      "replacement": "a"
+    },
+    {
+      "name": "side-label",
+      "since": 1,
+      "removedIn": 5,
+      "replacement": "span"
+    },
+    {
+      "name": "side-panel",
+      "since": 1,
+      "removedIn": 5,
+      "replacement": "nav"
+    },
+    {
+      "name": "profile-row",
+      "since": 2,
+      "removedIn": 5,
+      "replacement": "li.profile"
+    },
+    {
+      "name": "hub-row",
+      "since": 1,
+      "removedIn": 5,
+      "replacement": "li.hub"
+    },
+    {
+      "name": "setting-danger",
+      "since": 1,
+      "removedIn": 5,
+      "replacement": "danger"
+    },
+    {
+      "name": "setting-danger-note",
+      "since": 1,
+      "removedIn": 5,
+      "replacement": "danger"
     }
   ]
 }

@@ -214,7 +214,7 @@ fn sum(expression: &str, basis: f32) -> f32 {
 
 #[cfg(test)]
 mod tests {
-    use super::{build, clamp};
+    use super::{Query, build, clamp};
 
     #[test]
     fn clamp_follows_basis_between_bounds() {
@@ -222,6 +222,31 @@ mod tests {
         assert_eq!(clamp("clamp(14px, 13%, 28px)", 150.0), 19.5);
         assert_eq!(clamp("clamp(14px, 13%, 28px)", 900.0), 28.0);
         assert_eq!(clamp("clamp(0px, 50% + 20px, 500px)", 100.0), 70.0);
+    }
+
+    #[test]
+    fn root_font_size_is_a_root_layer_and_html_is_an_alias() {
+        let table = build(&[
+            ":root { font-size: 18px; }\n@media (size: compact) { html { font-size: 12px; } }",
+        ])
+        .expect("table");
+        let sizes: Vec<_> = table
+            .layers
+            .iter()
+            .flat_map(|layer| {
+                layer
+                    .vars
+                    .iter()
+                    .filter(|(name, _)| name == "root-font-size")
+                    .map(|(_, value)| (layer.queries.first().cloned(), value.as_str()))
+            })
+            .collect();
+        assert_eq!(sizes.first(), Some(&(None, "16px")));
+        assert!(sizes.contains(&(None, "18px")));
+        assert_eq!(
+            sizes.last(),
+            Some(&(Some(Query::Window("compact".to_owned())), "12px"))
+        );
     }
 
     #[test]

@@ -95,6 +95,15 @@ impl Resolved {
     }
 }
 
+/// A node's tag sorts before its classes so classes override it.
+fn with_tag(tag: Option<&str>, class: Option<String>) -> Option<String> {
+    match (tag.filter(|tag| !tag.is_empty()), class) {
+        (Some(tag), Some(class)) => Some(format!("{tag} {class}")),
+        (Some(tag), None) => Some(tag.to_owned()),
+        (None, class) => class,
+    }
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct ResolvedAction {
     pub name: String,
@@ -379,7 +388,7 @@ impl Resolver<'_> {
             kind: node.kind.clone(),
             key: key.to_owned(),
             style: render(&node.style, &self.scope),
-            class: render(&node.class, &self.scope),
+            class: with_tag(node.tag.as_deref(), render(&node.class, &self.scope)),
             i18n,
             text,
             src: render(&node.src, &self.scope),
@@ -477,6 +486,21 @@ mod tests {
             .collect();
         assert_eq!(texts, ["shown", "included"]);
         assert_eq!(out[0].children[1].class.as_deref(), Some("own extra"));
+    }
+
+    #[test]
+    fn tag_sorts_before_the_classes() {
+        let out = run(
+            json!({"type": "column", "children": [
+                {"type": "text", "tag": "h1", "class": "wide", "text": "a"},
+                {"type": "text", "tag": "small", "text": "b"},
+                {"type": "text", "class": "own", "text": "c"}
+            ]}),
+            json!({}),
+            json!({}),
+        );
+        let classes: Vec<_> = out[0].children.iter().map(|n| n.class.as_deref()).collect();
+        assert_eq!(classes, [Some("h1 wide"), Some("small"), Some("own")]);
     }
 
     #[test]

@@ -9,7 +9,8 @@
       "children": [
         {
           "type": "row",
-          "class": "back-link",
+          "tag": "a",
+          "class": "back",
           "action": {
             "name": "node",
             "args": {
@@ -27,7 +28,7 @@
             },
             {
               "type": "text",
-              "class": "side-label",
+              "tag": "span",
               "i18n": "nav.settings"
             }
           ]
@@ -44,7 +45,7 @@
       "children": [
         {
           "type": "text",
-          "class": "page-title",
+          "tag": "h1",
           "i18n": "nav.settings"
         },
         {
@@ -58,24 +59,25 @@
         },
         {
           "type": "column",
-          "class": "list",
+          "tag": "ul",
+          "class": "rows",
           "children": [
             {
               "each": "prefs.categories",
               "as": "cat",
               "template": {
                 "type": "column",
-                "class": "list",
+                "tag": "section",
                 "children": [
                   {
                     "type": "text",
-                    "class": "group-heading",
+                    "tag": "h2",
                     "text": "{cat.heading}",
                     "when": "cat.hasHeading"
                   },
                   {
                     "type": "row",
-                    "class": "setting-row",
+                    "tag": "li",
                     "action": {
                       "name": "choose",
                       "args": {
@@ -86,7 +88,7 @@
                     "children": [
                       {
                         "type": "text",
-                        "class": "setting-label",
+                        "tag": "label",
                         "text": "{cat.label}",
                         "props": {
                           "lines": 1
@@ -114,7 +116,7 @@
       "children": [
         {
           "type": "column",
-          "class": "side-panel",
+          "tag": "nav",
           "children": [
             {
               "type": "input",
@@ -136,7 +138,7 @@
         },
         {
           "type": "column",
-          "class": "settings-page",
+          "tag": "main",
           "children": [
             {
               "include": "settings_content"

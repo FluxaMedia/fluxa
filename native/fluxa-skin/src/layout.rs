@@ -62,6 +62,10 @@ pub struct Node {
     pub src: Option<String>,
     pub style: Option<String>,
     pub class: Option<String>,
+    /// Semantic element name (`h1`, `small`, `li`, ...). It styles the node
+    /// like a lowest-priority class, so `h1 { ... }` and `.rows li { ... }`
+    /// work like HTML selectors.
+    pub tag: Option<String>,
     pub i18n: Option<String>,
     pub action: Option<Action>,
     pub props: BTreeMap<String, Value>,

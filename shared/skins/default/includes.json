@@ -800,11 +800,11 @@
   },
   "setting_row": {
     "type": "row",
-    "class": "setting-row",
+    "tag": "li",
     "children": [
       {
         "type": "text",
-        "class": "setting-label",
+        "tag": "label",
         "text": "{row.label}"
       },
       {
@@ -856,13 +856,14 @@
     "children": [
       {
         "type": "text",
-        "class": "group-heading",
+        "tag": "h2",
         "text": "{group.heading}",
         "when": "group.heading"
       },
       {
         "type": "column",
-        "class": "list",
+        "tag": "ul",
+        "class": "rows",
         "children": [
           {
             "each": "group.rows",
@@ -877,7 +878,7 @@
   },
   "nav_item": {
     "type": "row",
-    "class": "side-item",
+    "tag": "a",
     "props": {
       "selected": "{cat.selected}"
     },
@@ -898,18 +899,18 @@
       },
       {
         "type": "text",
-        "class": "side-label",
+        "tag": "span",
         "text": "{cat.label}"
       }
     ]
   },
   "nav_entry": {
     "type": "column",
-    "gap": 2,
+    "tag": "section",
     "children": [
       {
         "type": "text",
-        "class": "label-strong side-heading",
+        "tag": "h2",
         "text": "{cat.heading}",
         "when": "cat.hasHeading"
       },
@@ -920,7 +921,8 @@
   },
   "hub_row": {
     "type": "row",
-    "class": "surface-card hub-row",
+    "tag": "li",
+    "class": "hub",
     "action": {
       "name": "choose",
       "args": {
@@ -931,9 +933,7 @@
     "children": [
       {
         "type": "stack",
-        "class": "tile",
-        "width": 44,
-        "height": 44,
+        "tag": "figure",
         "children": [
           {
             "type": "column",
@@ -952,17 +952,16 @@
       },
       {
         "type": "column",
-        "gap": 2,
-        "grow": 1,
+        "tag": "div",
         "children": [
           {
             "type": "text",
-            "class": "setting-label",
+            "tag": "label",
             "text": "{page.label}"
           },
           {
             "type": "text",
-            "class": "setting-hint",
+            "tag": "small",
             "text": "{page.description}",
             "props": {
               "lines": 1
@@ -981,7 +980,8 @@
   },
   "hub": {
     "type": "column",
-    "class": "list",
+    "tag": "ul",
+    "class": "rows",
     "children": [
       {
         "each": "prefs.pages",
@@ -994,7 +994,8 @@
   },
   "back_row": {
     "type": "row",
-    "class": "back-link",
+    "tag": "a",
+    "class": "back",
     "action": {
       "name": "choose",
       "args": {
@@ -1012,7 +1013,7 @@
       },
       {
         "type": "text",
-        "class": "side-label",
+        "tag": "span",
         "i18n": "common.back"
       }
     ]
@@ -2138,16 +2139,16 @@
       },
       {
         "type": "column",
-        "gap": 6,
+        "tag": "header",
         "children": [
           {
             "type": "text",
-            "class": "page-title",
+            "tag": "h1",
             "text": "{prefs.title}"
           },
           {
             "type": "text",
-            "class": "page-hint",
+            "tag": "p",
             "text": "{prefs.description}",
             "when": "prefs.description"
           }
@@ -2176,7 +2177,8 @@
       },
       {
         "type": "column",
-        "class": "list",
+        "tag": "ul",
+        "class": "rows",
         "children": [
           {
             "each": "prefs.inputs",
@@ -2193,12 +2195,12 @@
         "children": [
           {
             "type": "text",
-            "class": "page-title",
+            "tag": "h1",
             "i18n": "skins.title"
           },
           {
             "type": "text",
-            "class": "page-hint",
+            "tag": "p",
             "i18n": "skins.hint"
           },
           {
@@ -2210,11 +2212,11 @@
               "children": [
                 {
                   "type": "row",
-                  "class": "setting-row",
+                  "tag": "li",
                   "children": [
                     {
                       "type": "text",
-                      "class": "setting-label",
+                      "tag": "label",
                       "text": "{skin.name}"
                     },
                     {
@@ -2282,18 +2284,18 @@
                 },
                 {
                   "type": "row",
-                  "gap": 12,
-                  "padding": "0 16",
+                  "class": "actions inset",
                   "when": "skin.scripts",
                   "children": [
                     {
                       "type": "text",
-                      "class": "setting-hint",
+                      "tag": "small",
                       "text": "{skin.scripts}"
                     },
                     {
                       "type": "row",
-                      "class": "btn-primary",
+                      "tag": "button",
+                      "class": "primary",
                       "action": {
                         "name": "skins",
                         "args": {
@@ -2305,14 +2307,14 @@
                       "children": [
                         {
                           "type": "text",
-                          "class": "btn-label",
+                          "tag": "span",
                           "i18n": "skins.allow_scripts"
                         }
                       ]
                     },
                     {
                       "type": "row",
-                      "class": "btn-secondary",
+                      "tag": "button",
                       "action": {
                         "name": "skins",
                         "args": {
@@ -2324,7 +2326,7 @@
                       "children": [
                         {
                           "type": "text",
-                          "class": "btn-label",
+                          "tag": "span",
                           "i18n": "skins.revoke_scripts"
                         }
                       ]
@@ -2336,7 +2338,7 @@
           },
           {
             "type": "row",
-            "gap": 12,
+            "class": "actions",
             "children": [
               {
                 "type": "input",
@@ -2350,7 +2352,8 @@
               },
               {
                 "type": "row",
-                "class": "btn-primary",
+                "tag": "button",
+                "class": "primary",
                 "action": {
                   "name": "skins",
                   "args": {
@@ -2360,7 +2363,7 @@
                 "children": [
                   {
                     "type": "text",
-                    "class": "btn-label",
+                    "tag": "span",
                     "i18n": "skins.install"
                   }
                 ]
@@ -2369,13 +2372,13 @@
           },
           {
             "type": "text",
-            "class": "setting-hint",
+            "tag": "small",
             "when": "prefs.skins.busy",
             "i18n": "skins.installing"
           },
           {
             "type": "text",
-            "class": "setting-hint",
+            "tag": "small",
             "when": "prefs.skins.message",
             "text": "{prefs.skins.message}"
           },
@@ -2388,18 +2391,18 @@
               "children": [
                 {
                   "type": "text",
-                  "class": "page-title",
+                  "tag": "h1",
                   "text": "{tracker.title}"
                 },
                 {
                   "type": "text",
-                  "class": "setting-hint",
+                  "tag": "small",
                   "when": "tracker.status",
                   "text": "{tracker.status}"
                 },
                 {
                   "type": "row",
-                  "class": "setting-row",
+                  "tag": "li",
                   "action": {
                     "name": "ext_tracker",
                     "args": {
@@ -2410,14 +2413,14 @@
                   "children": [
                     {
                       "type": "text",
-                      "class": "setting-label",
+                      "tag": "label",
                       "i18n": "skins.tracker_connect"
                     }
                   ]
                 },
                 {
                   "type": "row",
-                  "class": "setting-row",
+                  "tag": "li",
                   "action": {
                     "name": "ext_tracker",
                     "args": {
@@ -2428,19 +2431,19 @@
                   "children": [
                     {
                       "type": "text",
-                      "class": "setting-label",
+                      "tag": "label",
                       "i18n": "skins.tracker_watched"
                     },
                     {
                       "type": "text",
-                      "class": "setting-hint",
+                      "tag": "small",
                       "text": "{tracker.watched}"
                     }
                   ]
                 },
                 {
                   "type": "row",
-                  "class": "setting-row",
+                  "tag": "li",
                   "action": {
                     "name": "ext_tracker",
                     "args": {
@@ -2451,12 +2454,12 @@
                   "children": [
                     {
                       "type": "text",
-                      "class": "setting-label",
+                      "tag": "label",
                       "i18n": "skins.tracker_library"
                     },
                     {
                       "type": "text",
-                      "class": "setting-hint",
+                      "tag": "small",
                       "text": "{tracker.library}"
                     }
                   ]
@@ -2473,7 +2476,7 @@
               "children": [
                 {
                   "type": "text",
-                  "class": "page-title",
+                  "tag": "h1",
                   "text": "{extension.name}"
                 },
                 {
@@ -2485,12 +2488,12 @@
                     "children": [
                       {
                         "type": "text",
-                        "class": "setting-label",
+                        "tag": "label",
                         "text": "{setting.title}"
                       },
                       {
                         "type": "text",
-                        "class": "setting-hint",
+                        "tag": "small",
                         "when": "setting.description",
                         "text": "{setting.description}"
                       },
@@ -2499,7 +2502,7 @@
                         "as": "choice",
                         "template": {
                           "type": "row",
-                          "class": "setting-row",
+                          "tag": "li",
                           "action": {
                             "name": "ext_setting",
                             "args": {
@@ -2511,7 +2514,7 @@
                           "children": [
                             {
                               "type": "text",
-                              "class": "setting-label",
+                              "tag": "label",
                               "text": "{choice.label}"
                             }
                           ]
@@ -2529,12 +2532,12 @@
             "children": [
               {
                 "type": "text",
-                "class": "page-title",
+                "tag": "h1",
                 "i18n": "skins.custom_title"
               },
               {
                 "type": "text",
-                "class": "page-hint",
+                "tag": "p",
                 "i18n": "skins.custom_hint"
               },
               {
@@ -2550,7 +2553,7 @@
               },
               {
                 "type": "row",
-                "class": "btn-secondary",
+                "tag": "button",
                 "action": {
                   "name": "skins",
                   "args": {
@@ -2560,7 +2563,7 @@
                 "children": [
                   {
                     "type": "text",
-                    "class": "btn-label",
+                    "tag": "span",
                     "i18n": "skins.custom_reset"
                   }
                 ]
@@ -2585,18 +2588,16 @@
   },
   "setting_input": {
     "type": "column",
-    "class": "tile",
-    "gap": 10,
-    "padding": "14 16",
+    "tag": "form",
     "children": [
       {
         "type": "text",
-        "class": "setting-label",
+        "tag": "label",
         "text": "{input.label}"
       },
       {
         "type": "text",
-        "class": "setting-hint",
+        "tag": "small",
         "text": "{input.help}",
         "props": {
           "lines": 2
@@ -2604,7 +2605,7 @@
       },
       {
         "type": "row",
-        "gap": 10,
+        "class": "actions",
         "children": [
           {
             "type": "input",
@@ -2618,7 +2619,7 @@
           },
           {
             "type": "row",
-            "class": "btn-secondary",
+            "tag": "button",
             "action": {
               "name": "save_field",
               "args": {
@@ -2628,7 +2629,7 @@
             "children": [
               {
                 "type": "text",
-                "class": "btn-label",
+                "tag": "span",
                 "text": "{input.save}"
               }
             ]
@@ -2643,30 +2644,29 @@
     "children": [
       {
         "type": "text",
-        "class": "group-heading",
+        "tag": "h2",
         "text": "{list.title}"
       },
       {
         "type": "column",
-        "class": "surface-card",
-        "padding": "6 0",
+        "tag": "article",
+        "class": "flush",
         "children": [
           {
             "each": "list.rows",
             "as": "row",
             "template": {
               "type": "column",
-              "gap": 4,
-              "padding": "12 16",
+              "class": "entry",
               "children": [
                 {
                   "type": "text",
-                  "class": "setting-label",
+                  "tag": "label",
                   "text": "{row.label}"
                 },
                 {
                   "type": "text",
-                  "class": "setting-hint",
+                  "tag": "small",
                   "text": "{row.value}",
                   "when": "row.value",
                   "props": {
@@ -3161,10 +3161,8 @@
     "children": [
       {
         "type": "row",
-        "class": "profile-row",
-        "height": 88,
-        "gap": 14,
-        "padding": "0 16",
+        "tag": "li",
+        "class": "profile",
         "when": "row.kind == \"profile\"",
         "children": [
           {
@@ -3177,17 +3175,16 @@
           },
           {
             "type": "column",
-            "gap": 2,
-            "grow": 1,
+            "tag": "div",
             "children": [
               {
                 "type": "text",
-                "class": "profile-name",
+                "tag": "h3",
                 "text": "{row.title}"
               },
               {
                 "type": "text",
-                "class": "setting-hint",
+                "tag": "small",
                 "text": "{row.hint}",
                 "when": "row.hint",
                 "props": {
@@ -3200,7 +3197,7 @@
       },
       {
         "type": "row",
-        "class": "setting-row",
+        "tag": "li",
         "when": "row.kind == \"link\" && !row.danger",
         "action": {
           "name": "node",
@@ -3219,17 +3216,16 @@
           },
           {
             "type": "column",
-            "gap": 2,
-            "grow": 1,
+            "tag": "div",
             "children": [
               {
                 "type": "text",
-                "class": "setting-label",
+                "tag": "label",
                 "text": "{row.title}"
               },
               {
                 "type": "text",
-                "class": "setting-hint",
+                "tag": "small",
                 "text": "{row.hint}",
                 "props": {
                   "lines": 2
@@ -3250,7 +3246,7 @@
       },
       {
         "type": "row",
-        "class": "setting-row",
+        "tag": "li",
         "when": "row.kind == \"link\" && row.danger",
         "action": {
           "name": "node",
@@ -3261,14 +3257,15 @@
         "children": [
           {
             "type": "text",
-            "class": "setting-danger",
+            "tag": "label",
+            "class": "danger",
             "text": "{row.title}"
           }
         ]
       },
       {
         "type": "row",
-        "class": "setting-row",
+        "tag": "li",
         "when": "row.kind == \"service\"",
         "children": [
           {
@@ -3280,17 +3277,16 @@
           },
           {
             "type": "column",
-            "gap": 2,
-            "grow": 1,
+            "tag": "div",
             "children": [
               {
                 "type": "text",
-                "class": "setting-label",
+                "tag": "label",
                 "text": "{row.title}"
               },
               {
                 "type": "text",
-                "class": "setting-hint",
+                "tag": "small",
                 "text": "{row.hint}",
                 "props": {
                   "lines": 1
@@ -3300,7 +3296,8 @@
           },
           {
             "type": "row",
-            "class": "btn-primary",
+            "tag": "button",
+            "class": "primary",
             "action": {
               "name": "node",
               "args": {
@@ -3311,14 +3308,14 @@
             "children": [
               {
                 "type": "text",
-                "class": "btn-label",
+                "tag": "span",
                 "text": "{row.button}"
               }
             ]
           },
           {
             "type": "row",
-            "class": "btn-secondary",
+            "tag": "button",
             "action": {
               "name": "node",
               "args": {
@@ -3329,7 +3326,7 @@
             "children": [
               {
                 "type": "text",
-                "class": "btn-label",
+                "tag": "span",
                 "text": "{row.button}"
               }
             ]
@@ -3338,22 +3335,21 @@
       },
       {
         "type": "row",
-        "class": "setting-row",
+        "tag": "li",
         "when": "row.kind == \"tracker\"",
         "children": [
           {
             "type": "column",
-            "gap": 2,
-            "grow": 1,
+            "tag": "div",
             "children": [
               {
                 "type": "text",
-                "class": "setting-label",
+                "tag": "label",
                 "text": "{row.title}"
               },
               {
                 "type": "text",
-                "class": "setting-hint",
+                "tag": "small",
                 "text": "{row.hint}",
                 "props": {
                   "lines": 1
@@ -3363,7 +3359,8 @@
           },
           {
             "type": "row",
-            "class": "btn-primary",
+            "tag": "button",
+            "class": "primary",
             "action": {
               "name": "ext_tracker",
               "args": {
@@ -3375,14 +3372,14 @@
             "children": [
               {
                 "type": "text",
-                "class": "btn-label",
+                "tag": "span",
                 "text": "{row.button}"
               }
             ]
           },
           {
             "type": "row",
-            "class": "btn-secondary",
+            "tag": "button",
             "action": {
               "name": "ext_tracker",
               "args": {
@@ -3394,7 +3391,7 @@
             "children": [
               {
                 "type": "text",
-                "class": "btn-label",
+                "tag": "span",
                 "text": "{row.button}"
               }
             ]
@@ -3403,12 +3400,12 @@
       },
       {
         "type": "row",
-        "class": "setting-row",
+        "tag": "li",
         "when": "row.kind == \"choice\"",
         "children": [
           {
             "type": "text",
-            "class": "setting-label",
+            "tag": "label",
             "text": "{row.title}"
           },
           {
@@ -3424,24 +3421,22 @@
       },
       {
         "type": "row",
-        "class": "tile",
-        "gap": 16,
-        "padding": "20 24",
+        "tag": "article",
         "when": "row.kind == \"about\"",
         "children": [
           {
             "type": "column",
-            "gap": 10,
-            "grow": 1,
+            "tag": "section",
+            "class": "grow",
             "children": [
               {
                 "type": "text",
-                "class": "page-title",
+                "tag": "h1",
                 "text": "Fluxa"
               },
               {
                 "type": "row",
-                "gap": 12,
+                "class": "actions",
                 "children": [
                   {
                     "type": "text",
@@ -3450,7 +3445,7 @@
                   },
                   {
                     "type": "text",
-                    "class": "setting-hint",
+                    "tag": "small",
                     "text": "{row.hint}",
                     "props": {
                       "lines": 2
@@ -3460,14 +3455,15 @@
               },
               {
                 "type": "text",
-                "class": "setting-hint",
+                "tag": "small",
                 "text": "{row.created}"
               }
             ]
           },
           {
             "type": "row",
-            "class": "btn-primary",
+            "tag": "button",
+            "class": "primary",
             "action": {
               "name": "node",
               "args": {
@@ -3478,7 +3474,7 @@
             "children": [
               {
                 "type": "text",
-                "class": "btn-label",
+                "tag": "span",
                 "text": "{row.button}"
               }
             ]
@@ -3487,19 +3483,17 @@
       },
       {
         "type": "column",
-        "class": "tile",
-        "gap": 10,
-        "padding": "14 16",
+        "tag": "form",
         "when": "row.kind == \"form\"",
         "children": [
           {
             "type": "text",
-            "class": "setting-label",
+            "tag": "label",
             "text": "{row.title}"
           },
           {
             "type": "row",
-            "gap": 10,
+            "class": "actions",
             "children": [
               {
                 "type": "input",
@@ -3513,7 +3507,8 @@
               },
               {
                 "type": "row",
-                "class": "btn-primary",
+                "tag": "button",
+                "class": "primary",
                 "action": {
                   "name": "node",
                   "args": {
@@ -3524,7 +3519,7 @@
                 "children": [
                   {
                     "type": "text",
-                    "class": "btn-label",
+                    "tag": "span",
                     "text": "{row.button}"
                   }
                 ]
@@ -3555,7 +3550,7 @@
       },
       {
         "type": "text",
-        "class": "setting-hint",
+        "tag": "small",
         "text": "{row.title}",
         "when": "row.kind == \"note\" && !row.danger",
         "props": {
@@ -3564,7 +3559,8 @@
       },
       {
         "type": "text",
-        "class": "setting-danger-note",
+        "tag": "small",
+        "class": "danger",
         "text": "{row.title}",
         "when": "row.kind == \"note\" && row.danger",
         "props": {
@@ -3573,20 +3569,16 @@
       },
       {
         "type": "column",
-        "class": "tile",
-        "gap": 12,
-        "padding": 16,
+        "tag": "article",
         "when": "row.kind == \"card\"",
         "children": [
           {
             "type": "row",
-            "gap": 14,
+            "class": "actions",
             "children": [
               {
                 "type": "stack",
-                "class": "tile",
-                "width": 48,
-                "height": 48,
+                "tag": "figure",
                 "children": [
                   {
                     "type": "image",
@@ -3616,16 +3608,15 @@
               },
               {
                 "type": "column",
-                "gap": 2,
-                "grow": 1,
+                "tag": "div",
                 "children": [
                   {
                     "type": "row",
-                    "gap": 12,
+                    "class": "actions",
                     "children": [
                       {
                         "type": "text",
-                        "class": "setting-label",
+                        "tag": "label",
                         "text": "{row.title}",
                         "props": {
                           "lines": 1
@@ -3633,7 +3624,7 @@
                       },
                       {
                         "type": "text",
-                        "class": "setting-hint",
+                        "tag": "small",
                         "text": "{row.version}",
                         "when": "row.version"
                       }
@@ -3641,7 +3632,7 @@
                   },
                   {
                     "type": "text",
-                    "class": "setting-hint",
+                    "tag": "small",
                     "text": "{row.hint}",
                     "when": "row.hint",
                     "props": {
@@ -3650,7 +3641,8 @@
                   },
                   {
                     "type": "text",
-                    "class": "setting-danger-note",
+                    "tag": "small",
+                    "class": "danger",
                     "text": "{row.warning}",
                     "when": "row.warning",
                     "props": {
@@ -3693,7 +3685,7 @@
           },
           {
             "type": "text",
-            "class": "setting-hint",
+            "tag": "small",
             "text": "{row.description}",
             "when": "row.description",
             "props": {
@@ -3702,8 +3694,7 @@
           },
           {
             "type": "row",
-            "gap": 8,
-            "align": "center",
+            "class": "actions",
             "children": [
               {
                 "each": "row.chips",
@@ -3718,12 +3709,12 @@
           },
           {
             "type": "row",
-            "gap": 14,
+            "class": "actions",
             "when": "row.group",
             "children": [
               {
                 "type": "text",
-                "class": "setting-hint",
+                "tag": "small",
                 "text": "{row.group.label}"
               },
               {
@@ -3759,11 +3750,11 @@
           },
           {
             "type": "row",
-            "gap": 14,
+            "class": "actions",
             "children": [
               {
                 "type": "text",
-                "class": "setting-hint",
+                "tag": "small",
                 "text": "{row.builtin.label}",
                 "when": "row.builtin"
               },
@@ -3797,18 +3788,17 @@
       },
       {
         "type": "row",
-        "class": "setting-row",
+        "tag": "li",
         "when": "row.kind == \"item\"",
         "children": [
           {
             "type": "column",
-            "gap": 2,
-            "grow": 1,
+            "tag": "div",
             "when": "row.title",
             "children": [
               {
                 "type": "text",
-                "class": "setting-label",
+                "tag": "label",
                 "text": "{row.title}",
                 "props": {
                   "lines": 1
@@ -3816,7 +3806,7 @@
               },
               {
                 "type": "text",
-                "class": "setting-hint",
+                "tag": "small",
                 "text": "{row.hint}",
                 "when": "row.hint",
                 "props": {
@@ -3858,15 +3848,14 @@
           },
           {
             "type": "row",
-            "gap": 8,
-            "align": "center",
+            "class": "actions",
             "children": [
               {
                 "each": "row.pills",
                 "as": "pill",
                 "template": {
                   "type": "row",
-                  "class": "btn-secondary",
+                  "tag": "button",
                   "action": {
                     "name": "node",
                     "args": {
@@ -3877,7 +3866,7 @@
                   "children": [
                     {
                       "type": "text",
-                      "class": "btn-label",
+                      "tag": "span",
                       "text": "{pill.label}"
                     }
                   ]
@@ -3887,8 +3876,7 @@
           },
           {
             "type": "row",
-            "gap": 8,
-            "align": "center",
+            "class": "actions",
             "children": [
               {
                 "each": "row.buttons",
@@ -3949,14 +3937,12 @@
       },
       {
         "type": "column",
-        "class": "tile",
-        "gap": 10,
-        "padding": "14 16",
+        "tag": "form",
         "when": "row.kind == \"field\"",
         "children": [
           {
             "type": "text",
-            "class": "setting-label",
+            "tag": "label",
             "text": "{row.title}"
           },
           {
@@ -3973,7 +3959,8 @@
       },
       {
         "type": "row",
-        "class": "btn-primary",
+        "tag": "button",
+        "class": "primary",
         "action": {
           "name": "node",
           "args": {
@@ -3985,15 +3972,14 @@
         "children": [
           {
             "type": "text",
-            "class": "btn-label",
+            "tag": "span",
             "text": "{row.button}"
           }
         ]
       },
       {
         "type": "row",
-        "gap": 8,
-        "align": "center",
+        "class": "actions",
         "when": "row.kind == \"tabs\"",
         "children": [
           {
@@ -4024,12 +4010,12 @@
       },
       {
         "type": "row",
-        "class": "setting-row",
+        "tag": "li",
         "when": "row.kind == \"keys\"",
         "children": [
           {
             "type": "text",
-            "class": "setting-label",
+            "tag": "label",
             "text": "{row.title}",
             "props": {
               "lines": 1
@@ -4037,7 +4023,7 @@
           },
           {
             "type": "row",
-            "class": "btn-secondary",
+            "tag": "button",
             "action": {
               "name": "node",
               "args": {
@@ -4048,7 +4034,7 @@
             "children": [
               {
                 "type": "text",
-                "class": "btn-label",
+                "tag": "span",
                 "text": "{row.reset.label}"
               }
             ]
@@ -4056,8 +4042,6 @@
           {
             "type": "row",
             "class": "centered keycap",
-            "height": 32,
-            "padding": "0 12",
             "when": "row.node",
             "action": {
               "name": "node",
@@ -4076,8 +4060,6 @@
           {
             "type": "row",
             "class": "centered keycap",
-            "height": 32,
-            "padding": "0 12",
             "when": "!row.node",
             "children": [
               {
@@ -4097,13 +4079,14 @@
     "children": [
       {
         "type": "text",
-        "class": "group-heading",
+        "tag": "h2",
         "text": "{group.heading}",
         "when": "group.heading"
       },
       {
         "type": "column",
-        "class": "list",
+        "tag": "ul",
+        "class": "rows",
         "children": [
           {
             "each": "group.rows",

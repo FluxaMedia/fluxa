@@ -53,12 +53,12 @@ pub(super) fn root_layers(text: &str) -> Result<Vec<RootLayer>, String> {
     let mut layers = Vec::new();
     for (prelude, body) in blocks(&text)? {
         let prelude = prelude.trim();
-        if prelude == ":root" {
+        if is_root(prelude) {
             layers.push((Vec::new(), custom_properties(&body)?));
         } else if prelude.starts_with("@media") {
             let keys = media_keys(prelude.trim_start_matches('@'))?;
             for (inner, inner_body) in blocks(&body)? {
-                if inner.trim() == ":root" {
+                if is_root(inner.trim()) {
                     layers.push((keys.clone(), custom_properties(&inner_body)?));
                 }
             }
@@ -67,10 +67,20 @@ pub(super) fn root_layers(text: &str) -> Result<Vec<RootLayer>, String> {
     Ok(layers)
 }
 
+/// `:root` and `html` both address the document root.
+fn is_root(prelude: &str) -> bool {
+    matches!(prelude, ":root" | "html")
+}
+
+/// The root's custom properties, plus its `font-size`, which every `rem`
+/// measures against (stored as `--root-font-size`).
 fn custom_properties(body: &str) -> Result<Vec<(String, String)>, String> {
     Ok(declarations(body)?
         .into_iter()
-        .filter_map(|(name, value)| Some((name.strip_prefix("--")?.to_owned(), value)))
+        .filter_map(|(name, value)| match name.strip_prefix("--") {
+            Some(custom) => Some((custom.to_owned(), value)),
+            None => (name == "font-size").then(|| ("root-font-size".to_owned(), value)),
+        })
         .collect())
 }
 
@@ -80,7 +90,7 @@ pub(super) fn to_value(text: &str) -> Result<Value, String> {
     let mut motion = Map::new();
     let blocks = blocks(&text)?;
     for (prelude, body) in &blocks {
-        if prelude.trim() == ":root" {
+        if is_root(prelude.trim()) {
             for (name, value) in declarations(body)? {
                 if let Some(name) = name.strip_prefix("--") {
                     vars.insert(name.to_owned(), value);
@@ -96,7 +106,7 @@ pub(super) fn to_value(text: &str) -> Result<Value, String> {
     }
     for (prelude, body) in &blocks {
         let prelude = prelude.trim();
-        if prelude == ":root" {
+        if is_root(prelude) {
             continue;
         }
         if let Some(name) = prelude.strip_prefix("@keyframes") {
@@ -116,7 +126,7 @@ pub(super) fn to_value(text: &str) -> Result<Value, String> {
                     _ => Map::new(),
                 };
                 for (selectors, rule) in self::blocks(body)? {
-                    if selectors.trim() == ":root" {
+                    if is_root(selectors.trim()) {
                         continue;
                     }
                     add_rule(&mut rules, &selectors, &rule, &vars)?;
@@ -449,8 +459,13 @@ fn properties(
         }
         if name == "margin" {
             let first = split_words(&value).into_iter().next().unwrap_or_default();
-            let number = first.trim_end_matches("px").parse::<f64>().unwrap_or(0.0);
-            props.insert("margin".to_owned(), serde_json::json!(number));
+            match first.trim_end_matches("px").parse::<f64>() {
+                Ok(number) => props.insert("margin".to_owned(), serde_json::json!(number)),
+                Err(_) if first.ends_with("em") => {
+                    props.insert("margin".to_owned(), Value::String(first))
+                }
+                Err(_) => props.insert("margin".to_owned(), serde_json::json!(0.0)),
+            };
             continue;
         }
         if name == "border" {

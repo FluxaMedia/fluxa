@@ -386,8 +386,7 @@ fn build_node<'a, A: HomeAssets>(
         }
         _ => node,
     };
-    let sheet_style = class_parts(node, env.positions.get(&node.key).copied())
-        .map(|(rule, modifiers)| crate::stylesheet::base_with(&rule, &modifiers));
+    let sheet_style = sheet_style(node, env);
     if sheet_style.as_ref().is_some_and(|style| style.hidden) {
         return layout_items::gap(0.0);
     }
@@ -549,21 +548,7 @@ fn icon<'a, A: HomeAssets>(node: &Resolved, env: &'a Env<'a, A>) -> kit::Item<'a
         .map_or(crate::vars::px("icon-button-size") * 0.5, |size| {
             size as f32
         });
-    let chain: Vec<crate::stylesheet::Frame> = env
-        .ancestors
-        .borrow()
-        .iter()
-        .flat_map(|ancestor| {
-            ancestor.classes.iter().enumerate().map(|(at, class)| {
-                let frame = crate::stylesheet::Frame::plain(std::sync::Arc::clone(class), 0);
-                if at == 0 {
-                    frame.inheriting(&ancestor.inherited)
-                } else {
-                    frame
-                }
-            })
-        })
-        .collect();
+    let chain = plain_frames(&env.ancestors.borrow());
     let tint = class_parts(node, None)
         .map(|(rule, modifiers)| {
             crate::stylesheet::within(&chain, || {
@@ -696,8 +681,11 @@ fn sheet_style<'a, A: HomeAssets>(
     node: &Resolved,
     env: &'a Env<'a, A>,
 ) -> Option<crate::stylesheet::Style> {
-    class_parts(node, env.positions.get(&node.key).copied())
-        .map(|(rule, modifiers)| crate::stylesheet::base_with(&rule, &modifiers))
+    let (rule, modifiers) = class_parts(node, env.positions.get(&node.key).copied())?;
+    let chain = plain_frames(&env.ancestors.borrow());
+    Some(crate::stylesheet::within(&chain, || {
+        crate::stylesheet::base_with(&rule, &modifiers)
+    }))
 }
 
 fn gap_of<'a, A: HomeAssets>(node: &Resolved, env: &'a Env<'a, A>) -> Option<f32> {
