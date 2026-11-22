@@ -37,8 +37,8 @@
             },
             {
               "type": "text",
+              "tag": "h4",
               "text": "{player.episodeTitle}",
-              "style": "subtitle",
               "when": "player.episodeTitle && !player.error"
             },
             {
@@ -67,8 +67,8 @@
             },
             {
               "type": "text",
+              "tag": "h1",
               "text": "{player.errorTitle}",
-              "style": "title",
               "when": "player.error"
             },
             {
@@ -119,8 +119,8 @@
             },
             {
               "type": "text",
+              "tag": "h4",
               "text": "{player.episodeTitle}",
-              "style": "subtitle",
               "when": "player.episodeTitle"
             },
             {
@@ -200,7 +200,7 @@
           "children": [
             {
               "type": "row",
-              "class": "centered icon-btn",
+              "class": "icon-btn",
               "children": [
                 {
                   "type": "icon",
@@ -221,13 +221,13 @@
               "children": [
                 {
                   "type": "text",
-                  "text": "{player.title}",
-                  "style": "subtitle"
+                  "tag": "h4",
+                  "text": "{player.title}"
                 },
                 {
                   "type": "text",
+                  "tag": "small",
                   "text": "{player.episode}",
-                  "style": "meta muted",
                   "when": "player.episode"
                 }
               ],
@@ -236,7 +236,7 @@
             },
             {
               "type": "row",
-              "class": "centered icon-btn",
+              "class": "icon-btn",
               "children": [
                 {
                   "type": "icon",
@@ -340,8 +340,8 @@
             },
             {
               "type": "text",
-              "text": "-{player.remaining}",
-              "style": "meta muted"
+              "tag": "small",
+              "text": "-{player.remaining}"
             }
           ],
           "gap": 12
@@ -351,7 +351,7 @@
           "children": [
             {
               "type": "row",
-              "class": "centered icon-btn",
+              "class": "icon-btn",
               "children": [
                 {
                   "type": "icon",
@@ -369,7 +369,7 @@
             },
             {
               "type": "row",
-              "class": "centered icon-btn",
+              "class": "icon-btn",
               "children": [
                 {
                   "type": "icon",
@@ -388,7 +388,7 @@
             },
             {
               "type": "row",
-              "class": "centered icon-btn",
+              "class": "icon-btn",
               "children": [
                 {
                   "type": "icon",
@@ -407,7 +407,7 @@
             },
             {
               "type": "row",
-              "class": "centered icon-btn",
+              "class": "icon-btn",
               "children": [
                 {
                   "type": "icon",
@@ -430,7 +430,7 @@
             },
             {
               "type": "row",
-              "class": "centered icon-btn",
+              "class": "icon-btn",
               "children": [
                 {
                   "type": "icon",
@@ -449,7 +449,7 @@
             },
             {
               "type": "row",
-              "class": "centered icon-btn",
+              "class": "icon-btn",
               "children": [
                 {
                   "type": "icon",
@@ -468,7 +468,7 @@
             },
             {
               "type": "row",
-              "class": "centered icon-btn",
+              "class": "icon-btn",
               "children": [
                 {
                   "type": "icon",
@@ -487,7 +487,7 @@
             },
             {
               "type": "row",
-              "class": "centered icon-btn",
+              "class": "icon-btn",
               "children": [
                 {
                   "type": "icon",
@@ -506,7 +506,7 @@
             },
             {
               "type": "row",
-              "class": "centered icon-btn",
+              "class": "icon-btn",
               "children": [
                 {
                   "type": "icon",
@@ -538,7 +538,7 @@
       "children": [
         {
           "type": "row",
-          "class": "centered icon-btn",
+          "class": "icon-btn",
           "children": [
             {
               "type": "icon",
@@ -568,7 +568,7 @@
           "children": [
             {
               "type": "row",
-              "class": "centered icon-btn",
+              "class": "icon-btn",
               "children": [
                 {
                   "type": "icon",
@@ -586,7 +586,7 @@
             },
             {
               "type": "row",
-              "class": "centered icon-btn",
+              "class": "icon-btn",
               "children": [
                 {
                   "type": "icon",
@@ -604,7 +604,7 @@
             },
             {
               "type": "row",
-              "class": "centered icon-btn",
+              "class": "icon-btn",
               "children": [
                 {
                   "type": "icon",
@@ -646,7 +646,7 @@
               "children": [
                 {
                   "type": "row",
-                  "class": "centered icon-btn",
+                  "class": "icon-btn",
                   "when": "player.panel.hasBack",
                   "action": {
                     "name": "player_row",
@@ -665,13 +665,13 @@
                 },
                 {
                   "type": "text",
+                  "tag": "h4",
                   "text": "{player.panel.title}",
-                  "style": "subtitle",
-                  "grow": 1
+                  "class": "grow"
                 },
                 {
                   "type": "row",
-                  "class": "centered icon-btn",
+                  "class": "icon-btn",
                   "action": {
                     "name": "player",
                     "args": {
@@ -694,9 +694,9 @@
             },
             {
               "type": "text",
+              "tag": "small",
               "text": "{player.panel.message}",
               "when": "player.panel.message",
-              "style": "meta muted",
               "padding": "0 8 8 8"
             },
             {
@@ -838,18 +838,18 @@
                                 },
                                 {
                                   "type": "text",
+                                  "tag": "small",
                                   "text": "{row.value}",
                                   "when": "row.value",
-                                  "style": "meta muted",
                                   "props": {
                                     "lines": 1
                                   }
                                 },
                                 {
                                   "type": "text",
+                                  "tag": "small",
                                   "text": "{row.badge}",
-                                  "when": "row.badge",
-                                  "style": "meta muted"
+                                  "when": "row.badge"
                                 },
                                 {
                                   "type": "icon",
@@ -881,7 +881,7 @@
                                   "props": {
                                     "lines": 1
                                   },
-                                  "grow": 1
+                                  "class": "grow"
                                 },
                                 {
                                   "type": "row",
@@ -943,7 +943,7 @@
                                 {
                                   "type": "text",
                                   "text": "{row.label}",
-                                  "grow": 1
+                                  "class": "grow"
                                 },
                                 {
                                   "each": "row.trail",
@@ -974,7 +974,7 @@
                                 {
                                   "type": "text",
                                   "text": "{row.label}",
-                                  "grow": 1
+                                  "class": "grow"
                                 },
                                 {
                                   "each": "row.trail",
@@ -1106,18 +1106,18 @@
                                     },
                                     {
                                       "type": "text",
+                                      "tag": "small",
                                       "text": "{row.value}",
                                       "when": "row.value",
-                                      "style": "meta muted",
                                       "props": {
                                         "lines": 1
                                       }
                                     },
                                     {
                                       "type": "text",
+                                      "tag": "small",
                                       "text": "{row.badge}",
-                                      "when": "row.badge",
-                                      "style": "meta muted"
+                                      "when": "row.badge"
                                     },
                                     {
                                       "type": "icon",
@@ -1149,7 +1149,7 @@
                                       "props": {
                                         "lines": 1
                                       },
-                                      "grow": 1
+                                      "class": "grow"
                                     },
                                     {
                                       "type": "row",
@@ -1211,7 +1211,7 @@
                                     {
                                       "type": "text",
                                       "text": "{row.label}",
-                                      "grow": 1
+                                      "class": "grow"
                                     },
                                     {
                                       "each": "row.trail",
@@ -1242,7 +1242,7 @@
                                     {
                                       "type": "text",
                                       "text": "{row.label}",
-                                      "grow": 1
+                                      "class": "grow"
                                     },
                                     {
                                       "each": "row.trail",
@@ -1395,18 +1395,18 @@
                                 },
                                 {
                                   "type": "text",
+                                  "tag": "small",
                                   "text": "{row.value}",
                                   "when": "row.value",
-                                  "style": "meta muted",
                                   "props": {
                                     "lines": 1
                                   }
                                 },
                                 {
                                   "type": "text",
+                                  "tag": "small",
                                   "text": "{row.badge}",
-                                  "when": "row.badge",
-                                  "style": "meta muted"
+                                  "when": "row.badge"
                                 },
                                 {
                                   "type": "icon",
@@ -1438,7 +1438,7 @@
                                   "props": {
                                     "lines": 1
                                   },
-                                  "grow": 1
+                                  "class": "grow"
                                 },
                                 {
                                   "type": "row",
@@ -1500,7 +1500,7 @@
                                 {
                                   "type": "text",
                                   "text": "{row.label}",
-                                  "grow": 1
+                                  "class": "grow"
                                 },
                                 {
                                   "each": "row.trail",
@@ -1531,7 +1531,7 @@
                                 {
                                   "type": "text",
                                   "text": "{row.label}",
-                                  "grow": 1
+                                  "class": "grow"
                                 },
                                 {
                                   "each": "row.trail",
@@ -1594,7 +1594,7 @@
               "children": [
                 {
                   "type": "row",
-                  "class": "centered icon-btn",
+                  "class": "icon-btn",
                   "when": "player.panel.sync.back",
                   "action": {
                     "name": "player_row",
@@ -1613,13 +1613,13 @@
                 },
                 {
                   "type": "text",
+                  "tag": "h4",
                   "text": "{player.panel.title}",
-                  "style": "subtitle",
-                  "grow": 1
+                  "class": "grow"
                 },
                 {
                   "type": "row",
-                  "class": "btn-secondary",
+                  "tag": "button",
                   "when": "player.panel.sync.reset",
                   "action": {
                     "name": "player_row",
@@ -1630,14 +1630,14 @@
                   "children": [
                     {
                       "type": "text",
-                      "class": "btn-label",
+                      "tag": "span",
                       "text": "{player.panel.sync.reset.label}"
                     }
                   ]
                 },
                 {
                   "type": "row",
-                  "class": "centered icon-btn",
+                  "class": "icon-btn",
                   "action": {
                     "name": "player",
                     "args": {
@@ -1662,7 +1662,7 @@
               "children": [
                 {
                   "type": "row",
-                  "class": "centered icon-btn",
+                  "class": "icon-btn",
                   "action": {
                     "name": "player_row",
                     "args": {
@@ -1683,13 +1683,13 @@
                   "children": [
                     {
                       "type": "text",
-                      "text": "{player.panel.sync.reading.number}",
-                      "style": "title"
+                      "tag": "h1",
+                      "text": "{player.panel.sync.reading.number}"
                     },
                     {
                       "type": "text",
-                      "text": "{player.panel.sync.reading.suffix}",
-                      "style": "subtitle"
+                      "tag": "h4",
+                      "text": "{player.panel.sync.reading.suffix}"
                     }
                   ],
                   "gap": 4,
@@ -1697,7 +1697,7 @@
                 },
                 {
                   "type": "row",
-                  "class": "centered icon-btn",
+                  "class": "icon-btn",
                   "action": {
                     "name": "player_row",
                     "args": {
@@ -1719,9 +1719,9 @@
             },
             {
               "type": "text",
+              "tag": "small",
               "text": "{player.panel.sync.reading.status}",
-              "when": "player.panel.sync.reading.status",
-              "style": "meta muted"
+              "when": "player.panel.sync.reading.status"
             },
             {
               "type": "row",
@@ -1743,9 +1743,9 @@
                     },
                     {
                       "type": "text",
+                      "tag": "small",
                       "text": "{player.panel.sync.auto.detail}",
                       "when": "player.panel.sync.auto.detail",
-                      "style": "meta muted",
                       "props": {
                         "lines": 2
                       }
@@ -1788,9 +1788,9 @@
                           },
                           {
                             "type": "text",
+                            "tag": "small",
                             "text": "{item.detail}",
                             "when": "item.detail",
-                            "style": "meta muted",
                             "props": {
                               "lines": 2
                             }
@@ -1839,9 +1839,9 @@
                           },
                           {
                             "type": "text",
+                            "tag": "small",
                             "text": "{item.detail}",
                             "when": "item.detail",
-                            "style": "meta muted",
                             "props": {
                               "lines": 2
                             }
@@ -1887,13 +1887,13 @@
               "children": [
                 {
                   "type": "text",
+                  "tag": "h4",
                   "text": "{player.panel.title}",
-                  "style": "subtitle",
-                  "grow": 1
+                  "class": "grow"
                 },
                 {
                   "type": "row",
-                  "class": "centered icon-btn",
+                  "class": "icon-btn",
                   "action": {
                     "name": "player",
                     "args": {
@@ -1984,9 +1984,8 @@
       "children": [
         {
           "type": "row",
+          "tag": "button",
           "when": "player.skip",
-          "class": "btn-secondary",
-          "padding": "0 24",
           "action": {
             "name": "player",
             "args": {
@@ -1996,7 +1995,7 @@
           "children": [
             {
               "type": "text",
-              "class": "btn-label",
+              "tag": "span",
               "text": "{player.skip.label}"
             }
           ]
@@ -2018,22 +2017,21 @@
             },
             {
               "type": "text",
-              "text": "{player.next.label}",
-              "style": "meta muted"
+              "tag": "small",
+              "text": "{player.next.label}"
             },
             {
               "type": "text",
-              "text": "{player.next.title}",
-              "style": "subtitle"
+              "tag": "h4",
+              "text": "{player.next.title}"
             },
             {
               "type": "row",
               "children": [
                 {
                   "type": "row",
-                  "class": "btn-primary",
-                  "padding": "0 18",
-                  "grow": 1,
+                  "tag": "button",
+                  "class": "primary",
                   "action": {
                     "name": "player",
                     "args": {
@@ -2043,15 +2041,14 @@
                   "children": [
                     {
                       "type": "text",
-                      "class": "btn-label",
+                      "tag": "span",
                       "text": "{player.next.play}"
                     }
                   ]
                 },
                 {
                   "type": "row",
-                  "class": "btn-secondary",
-                  "padding": "0 18",
+                  "tag": "button",
                   "action": {
                     "name": "player",
                     "args": {
@@ -2061,7 +2058,7 @@
                   "children": [
                     {
                       "type": "text",
-                      "class": "btn-label",
+                      "tag": "span",
                       "text": "{player.next.cancel}"
                     }
                   ]
@@ -2123,8 +2120,8 @@
           "children": [
             {
               "type": "text",
-              "text": "{player.pauseLabel}",
-              "style": "meta muted"
+              "tag": "small",
+              "text": "{player.pauseLabel}"
             },
             {
               "include": "title_logo",
@@ -2135,14 +2132,14 @@
             },
             {
               "type": "text",
+              "tag": "h4",
               "text": "{player.episodeTitle}",
-              "style": "subtitle",
               "when": "player.episodeTitle"
             },
             {
               "type": "text",
+              "tag": "small",
               "text": "{player.chapter}",
-              "style": "meta muted",
               "when": "player.chapter"
             },
             {
@@ -2207,8 +2204,8 @@
                             "children": [
                               {
                                 "type": "text",
-                                "text": "{row.label}",
-                                "style": "meta muted"
+                                "tag": "small",
+                                "text": "{row.label}"
                               },
                               {
                                 "type": "spacer"

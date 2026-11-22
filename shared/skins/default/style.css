@@ -658,7 +658,7 @@ hero-synopsis-size { font-size: 16; }
 
 .switch:selected .knob { background: #0b0b0d; }
 
-.profile-form { max-width: 528px; }
+.profile-form { max-width: 528px; gap: .75rem; padding: 0 1.5rem; width: 100vw; }
 
 .chat-text:selected, .welcome-busy { color: var(--color-accent); }
 
@@ -1169,5 +1169,29 @@ button:focus { background: color-mix(in srgb, var(--color-text-primary) 18.039%,
 .pairing { gap: 3rem; padding: 2.5rem 3rem; }
 .code { width: 17.5rem; gap: .75rem; align-items: center; }
 .steps { width: 27.5rem; gap: 1rem; }
+
+/* ==== Profiles ========================================================== */
+.pick { gap: 1.75rem; }
+.pick-compact { padding: 4.5rem 0 0; align-items: center; }
+.pick header { gap: .75rem; align-items: center; justify-content: center; }
+.pick section, .pick li { align-items: center; }
+.pick footer { justify-content: center; }
+.pick button { padding: 0 1.75rem; }
+.profile-page { gap: .875rem; padding: 3rem 0 0; align-items: center; }
+.profile-form header { gap: .75rem; }
+.profile-form header h1 { flex-grow: 1; }
+.identity { gap: .875rem; padding: .5rem 0; }
+.identity h4 { flex-grow: 1; }
+.sharing { gap: .25rem; }
+.sharing li { gap: .75rem; padding: .375rem 0; }
+.sharing label { flex-grow: 1; }
+.profile-form footer { gap: .5rem; padding: .75rem 0 0; }
+.profile-form button { padding: 0 1.5rem; }
+.profile-form li { gap: .5rem; }
+.profile-form section.pack, .pack { gap: .5rem; }
+.pack header { gap: .5rem; align-items: center; }
+.choices { width: 88vw; }
+.identity-tile { gap: .5rem; align-items: center; }
+.spaced { padding: .75rem 0 0; }
 
 /* ==== end of settings section ============================================ */

@@ -326,8 +326,8 @@
           },
           {
             "type": "text",
+            "tag": "small",
             "class": "hero-meta",
-            "style": "meta muted",
             "text": "{slide.eyebrow}"
           },
           {
@@ -352,8 +352,8 @@
                     },
                     {
                       "type": "text",
+                      "tag": "small",
                       "when": "!rating.logo",
-                      "style": "meta muted",
                       "text": "{rating.label}"
                     },
                     {
@@ -612,8 +612,8 @@
               "children": [
                 {
                   "type": "text",
-                  "text": "{chip.label}",
-                  "style": "subtitle"
+                  "tag": "h4",
+                  "text": "{chip.label}"
                 }
               ]
             },
@@ -702,13 +702,13 @@
           },
           {
             "type": "text",
-            "text": "{row.status} · {row.bytes}",
-            "style": "meta muted"
+            "tag": "small",
+            "text": "{row.status} · {row.bytes}"
           },
           {
             "type": "text",
-            "text": "{row.timing}",
-            "style": "meta muted"
+            "tag": "small",
+            "text": "{row.timing}"
           },
           {
             "include": "progress",
@@ -780,8 +780,8 @@
           },
           {
             "type": "text",
-            "text": "{group.line}",
-            "style": "meta muted"
+            "tag": "small",
+            "text": "{group.line}"
           },
           {
             "include": "progress",
@@ -1522,8 +1522,8 @@
       },
       {
         "type": "text",
-        "text": "{item.name}",
-        "style": "subtitle"
+        "tag": "h4",
+        "text": "{item.name}"
       },
       {
         "type": "icon",
@@ -1535,9 +1535,9 @@
       },
       {
         "type": "text",
+        "tag": "small",
         "when": "item.primary",
-        "text": "{profiles.primaryBadge}",
-        "style": "meta muted"
+        "text": "{profiles.primaryBadge}"
       }
     ]
   },
@@ -1547,6 +1547,8 @@
     "children": [
       {
         "type": "column",
+        "tag": "section",
+        "class": "identity-tile",
         "action": {
           "name": "profiles",
           "args": {
@@ -1567,16 +1569,14 @@
           },
           {
             "type": "text",
-            "text": "{item.name}",
-            "style": "subtitle"
+            "tag": "h4",
+            "text": "{item.name}"
           }
-        ],
-        "gap": 8,
-        "align": "center"
+        ]
       },
       {
         "type": "row",
-        "class": "centered icon-btn",
+        "class": "icon-btn",
         "children": [
           {
             "type": "icon",
@@ -1615,8 +1615,8 @@
       },
       {
         "type": "text",
-        "text": "{profiles.addLabel}",
-        "style": "subtitle"
+        "tag": "h4",
+        "text": "{profiles.addLabel}"
       }
     ]
   },
@@ -1863,12 +1863,12 @@
                 "as": "opt",
                 "template": {
                   "type": "text",
-                  "grow": 1,
                   "when": "opt.value == value",
                   "text": "{opt.label}",
                   "props": {
                     "lines": 1
-                  }
+                  },
+                  "class": "grow"
                 }
               },
               {
@@ -1907,8 +1907,8 @@
                   "children": [
                     {
                       "type": "text",
-                      "grow": 1,
-                      "text": "{opt.label}"
+                      "text": "{opt.label}",
+                      "class": "grow"
                     },
                     {
                       "type": "icon",
@@ -1945,12 +1945,12 @@
                 "as": "opt",
                 "template": {
                   "type": "text",
-                  "grow": 1,
                   "when": "opt.value == value",
                   "text": "{opt.label}",
                   "props": {
                     "lines": 1
-                  }
+                  },
+                  "class": "grow"
                 }
               },
               {
@@ -3478,7 +3478,7 @@
               },
               {
                 "type": "row",
-                "class": "centered icon-btn",
+                "class": "icon-btn",
                 "action": {
                   "name": "node",
                   "args": {
@@ -3715,7 +3715,7 @@
                 "as": "btn",
                 "template": {
                   "type": "row",
-                  "class": "centered icon-btn",
+                  "class": "icon-btn",
                   "action": {
                     "name": "node",
                     "args": {
@@ -3780,7 +3780,7 @@
           },
           {
             "type": "row",
-            "class": "centered icon-btn",
+            "class": "icon-btn",
             "action": {
               "name": "node",
               "args": {
@@ -3835,7 +3835,7 @@
                 "as": "btn",
                 "template": {
                   "type": "row",
-                  "class": "centered icon-btn",
+                  "class": "icon-btn",
                   "action": {
                     "name": "node",
                     "args": {

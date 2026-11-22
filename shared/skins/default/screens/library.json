@@ -134,13 +134,13 @@
           "children": [
             {
               "type": "text",
-              "text": "{library.downloads.speed}",
-              "style": "meta muted"
+              "tag": "small",
+              "text": "{library.downloads.speed}"
             },
             {
               "type": "text",
+              "tag": "small",
               "text": "{library.downloads.location}",
-              "style": "meta muted",
               "when": "!library.downloads.open"
             },
             {

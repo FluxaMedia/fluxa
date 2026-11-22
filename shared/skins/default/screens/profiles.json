@@ -3,11 +3,11 @@
   "children": [
     {
       "type": "column",
-      "class": "screen wide-only fullscreen centered",
-      "gap": 28,
+      "class": "screen wide-only fullscreen pick centered",
       "children": [
         {
           "type": "row",
+          "tag": "header",
           "children": [
             {
               "type": "text",
@@ -16,7 +16,7 @@
             },
             {
               "type": "row",
-              "class": "centered icon-btn",
+              "class": "icon-btn",
               "children": [
                 {
                   "type": "icon",
@@ -32,12 +32,11 @@
                 }
               }
             }
-          ],
-          "class": "centered",
-          "gap": 12
+          ]
         },
         {
           "type": "column",
+          "tag": "section",
           "children": [
             {
               "type": "grid",
@@ -50,6 +49,7 @@
                   "as": "item",
                   "template": {
                     "type": "column",
+                    "tag": "li",
                     "children": [
                       {
                         "include": "profile_tile",
@@ -59,8 +59,7 @@
                         "include": "profile_tile_manage",
                         "when": "profiles.manage"
                       }
-                    ],
-                    "align": "center"
+                    ]
                   }
                 },
                 {
@@ -70,22 +69,20 @@
               ],
               "width": "{profiles.gridWidth}"
             }
-          ],
-          "align": "center"
+          ]
         },
         {
           "type": "row",
+          "tag": "footer",
           "when": "!profiles.empty",
           "children": [
             {
               "type": "row",
-              "class": "btn-secondary",
-              "padding": "0 28",
-              "justify": "center",
+              "tag": "button",
               "children": [
                 {
                   "type": "text",
-                  "class": "btn-label",
+                  "tag": "span",
                   "text": "{profiles.manageLabel}"
                 }
               ],
@@ -96,21 +93,18 @@
                 }
               }
             }
-          ],
-          "justify": "center"
+          ]
         }
       ],
       "when": "profiles.isSelect"
     },
     {
       "type": "column",
-      "class": "screen compact-only fullscreen",
-      "gap": 28,
-      "padding": "72 0 0 0",
-      "align": "center",
+      "class": "screen compact-only fullscreen pick pick-compact",
       "children": [
         {
           "type": "row",
+          "tag": "header",
           "children": [
             {
               "type": "text",
@@ -119,7 +113,7 @@
             },
             {
               "type": "row",
-              "class": "centered icon-btn",
+              "class": "icon-btn",
               "children": [
                 {
                   "type": "icon",
@@ -135,12 +129,11 @@
                 }
               }
             }
-          ],
-          "class": "centered",
-          "gap": 12
+          ]
         },
         {
           "type": "column",
+          "tag": "section",
           "children": [
             {
               "type": "grid",
@@ -153,6 +146,7 @@
                   "as": "item",
                   "template": {
                     "type": "column",
+                    "tag": "li",
                     "children": [
                       {
                         "include": "profile_tile",
@@ -162,8 +156,7 @@
                         "include": "profile_tile_manage",
                         "when": "profiles.manage"
                       }
-                    ],
-                    "align": "center"
+                    ]
                   }
                 },
                 {
@@ -173,22 +166,20 @@
               ],
               "width": "{profiles.gridWidth}"
             }
-          ],
-          "align": "center"
+          ]
         },
         {
           "type": "row",
+          "tag": "footer",
           "when": "!profiles.empty",
           "children": [
             {
               "type": "row",
-              "class": "btn-secondary",
-              "padding": "0 28",
-              "justify": "center",
+              "tag": "button",
               "children": [
                 {
                   "type": "text",
-                  "class": "btn-label",
+                  "tag": "span",
                   "text": "{profiles.manageLabel}"
                 }
               ],
@@ -199,8 +190,7 @@
                 }
               }
             }
-          ],
-          "justify": "center"
+          ]
         }
       ],
       "when": "profiles.isSelect"
@@ -208,24 +198,19 @@
     {
       "type": "column",
       "when": "profiles.isForm",
-      "class": "screen fullscreen",
-      "gap": 14,
-      "padding": "48 0 0 0",
-      "align": "center",
+      "class": "screen fullscreen profile-page",
       "children": [
         {
           "type": "column",
           "class": "profile-form",
-          "gap": 12,
-          "padding": "0 24",
-          "width": "100vw",
           "children": [
             {
               "type": "row",
+              "tag": "header",
               "children": [
                 {
                   "type": "row",
-                  "class": "centered icon-btn",
+                  "class": "icon-btn",
                   "action": {
                     "name": "profiles",
                     "args": {
@@ -243,15 +228,15 @@
                 },
                 {
                   "type": "text",
-                  "text": "{profiles.form.title}",
-                  "style": "title",
-                  "grow": 1
+                  "tag": "h1",
+                  "text": "{profiles.form.title}"
                 }
-              ],
-              "gap": 12
+              ]
             },
             {
               "type": "row",
+              "tag": "section",
+              "class": "identity",
               "children": [
                 {
                   "type": "row",
@@ -276,28 +261,24 @@
                 },
                 {
                   "type": "text",
-                  "text": "{profiles.form.name}",
-                  "style": "subtitle",
+                  "tag": "h4",
                   "class": "wide-only",
-                  "grow": 1
+                  "text": "{profiles.form.name}"
                 },
                 {
                   "type": "column",
                   "children": [],
-                  "class": "compact-only",
-                  "grow": 1
+                  "class": "compact-only grow"
                 },
                 {
                   "type": "text",
+                  "tag": "small",
                   "when": "profiles.form.primary",
-                  "i18n": "profiles.primary_badge",
-                  "style": "meta muted"
+                  "i18n": "profiles.primary_badge"
                 },
                 {
                   "type": "row",
-                  "class": "btn-secondary",
-                  "padding": "0 24",
-                  "justify": "center",
+                  "tag": "button",
                   "action": {
                     "name": "profiles",
                     "args": {
@@ -307,19 +288,17 @@
                   "children": [
                     {
                       "type": "text",
-                      "class": "btn-label",
+                      "tag": "span",
                       "i18n": "profiles.choose_icon"
                     }
                   ]
                 }
-              ],
-              "gap": 14,
-              "padding": "8 0"
+              ]
             },
             {
               "type": "text",
-              "i18n": "profiles.name",
-              "style": "meta muted"
+              "tag": "small",
+              "i18n": "profiles.name"
             },
             {
               "type": "input",
@@ -339,8 +318,8 @@
             },
             {
               "type": "text",
-              "i18n": "profiles.image_url",
-              "style": "meta muted"
+              "tag": "small",
+              "i18n": "profiles.image_url"
             },
             {
               "type": "input",
@@ -354,8 +333,8 @@
             },
             {
               "type": "text",
-              "i18n": "profiles.pin_lock",
-              "style": "meta muted"
+              "tag": "small",
+              "i18n": "profiles.pin_lock"
             },
             {
               "type": "input",
@@ -375,9 +354,9 @@
             },
             {
               "type": "text",
+              "tag": "small",
               "when": "profiles.form.pinRemoved",
-              "i18n": "profiles.pin_will_be_removed",
-              "style": "meta muted"
+              "i18n": "profiles.pin_will_be_removed"
             },
             {
               "type": "row",
@@ -398,25 +377,27 @@
             },
             {
               "type": "column",
+              "tag": "section",
+              "class": "sharing",
               "when": "profiles.form.shared",
               "children": [
                 {
                   "type": "text",
-                  "i18n": "profiles.sharing",
-                  "style": "meta muted"
+                  "tag": "small",
+                  "i18n": "profiles.sharing"
                 },
                 {
                   "type": "row",
+                  "tag": "li",
                   "children": [
                     {
                       "type": "text",
-                      "i18n": "profiles.use_primary_addons",
-                      "grow": 1
+                      "tag": "label",
+                      "i18n": "profiles.use_primary_addons"
                     },
                     {
                       "type": "row",
                       "class": "switch",
-                      "padding": 3,
                       "props": {
                         "selected": "profiles.form.addons"
                       },
@@ -430,37 +411,33 @@
                         {
                           "type": "spacer",
                           "when": "profiles.form.addons",
-                          "grow": 1
+                          "class": "grow"
                         },
                         {
                           "type": "column",
-                          "class": "knob",
-                          "width": 22,
-                          "height": 22
+                          "class": "knob"
                         },
                         {
                           "type": "spacer",
                           "when": "!profiles.form.addons",
-                          "grow": 1
+                          "class": "grow"
                         }
                       ]
                     }
-                  ],
-                  "gap": 12,
-                  "padding": "6 0"
+                  ]
                 },
                 {
                   "type": "row",
+                  "tag": "li",
                   "children": [
                     {
                       "type": "text",
-                      "i18n": "profiles.use_primary_plugins",
-                      "grow": 1
+                      "tag": "label",
+                      "i18n": "profiles.use_primary_plugins"
                     },
                     {
                       "type": "row",
                       "class": "switch",
-                      "padding": 3,
                       "props": {
                         "selected": "profiles.form.plugins"
                       },
@@ -474,37 +451,31 @@
                         {
                           "type": "spacer",
                           "when": "profiles.form.plugins",
-                          "grow": 1
+                          "class": "grow"
                         },
                         {
                           "type": "column",
-                          "class": "knob",
-                          "width": 22,
-                          "height": 22
+                          "class": "knob"
                         },
                         {
                           "type": "spacer",
                           "when": "!profiles.form.plugins",
-                          "grow": 1
+                          "class": "grow"
                         }
                       ]
                     }
-                  ],
-                  "gap": 12,
-                  "padding": "6 0"
+                  ]
                 }
-              ],
-              "gap": 4
+              ]
             },
             {
               "type": "row",
+              "tag": "footer",
+              "class": "split",
               "children": [
                 {
                   "type": "row",
-                  "class": "btn-secondary",
-                  "padding": "0 24",
-                  "justify": "center",
-                  "grow": 1,
+                  "tag": "button",
                   "action": {
                     "name": "profiles",
                     "args": {
@@ -514,16 +485,15 @@
                   "children": [
                     {
                       "type": "text",
-                      "class": "btn-label",
+                      "tag": "span",
                       "i18n": "common.cancel"
                     }
                   ]
                 },
                 {
                   "type": "row",
-                  "class": "btn-primary",
-                  "justify": "center",
-                  "grow": 1,
+                  "tag": "button",
+                  "class": "primary",
                   "action": {
                     "name": "profiles",
                     "args": {
@@ -534,29 +504,25 @@
                   "children": [
                     {
                       "type": "text",
-                      "class": "btn-label",
+                      "tag": "span",
                       "text": "{profiles.form.saveLabel}"
                     }
                   ]
                 },
                 {
                   "type": "row",
-                  "class": "btn-secondary",
-                  "justify": "center",
-                  "grow": 1,
+                  "tag": "button",
                   "when": "!profiles.form.canSave",
                   "children": [
                     {
                       "type": "text",
-                      "class": "btn-label",
+                      "tag": "span",
                       "text": "{profiles.form.saveLabel}",
                       "style": "muted"
                     }
                   ]
                 }
-              ],
-              "gap": 8,
-              "padding": "12 0 0 0"
+              ]
             }
           ]
         }
@@ -565,24 +531,19 @@
     {
       "type": "column",
       "when": "profiles.isAvatars",
-      "class": "screen fullscreen",
-      "gap": 14,
-      "padding": "48 0 0 0",
-      "align": "center",
+      "class": "screen fullscreen profile-page",
       "children": [
         {
           "type": "column",
           "class": "profile-form",
-          "gap": 12,
-          "padding": "0 24",
-          "width": "100vw",
           "children": [
             {
               "type": "row",
+              "tag": "header",
               "children": [
                 {
                   "type": "row",
-                  "class": "centered icon-btn",
+                  "class": "icon-btn",
                   "action": {
                     "name": "profiles",
                     "args": {
@@ -600,46 +561,45 @@
                 },
                 {
                   "type": "text",
-                  "i18n": "profiles.choose_icon",
-                  "style": "title",
-                  "grow": 1
+                  "tag": "h1",
+                  "i18n": "profiles.choose_icon"
                 }
-              ],
-              "gap": 12
+              ]
             },
             {
               "type": "text",
-              "i18n": "profiles.choose_icon_desc",
-              "style": "meta muted"
+              "tag": "small",
+              "i18n": "profiles.choose_icon_desc"
             },
             {
               "type": "text",
+              "tag": "small",
               "when": "profiles.avatars.empty",
-              "i18n": "profiles.no_avatar_packs",
-              "style": "meta muted"
+              "i18n": "profiles.no_avatar_packs"
             },
             {
               "each": "profiles.avatars.packs",
               "as": "pack",
               "template": {
                 "type": "column",
+                "tag": "section",
+                "class": "pack",
                 "children": [
                   {
                     "type": "row",
+                    "tag": "header",
                     "children": [
                       {
                         "type": "text",
-                        "text": "{pack.title}",
-                        "style": "subtitle"
+                        "tag": "h4",
+                        "text": "{pack.title}"
                       },
                       {
                         "type": "text",
-                        "text": "{pack.count}",
-                        "style": "meta muted"
+                        "tag": "small",
+                        "text": "{pack.count}"
                       }
-                    ],
-                    "gap": 8,
-                    "align": "center"
+                    ]
                   },
                   {
                     "type": "grid",
@@ -718,11 +678,9 @@
                         }
                       }
                     ],
-                    "class": "compact-only",
-                    "width": "88vw"
+                    "class": "compact-only choices"
                   }
-                ],
-                "gap": 8
+                ]
               }
             }
           ]
@@ -732,24 +690,19 @@
     {
       "type": "column",
       "when": "profiles.isSettings",
-      "class": "screen fullscreen",
-      "gap": 14,
-      "padding": "48 0 0 0",
-      "align": "center",
+      "class": "screen fullscreen profile-page",
       "children": [
         {
           "type": "column",
           "class": "profile-form",
-          "gap": 12,
-          "padding": "0 24",
-          "width": "100vw",
           "children": [
             {
               "type": "row",
+              "tag": "header",
               "children": [
                 {
                   "type": "row",
-                  "class": "centered icon-btn",
+                  "class": "icon-btn",
                   "action": {
                     "name": "profiles",
                     "args": {
@@ -767,22 +720,20 @@
                 },
                 {
                   "type": "text",
-                  "i18n": "profiles.picker_settings",
-                  "style": "title",
-                  "grow": 1
+                  "tag": "h1",
+                  "i18n": "profiles.picker_settings"
                 }
-              ],
-              "gap": 12
+              ]
             },
             {
               "type": "text",
-              "i18n": "profiles.picker_background",
-              "style": "subtitle"
+              "tag": "h4",
+              "i18n": "profiles.picker_background"
             },
             {
               "type": "text",
-              "i18n": "profiles.picker_background_desc",
-              "style": "meta muted"
+              "tag": "small",
+              "i18n": "profiles.picker_background_desc"
             },
             {
               "type": "input",
@@ -796,13 +747,12 @@
             },
             {
               "type": "row",
+              "tag": "footer",
+              "class": "split",
               "children": [
                 {
                   "type": "row",
-                  "class": "btn-secondary",
-                  "padding": "0 24",
-                  "justify": "center",
-                  "grow": 1,
+                  "tag": "button",
                   "action": {
                     "name": "profiles",
                     "args": {
@@ -812,17 +762,14 @@
                   "children": [
                     {
                       "type": "text",
-                      "class": "btn-label",
+                      "tag": "span",
                       "i18n": "profiles.choose_image"
                     }
                   ]
                 },
                 {
                   "type": "row",
-                  "class": "btn-secondary",
-                  "padding": "0 24",
-                  "justify": "center",
-                  "grow": 1,
+                  "tag": "button",
                   "action": {
                     "name": "profiles",
                     "args": {
@@ -832,25 +779,24 @@
                   "children": [
                     {
                       "type": "text",
-                      "class": "btn-label",
+                      "tag": "span",
                       "i18n": "profiles.clear_background"
                     }
                   ],
                   "when": "profiles.settings.hasBackground"
                 }
-              ],
-              "gap": 8
+              ]
             },
             {
               "type": "text",
+              "tag": "h4",
               "i18n": "profiles.avatar_packs",
-              "style": "subtitle",
-              "padding": "12 0 0 0"
+              "class": "spaced"
             },
             {
               "type": "text",
-              "i18n": "profiles.avatar_packs_desc",
-              "style": "meta muted"
+              "tag": "small",
+              "i18n": "profiles.avatar_packs_desc"
             },
             {
               "type": "input",
@@ -864,9 +810,8 @@
             },
             {
               "type": "row",
-              "class": "btn-primary",
-              "padding": "0 24",
-              "justify": "center",
+              "tag": "button",
+              "class": "primary",
               "action": {
                 "name": "profiles",
                 "args": {
@@ -876,7 +821,7 @@
               "children": [
                 {
                   "type": "text",
-                  "class": "btn-label",
+                  "tag": "span",
                   "i18n": "profiles.add_pack"
                 }
               ],
@@ -884,13 +829,12 @@
             },
             {
               "type": "row",
-              "class": "btn-secondary",
-              "justify": "center",
+              "tag": "button",
               "when": "!profiles.settings.canAdd",
               "children": [
                 {
                   "type": "text",
-                  "class": "btn-label",
+                  "tag": "span",
                   "i18n": "profiles.add_pack",
                   "style": "muted"
                 }
@@ -898,37 +842,36 @@
             },
             {
               "type": "text",
+              "tag": "small",
               "when": "profiles.settings.empty",
-              "i18n": "profiles.no_avatar_packs",
-              "style": "meta muted"
+              "i18n": "profiles.no_avatar_packs"
             },
             {
               "each": "profiles.settings.packs",
               "as": "pack",
               "template": {
                 "type": "row",
+                "tag": "li",
                 "children": [
                   {
                     "type": "column",
+                    "tag": "div",
                     "children": [
                       {
                         "type": "text",
-                        "text": "{pack.title}",
-                        "style": "subtitle"
+                        "tag": "h4",
+                        "text": "{pack.title}"
                       },
                       {
                         "type": "text",
-                        "text": "{pack.count}",
-                        "style": "meta muted"
+                        "tag": "small",
+                        "text": "{pack.count}"
                       }
-                    ],
-                    "grow": 1
+                    ]
                   },
                   {
                     "type": "row",
-                    "class": "btn-secondary",
-                    "padding": "0 24",
-                    "justify": "center",
+                    "tag": "button",
                     "action": {
                       "name": "profiles",
                       "args": {
@@ -939,16 +882,14 @@
                     "children": [
                       {
                         "type": "text",
-                        "class": "btn-label",
+                        "tag": "span",
                         "i18n": "profiles.refresh_pack"
                       }
                     ]
                   },
                   {
                     "type": "row",
-                    "class": "btn-secondary",
-                    "padding": "0 24",
-                    "justify": "center",
+                    "tag": "button",
                     "action": {
                       "name": "profiles",
                       "args": {
@@ -959,14 +900,12 @@
                     "children": [
                       {
                         "type": "text",
-                        "class": "btn-label",
+                        "tag": "span",
                         "i18n": "profiles.remove_pack"
                       }
                     ]
                   }
-                ],
-                "gap": 8,
-                "align": "center"
+                ]
               }
             }
           ]
@@ -992,13 +931,12 @@
           "children": [
             {
               "type": "column",
-              "class": "popover menu-panel",
-              "gap": 12,
-              "padding": 20,
+              "class": "popover menu-panel panel-box",
               "width": "{const.dialogWidth}",
               "children": [
                 {
                   "type": "row",
+                  "tag": "header",
                   "children": [
                     {
                       "include": "avatar",
@@ -1012,16 +950,15 @@
                     },
                     {
                       "type": "text",
-                      "text": "{profiles.pin.name}",
-                      "style": "subtitle"
+                      "tag": "h4",
+                      "text": "{profiles.pin.name}"
                     }
-                  ],
-                  "gap": 12
+                  ]
                 },
                 {
                   "type": "text",
-                  "i18n": "profiles.pin_prompt",
-                  "style": "meta muted"
+                  "tag": "small",
+                  "i18n": "profiles.pin_prompt"
                 },
                 {
                   "type": "input",
@@ -1041,13 +978,12 @@
                 },
                 {
                   "type": "row",
+                  "tag": "footer",
+                  "class": "split",
                   "children": [
                     {
                       "type": "row",
-                      "class": "btn-secondary",
-                      "padding": "0 24",
-                      "justify": "center",
-                      "grow": 1,
+                      "tag": "button",
                       "action": {
                         "name": "profiles",
                         "args": {
@@ -1057,17 +993,15 @@
                       "children": [
                         {
                           "type": "text",
-                          "class": "btn-label",
+                          "tag": "span",
                           "i18n": "common.cancel"
                         }
                       ]
                     },
                     {
                       "type": "row",
-                      "class": "btn-primary",
-                      "padding": "0 24",
-                      "justify": "center",
-                      "grow": 1,
+                      "tag": "button",
+                      "class": "primary",
                       "action": {
                         "name": "profiles",
                         "args": {
@@ -1077,13 +1011,12 @@
                       "children": [
                         {
                           "type": "text",
-                          "class": "btn-label",
+                          "tag": "span",
                           "i18n": "profiles.unlock"
                         }
                       ]
                     }
-                  ],
-                  "gap": 8
+                  ]
                 }
               ]
             }
@@ -1112,30 +1045,27 @@
           "children": [
             {
               "type": "column",
-              "class": "popover menu-panel",
-              "gap": 12,
-              "padding": 20,
+              "class": "popover menu-panel panel-box",
               "width": "{const.dialogWidth}",
               "children": [
                 {
                   "type": "text",
-                  "i18n": "profiles.delete_confirm_title",
-                  "style": "subtitle"
+                  "tag": "h4",
+                  "i18n": "profiles.delete_confirm_title"
                 },
                 {
                   "type": "text",
-                  "text": "{profiles.confirm.body}",
-                  "style": "meta muted"
+                  "tag": "small",
+                  "text": "{profiles.confirm.body}"
                 },
                 {
                   "type": "row",
+                  "tag": "footer",
+                  "class": "split",
                   "children": [
                     {
                       "type": "row",
-                      "class": "btn-secondary",
-                      "padding": "0 24",
-                      "justify": "center",
-                      "grow": 1,
+                      "tag": "button",
                       "action": {
                         "name": "profiles",
                         "args": {
@@ -1145,17 +1075,15 @@
                       "children": [
                         {
                           "type": "text",
-                          "class": "btn-label",
+                          "tag": "span",
                           "i18n": "common.cancel"
                         }
                       ]
                     },
                     {
                       "type": "row",
-                      "class": "btn-primary",
-                      "padding": "0 24",
-                      "justify": "center",
-                      "grow": 1,
+                      "tag": "button",
+                      "class": "primary",
                       "action": {
                         "name": "profiles",
                         "args": {
@@ -1165,13 +1093,12 @@
                       "children": [
                         {
                           "type": "text",
-                          "class": "btn-label",
+                          "tag": "span",
                           "i18n": "profiles.delete"
                         }
                       ]
                     }
-                  ],
-                  "gap": 8
+                  ]
                 }
               ]
             }
