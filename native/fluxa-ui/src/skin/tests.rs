@@ -351,3 +351,21 @@ fn strip_takes_its_gap_from_the_class() {
     assert_eq!(lefts[1] - lefts[0], 124.0);
     assert_eq!(lefts[2] - lefts[1], 124.0);
 }
+
+#[test]
+fn row_children_center_across_unless_the_class_says_otherwise() {
+    let tree: Vec<Resolved> = serde_json::from_value::<fluxa_skin::Node>(json!({
+        "type": "row", "padding": 0,
+        "children": [
+            {"type": "fixed", "width": 20, "height": 60},
+            {"type": "row", "children": [], "width": 20, "height": 20, "action": {"name": "back"}}
+        ]
+    }))
+    .map(|node| {
+        fluxa_skin::resolve(&node, &Default::default(), &json!({}), &mut Default::default()).unwrap()
+    })
+    .unwrap();
+    let (_, targets) = render(&tree);
+    assert_eq!(targets.len(), 1);
+    assert_eq!(targets[0].1.min.y, 20.0);
+}

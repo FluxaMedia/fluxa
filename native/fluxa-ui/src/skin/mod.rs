@@ -815,7 +815,8 @@ fn frame<'a>(
             Align::End => Alignment::End,
             Align::Stretch => Alignment::Stretch,
         })
-        .or(style.and_then(|style| style.align));
+        .or(style.and_then(|style| style.align))
+        .or((node.kind == "row").then_some(Alignment::Center));
     if let Some(align) = align {
         item = item.align(match align {
             Alignment::Start => FlexAlign::Start,
