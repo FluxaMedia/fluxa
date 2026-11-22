@@ -747,6 +747,7 @@ hero-synopsis-size { font-size: 16; }
 }
 
 .welcome-error {
+  padding: .75rem 1rem;
   background: rgba(255, 70, 90, 0.14);
   border: 1px solid rgba(255, 70, 90, 0.35);
   border-radius: var(--radius-md);
@@ -1156,5 +1157,17 @@ button:focus { background: color-mix(in srgb, var(--color-text-primary) 18.039%,
 .dots .chip, .dots .chip-active { width: 10px; height: 10px; padding: 0; }
 .reco .actions button { height: 2.75rem; padding: 0 1.5rem; }
 .reco header { align-items: flex-start; justify-content: flex-end; width: 100vw; height: 4rem; padding: 1.5rem 1.5rem 0; }
+
+/* ==== Welcome =========================================================== */
+.login { width: 27.5rem; padding: 2.25rem 2.25rem 2rem; gap: 1.25rem; }
+.phone { width: 100vw; padding: 4rem 1.5rem 2rem; }
+.login header { align-items: center; gap: .75rem; }
+.login button, .steps button { padding: 0 1.75rem; gap: .625rem; }
+.field { gap: .5rem; }
+.or { gap: .75rem; }
+.or .divider { flex-grow: 1; }
+.pairing { gap: 3rem; padding: 2.5rem 3rem; }
+.code { width: 17.5rem; gap: .75rem; align-items: center; }
+.steps { width: 27.5rem; gap: 1rem; }
 
 /* ==== end of settings section ============================================ */
