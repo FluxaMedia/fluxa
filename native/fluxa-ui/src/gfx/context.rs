@@ -168,6 +168,12 @@ impl<'a> Fonts<'a> {
 pub struct RunOutput(egui::FullOutput);
 
 impl RunOutput {
+    #[cfg(test)]
+    pub(crate) fn same_paint(&self, other: &Self) -> bool {
+        self.0.shapes == other.0.shapes
+            && self.0.platform_output.cursor_icon == other.0.platform_output.cursor_icon
+    }
+
     pub fn shape_count(&self) -> usize {
         self.0.shapes.len()
     }
@@ -283,11 +289,13 @@ impl Context {
 
     #[track_caller]
     pub fn request_repaint(&self) {
+        crate::capture::mark_strict();
         self.0.request_repaint();
     }
 
     #[track_caller]
     pub fn request_repaint_after(&self, duration: Duration) {
+        crate::capture::mark_strict();
         self.0.request_repaint_after(duration);
     }
 
@@ -307,6 +315,26 @@ impl Context {
         self.0.cumulative_pass_nr()
     }
 
+    #[cfg(test)]
+    pub(crate) fn set_ppp_for_test(&self, ppp: f32) {
+        self.0.set_pixels_per_point(ppp);
+    }
+
+    pub(crate) fn input_is_quiet(&self) -> bool {
+        self.0.input(|input| {
+            input.raw.events.is_empty()
+                && input.raw.dropped_files.is_empty()
+                && input.keys_down.is_empty()
+                && !input.pointer.any_down()
+                && !input.pointer.any_pressed()
+                && !input.pointer.any_released()
+                && input.pointer.delta() == Vec2::ZERO
+                && input.smooth_scroll_delta() == Vec2::ZERO
+                && input.zoom_delta() == 1.0
+                && input.multi_touch().is_none()
+        })
+    }
+
     pub fn pointer_hover_pos(&self) -> Option<Pos2> {
         self.0.pointer_hover_pos()
     }
@@ -319,7 +347,16 @@ impl Context {
         self.0.content_rect()
     }
 
+    pub(crate) fn replay_cursor(&self, icon: CursorIcon) {
+        self.0.set_cursor_icon(icon);
+    }
+
+    pub fn keyboard_focus(&self) -> Option<super::Id> {
+        self.0.memory(|memory| memory.focused())
+    }
+
     pub fn set_cursor_icon(&self, icon: CursorIcon) {
+        crate::capture::note_cursor(icon);
         self.0.set_cursor_icon(icon);
     }
 

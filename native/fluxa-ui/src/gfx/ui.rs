@@ -188,6 +188,7 @@ impl Ui {
     }
 
     pub fn request_focus(&self, id: super::Id) {
+        crate::capture::mark_strict();
         self.ctx().request_focus(id);
     }
 
@@ -197,6 +198,7 @@ impl Ui {
 
     fn tracked(&self, response: egui::Response) -> Response {
         let response = Response::from_egui(response);
+        crate::capture::note_widget(response.rect, response.id, response.sense, self.clip_rect());
         if response.sense.senses_click() {
             crate::interact::auto_focus(self, response.rect, response.clicked());
         }
@@ -204,6 +206,7 @@ impl Ui {
     }
 
     pub fn checkbox(&mut self, value: &mut bool, label: impl Into<egui::WidgetText>) -> Response {
+        crate::capture::mark_strict();
         let response = self.0.checkbox(value, label);
         self.tracked(response)
     }
@@ -235,27 +238,38 @@ impl Ui {
         self.0.add_space(amount);
     }
 
+    pub(crate) fn replay_widget(&mut self, widget: &crate::capture::Widget) {
+        let clip = self.0.clip_rect();
+        self.0.set_clip_rect(widget.clip);
+        self.0.interact(widget.rect, widget.id, widget.sense);
+        self.0.set_clip_rect(clip);
+    }
+
     pub fn interact(&self, rect: Rect, id: super::Id, sense: Sense) -> Response {
         let response = self.0.interact(rect, id, sense);
         self.tracked(response)
     }
 
     pub fn add(&mut self, widget: impl egui::Widget) -> Response {
+        crate::capture::mark_strict();
         let response = self.0.add(widget);
         self.tracked(response)
     }
 
     pub fn put(&mut self, rect: Rect, widget: impl egui::Widget) -> Response {
+        crate::capture::mark_strict();
         let response = self.0.put(rect, widget);
         self.tracked(response)
     }
 
     pub fn place(&mut self, rect: Rect, widget: impl egui::Widget) -> Response {
+        crate::capture::mark_strict();
         let response = self.0.put(rect, widget);
         self.tracked(response)
     }
 
     pub fn label(&mut self, text: impl Into<egui::WidgetText>) -> Response {
+        crate::capture::mark_strict();
         Response::from_egui(self.0.label(text))
     }
 
@@ -276,6 +290,7 @@ impl Ui {
     }
 
     pub fn scroll_to_rect(&self, rect: Rect, align: Option<Align>) {
+        crate::capture::mark_strict();
         self.0.scroll_to_rect(rect, align);
     }
 }

@@ -45,6 +45,7 @@ impl Response {
     }
 
     pub fn on_hover_cursor(self, icon: super::CursorIcon) -> Self {
+        crate::capture::mark_strict();
         Self::from_egui(self.raw.on_hover_cursor(icon))
     }
 
@@ -101,6 +102,7 @@ impl Response {
     }
 
     pub fn on_hover_text(self, text: impl Into<egui::WidgetText>) -> Self {
+        crate::capture::mark_strict();
         Self::from_egui(self.raw.on_hover_text(text))
     }
 

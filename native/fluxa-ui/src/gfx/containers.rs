@@ -84,6 +84,7 @@ impl Area {
     }
 
     pub fn show<R>(self, context: &Context, body: impl FnOnce(&mut Ui) -> R) -> InnerResponse<R> {
+        crate::capture::mark_strict();
         InnerResponse::from_egui(self.0.show(context.raw(), |ui| body(Ui::wrap_mut(ui))))
     }
 }
@@ -100,6 +101,7 @@ impl CentralPanel {
     }
 
     pub fn show<R>(self, root: &mut Ui, body: impl FnOnce(&mut Ui) -> R) -> InnerResponse<R> {
+        crate::capture::mark_strict();
         InnerResponse::from_egui(self.0.show(root.raw_mut(), |ui| body(Ui::wrap_mut(ui))))
     }
 }
@@ -227,6 +229,7 @@ impl<'a> Popup<'a> {
     }
 
     pub fn show<R>(self, body: impl FnOnce(&mut Ui) -> R) -> Option<InnerResponse<R>> {
+        crate::capture::mark_strict();
         self.inner
             .show(|ui| body(Ui::wrap_mut(ui)))
             .map(InnerResponse::from_egui)

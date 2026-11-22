@@ -126,6 +126,7 @@ impl<'a> TextEdit<'a> {
     }
 
     pub fn show(self, ui: &mut Ui) -> TextEditOutput {
+        crate::capture::mark_strict();
         let Self {
             text,
             multiline,

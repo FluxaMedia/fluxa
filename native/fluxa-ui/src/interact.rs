@@ -44,7 +44,9 @@ pub fn begin_focus_frame(context: &crate::gfx::Context, focused: Option<u64>) {
 
 pub(crate) fn is_focused(context: &crate::gfx::Context, node: u64) -> bool {
     context.data_mut(|data| {
-        data.get_temp_mut_or_default::<FocusFrame>(frame_id()).focused == Some(node)
+        data.get_temp_mut_or_default::<FocusFrame>(frame_id())
+            .focused
+            == Some(node)
     })
 }
 
@@ -67,8 +69,30 @@ pub(crate) fn auto_focus(ui: &crate::gfx::Ui, rect: Rect, clicked: bool) {
         })
     });
     if let Some(node) = node {
-        register(ui, node, rect, clicked);
+        register(ui, node, rect, clicked, true);
     }
+}
+
+pub(crate) fn auto_state(context: &crate::gfx::Context) -> (bool, u64) {
+    context.data_mut(|data| {
+        let frame = data.get_temp_mut_or_default::<FocusFrame>(frame_id());
+        (frame.auto, frame.auto_next)
+    })
+}
+
+pub(crate) fn replay_focus(ui: &crate::gfx::Ui, focus: &crate::capture::Focus) {
+    crate::capture::note_focus(focus.node, focus.rect, focus.clicked, focus.auto);
+    let rect = ui.ctx().layer_rect_to_global(ui.layer_id(), focus.rect);
+    ui.ctx().data_mut(|data| {
+        let frame = data.get_temp_mut_or_default::<FocusFrame>(frame_id());
+        frame.targets.push((focus.node, rect));
+        if focus.clicked {
+            frame.activated = Some(focus.node);
+        }
+        if focus.auto {
+            frame.auto_next += 1;
+        }
+    });
 }
 
 pub fn is_auto_node(node: u64) -> bool {
@@ -85,7 +109,11 @@ pub fn take_focus_targets(context: &crate::gfx::Context) -> (Vec<(u64, Rect)>, O
 
 pub fn take_focus_neighbors(context: &crate::gfx::Context) -> Vec<(u64, Dir, u64)> {
     context.data_mut(|data| {
-        std::mem::take(&mut data.get_temp_mut_or_default::<FocusFrame>(frame_id()).neighbors)
+        std::mem::take(
+            &mut data
+                .get_temp_mut_or_default::<FocusFrame>(frame_id())
+                .neighbors,
+        )
     })
 }
 
@@ -95,17 +123,18 @@ pub(crate) trait FocusNode {
 
 impl FocusNode for crate::gfx::Response {
     fn focus_node(self, ui: &crate::gfx::Ui, node: u64) -> Self {
-        register(ui, node, self.rect, self.clicked());
+        register(ui, node, self.rect, self.clicked(), false);
         self
     }
 }
 
 pub(crate) fn activate(ui: &crate::gfx::Ui, node: u64, rect: Rect) {
-    register(ui, node, rect, true);
+    register(ui, node, rect, true, false);
 }
 
-fn register(ui: &crate::gfx::Ui, node: u64, rect: Rect, clicked: bool) {
+fn register(ui: &crate::gfx::Ui, node: u64, rect: Rect, clicked: bool, auto: bool) {
     crate::capture::note_register(node, rect);
+    crate::capture::note_focus(node, rect, clicked, auto);
     let rect = ui.ctx().layer_rect_to_global(ui.layer_id(), rect);
     ui.ctx().data_mut(|data| {
         let frame = data.get_temp_mut_or_default::<FocusFrame>(frame_id());
