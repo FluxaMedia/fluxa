@@ -1,5 +1,4 @@
 :root {
-  --page-end: 48px;
   --dialog-radius: 16px;
   --page-padding: 24px;
   --card-radius: 12px;
@@ -9,23 +8,15 @@
   --text-sm: 14px;
   --text-xs: 13px;
   --color-background: #060606;
-  --color-background-elevated: #0A0A0B;
   --color-surface: #141416;
   --color-surface-raised: #1C1C1F;
-  --color-navigation: #0D0D0D;
   --color-text-primary: #FFFFFF;
   --color-text-secondary: #B8B8BE;
   --color-text-muted: #8A8A91;
   --color-border: #FFFFFF14;
-  --color-border-strong: #FFFFFF29;
   --color-accent: #FFFFFF;
   --color-accent-foreground: #060606;
-  --color-success: #45D483;
-  --color-warning: #F0C674;
   --color-error: #FF6B6B;
-  --color-info: #2196F3;
-  --color-focus: #FFFFFF;
-  --color-scrim: #000000C7;
   --sash-foreign-fill: #465A96;
   --sash-foreign-text: #AABEF5;
   --sash-must-see-fill: #1E7850;
@@ -86,7 +77,6 @@
   --space-3: .75rem;
   --space-4: 1rem;
   --space-5: 1.5rem;
-  --space-6: 2rem;
   --space-7: 3rem;
   --space-8: 4rem;
   --space-9: 6rem;
@@ -148,9 +138,7 @@
 @media (theme: amoled) {
   :root {
     --color-background: #000000;
-    --color-background-elevated: #000000;
     --color-surface-raised: #222226;
-    --color-navigation: #000000;
     --color-accent-foreground: #FFFFFF;
   }
 }
@@ -158,10 +146,8 @@
 @media (theme: midnight-blue) {
   :root {
     --color-background: #080A10;
-    --color-background-elevated: #0D1220;
     --color-surface: #121A2A;
     --color-surface-raised: #1B263D;
-    --color-navigation: #090E1A;
     --color-text-secondary: #A9B4C8;
     --color-text-muted: #71809A;
     --color-accent-foreground: #FFFFFF;
@@ -590,7 +576,6 @@ hero-synopsis-size { font-size: 16; }
 
 @media (size: compact) {
   :root {
-    --page-end: 112px;
     --page-padding: 16px;
     --text-xl: 20px;
     --text-lg: 16px;
