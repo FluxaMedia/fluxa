@@ -175,6 +175,14 @@ impl<'a> Item<'a> {
         self.with(|node| node.aspect(ratio))
     }
 
+    pub fn width_pct(self, share: f32) -> Self {
+        self.with(|node| node.width_pct(share))
+    }
+
+    pub fn height_pct(self, share: f32) -> Self {
+        self.with(|node| node.height_pct(share))
+    }
+
     pub fn min_width(self, value: f32) -> Self {
         self.with(|node| node.min_width(value))
     }

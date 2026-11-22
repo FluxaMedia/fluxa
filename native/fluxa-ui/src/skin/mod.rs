@@ -431,7 +431,12 @@ fn build_node<'a, A: HomeAssets>(
         .or(sheet_style
             .as_ref()
             .and_then(|style| style.width_vw)
-            .map(|share| share * env.view.get().x));
+            .map(|share| share * env.view.get().x))
+        .or(sheet_style
+            .as_ref()
+            .and_then(|style| style.width_pct)
+            .zip(parent_inner)
+            .map(|(share, width)| share * width));
     let sides = node
         .padding
         .or(sheet_style.as_ref().and_then(|style| style.padding_box))
@@ -761,11 +766,24 @@ fn frame<'a>(
         .or(style
             .and_then(|style| style.height_vh)
             .map(|share| share * view.y));
-    if aspect.is_some() && height.is_none() {
+    let spans_parent = style.is_some_and(|style| style.width_pct.is_some());
+    if aspect.is_some() && height.is_none() && !spans_parent {
         width = width.or(parent);
     }
     if let Some(ratio) = aspect {
         item = item.aspect(ratio);
+    }
+    if let Some(share) = style
+        .and_then(|style| style.width_pct)
+        .filter(|_| width.is_none())
+    {
+        item = item.width_pct(share);
+    }
+    if let Some(share) = style
+        .and_then(|style| style.height_pct)
+        .filter(|_| height.is_none())
+    {
+        item = item.height_pct(share);
     }
     if let Some(width) = width {
         item = item.width(width);

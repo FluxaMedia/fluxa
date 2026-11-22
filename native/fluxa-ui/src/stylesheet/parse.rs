@@ -244,10 +244,9 @@ pub(super) fn parse_patch(rule: &str, value: &Value) -> Result<Patch, String> {
     };
     let length = |key: &str| -> Result<Option<Length>, String> {
         value.get(key).map_or(Ok(None), |raw| {
-            if raw
-                .as_str()
-                .is_some_and(|text| text.ends_with("vw") || text.ends_with("vh"))
-            {
+            if raw.as_str().is_some_and(|text| {
+                text.ends_with("vw") || text.ends_with("vh") || text.ends_with('%')
+            }) {
                 return Ok(None);
             }
             Length::parse(raw).map(Some).ok_or_else(|| {
@@ -290,6 +289,8 @@ pub(super) fn parse_patch(rule: &str, value: &Value) -> Result<Patch, String> {
         margin: length("margin")?,
         width: length("width")?,
         width_vw: view("width", "vw"),
+        width_pct: view("width", "%"),
+        height_pct: view("height", "%"),
         column_width: length("column-width")?,
         columns: value
             .get("columns")

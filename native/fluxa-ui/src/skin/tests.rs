@@ -403,3 +403,25 @@ fn ratio_with_only_a_height_sets_the_width() {
     let rect = sized_target(".art { height: 210px; aspect-ratio: 2 / 3; }", "art");
     assert_eq!(rect.size(), Vec2::new(140.0, 210.0));
 }
+
+#[test]
+fn full_width_row_inside_a_padded_column_stops_at_the_padding() {
+    crate::reload_styles_with(
+        ".frame { padding: 20px; align-items: flex-start; } .bar { width: 100%; height: 30px; }",
+    )
+    .unwrap();
+    let tree = skin_from(json!({
+        "type": "column",
+        "class": "frame",
+        "children": [{
+            "type": "row",
+            "class": "bar",
+            "action": {"name": "back"},
+            "children": []
+        }]
+    }));
+    let (_, targets) = render(&tree);
+    assert_eq!(targets.len(), 1);
+    let frame_width = 1280.0;
+    assert_eq!(targets[0].1.width(), frame_width - 40.0);
+}
