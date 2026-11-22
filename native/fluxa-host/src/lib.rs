@@ -131,6 +131,12 @@ pub mod dom_images;
 mod downloads;
 mod events;
 mod frame;
+
+pub fn count_alloc(bytes: usize) {
+    use std::sync::atomic::Ordering::Relaxed;
+    frame::ALLOCS.fetch_add(1, Relaxed);
+    frame::ALLOC_BYTES.fetch_add(bytes as u64, Relaxed);
+}
 mod gpu;
 mod guide;
 pub mod hdr;

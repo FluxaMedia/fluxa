@@ -278,7 +278,12 @@ fn draw_tree(
         let items = flowing
             .into_iter()
             .chain(pinned)
-            .map(|node| build(ui, node, &env))
+            .map(|node| {
+                let timer = crate::stats::start();
+                let item = build(ui, node, &env);
+                timer.add(&crate::stats::BUILD_NS);
+                item
+            })
             .collect();
         let root = layout_items::column(items).padding(safe);
         kit::lay(ui, vec![root]);
@@ -686,11 +691,15 @@ fn sheet_style<'a, A: HomeAssets>(
     node: &Resolved,
     env: &'a Env<'a, A>,
 ) -> Option<crate::stylesheet::Style> {
+    let timer = crate::stats::start();
+    crate::stats::count(&crate::stats::STYLE_CALLS);
     let (rule, modifiers) = class_parts(node, env.positions.get(&node.key).copied())?;
     let chain = plain_frames(&env.ancestors.borrow());
-    Some(crate::stylesheet::within(&chain, || {
+    let style = Some(crate::stylesheet::within(&chain, || {
         crate::stylesheet::base_with(&rule, &modifiers)
-    }))
+    }));
+    timer.add(&crate::stats::STYLE_NS);
+    style
 }
 
 fn gap_of<'a, A: HomeAssets>(node: &Resolved, env: &'a Env<'a, A>) -> Option<f32> {

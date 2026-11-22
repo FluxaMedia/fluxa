@@ -1056,6 +1056,25 @@ fn limit_malloc_arenas() {
     }
 }
 
+#[cfg(feature = "alloc-stats")]
+struct CountingAlloc;
+
+#[cfg(feature = "alloc-stats")]
+unsafe impl std::alloc::GlobalAlloc for CountingAlloc {
+    unsafe fn alloc(&self, layout: std::alloc::Layout) -> *mut u8 {
+        fluxa_host::count_alloc(layout.size());
+        unsafe { std::alloc::System.alloc(layout) }
+    }
+
+    unsafe fn dealloc(&self, ptr: *mut u8, layout: std::alloc::Layout) {
+        unsafe { std::alloc::System.dealloc(ptr, layout) }
+    }
+}
+
+#[cfg(feature = "alloc-stats")]
+#[global_allocator]
+static ALLOCATOR: CountingAlloc = CountingAlloc;
+
 fn main() -> Result<(), winit::error::EventLoopError> {
     #[cfg(all(target_os = "linux", target_env = "gnu"))]
     limit_malloc_arenas();

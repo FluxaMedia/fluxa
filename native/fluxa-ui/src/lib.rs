@@ -45,6 +45,7 @@ mod scroll_region;
 mod settings;
 mod sidebar;
 mod skin;
+pub mod stats;
 mod style;
 mod stylesheet;
 mod update;

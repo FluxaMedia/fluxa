@@ -85,6 +85,7 @@ pub(super) fn class_parts(node: &Resolved, position: Option<(usize, usize)>) -> 
         }) {
             return found.parts;
         }
+        crate::stats::count(&crate::stats::CLASS_MISSES);
         let parts = compute_class_parts(class, &node.kind, position);
         bucket.push(Entry {
             class: class.into(),

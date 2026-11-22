@@ -1662,6 +1662,9 @@ impl Gpu {
             .egui_context
             .tessellate(output.shapes, output.pixels_per_point);
         timer.mark("tessellate");
+        if crate::frame::stats_enabled() {
+            crate::frame::note_paint(&paint_jobs);
+        }
         if !pipelined {
             self.egui_renderer.lock().apply_texture_deltas(
                 &self.device,

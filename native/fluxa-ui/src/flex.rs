@@ -677,6 +677,7 @@ impl Node {
     }
 
     pub fn outer_size(&self) -> Vec2 {
+        crate::stats::count(&crate::stats::OUTER_CALLS);
         let border = self.border_size();
         Vec2::new(
             border.x + self.margin.width(),
@@ -685,6 +686,7 @@ impl Node {
     }
 
     fn span(&self, axis: Axis) -> (f32, f32, f32) {
+        crate::stats::count(&crate::stats::SPAN_CALLS);
         let outer = main(axis, self.outer_size());
         let margin = main(axis, Vec2::new(self.margin.width(), self.margin.height()));
         let base = match self.basis {
@@ -701,7 +703,10 @@ impl Node {
     }
 
     pub fn solve(&self, bounds: Rect) -> Placed {
+        let timer = crate::stats::start();
+        crate::stats::count(&crate::stats::SOLVES);
         let placed = self.place(bounds);
+        timer.add(&crate::stats::LAYOUT_NS);
         report(&placed);
         placed
     }
@@ -1535,5 +1540,44 @@ mod tests {
         );
         assert_eq!(out[0].width(), 250.0);
         assert_eq!(out[1].width(), 50.0);
+    }
+
+    fn nested(depth: usize, fan: usize) -> Node {
+        if depth == 0 {
+            return boxed(40.0, 20.0);
+        }
+        let children = (0..fan).map(|_| nested(depth - 1, fan));
+        let node = if depth % 2 == 0 {
+            row(children)
+        } else {
+            column(children)
+        };
+        node.gap(4.0).padding(Insets::all(2.0))
+    }
+
+    fn count(node: &Node) -> usize {
+        1 + node.children.iter().map(count).sum::<usize>()
+    }
+
+    #[test]
+    #[ignore]
+    fn solve_cost_by_depth() {
+        for depth in 2..=9 {
+            let tree = nested(depth, 2);
+            crate::stats::take();
+            let started = std::time::Instant::now();
+            let runs = 20;
+            for _ in 0..runs {
+                tree.solve(bounds(1280.0, 800.0));
+            }
+            let micros = started.elapsed().as_micros() as f64 / runs as f64;
+            let [_, _, _, _, _, _, spans, outers] = crate::stats::take();
+            println!(
+                "depth={depth} nodes={} solve={micros:.0}us spans={} outers={}",
+                count(&tree),
+                spans / runs,
+                outers / runs
+            );
+        }
     }
 }

@@ -40,6 +40,7 @@ fn wake(state: &RendererState, artwork_polling: bool) -> Option<(Instant, &'stat
         (state.pin_change_job.is_some(), "pin-change-job"),
         (!state.pending_native_actions.is_empty(), "native-actions"),
         (state.pending_resize.is_some(), "resize"),
+        (bench_enabled(), "bench"),
     ]
     .into_iter()
     .find_map(|(active, name)| active.then_some(name));
@@ -194,6 +195,37 @@ thread_local! {
     static STATS: std::cell::RefCell<Option<FrameStats>> = const { std::cell::RefCell::new(None) };
 }
 
+pub(super) fn bench_enabled() -> bool {
+    static ENABLED: std::sync::OnceLock<Option<Instant>> = std::sync::OnceLock::new();
+    ENABLED
+        .get_or_init(|| {
+            std::env::var("FLUXA_FRAME_BENCH")
+                .is_ok_and(|value| value != "0")
+                .then(Instant::now)
+        })
+        .is_some_and(|started| started.elapsed() > Duration::from_secs(8))
+}
+
+pub static ALLOCS: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+pub static ALLOC_BYTES: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+static PAINT_JOBS: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+static PAINT_VERTICES: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+static PAINT_INDICES: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+
+pub(super) fn note_paint(jobs: &[egui::ClippedPrimitive]) {
+    use std::sync::atomic::Ordering::Relaxed;
+    let (mut vertices, mut indices) = (0, 0);
+    for job in jobs {
+        if let egui::epaint::Primitive::Mesh(mesh) = &job.primitive {
+            vertices += mesh.vertices.len() as u64;
+            indices += mesh.indices.len() as u64;
+        }
+    }
+    PAINT_JOBS.fetch_add(jobs.len() as u64, Relaxed);
+    PAINT_VERTICES.fetch_add(vertices, Relaxed);
+    PAINT_INDICES.fetch_add(indices, Relaxed);
+}
+
 pub(super) fn stats_enabled() -> bool {
     static ENABLED: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
     *ENABLED.get_or_init(|| {
@@ -289,6 +321,31 @@ fn record_stats(timer: &FrameTimer, total: Duration) {
             fluxa_ui::CARD_HITS.swap(0, std::sync::atomic::Ordering::Relaxed),
             fluxa_ui::CARD_MISSES.swap(0, std::sync::atomic::Ordering::Relaxed),
         ));
+        {
+            use std::sync::atomic::Ordering::Relaxed;
+            let [build, layout, style, lookups, misses, solves, spans, outers] =
+                fluxa_ui::stats::take();
+            let frames = stats.totals.len().max(1) as f64;
+            host_log(format!(
+                "Skin per frame: build={:.2}ms layout={:.2}ms style={:.2}ms lookups={:.0} class-misses={:.1} solves={:.1} span-calls={:.0} outer-calls={:.0}",
+                build as f64 / 1e6 / frames,
+                layout as f64 / 1e6 / frames,
+                style as f64 / 1e6 / frames,
+                lookups as f64 / frames,
+                misses as f64 / frames,
+                solves as f64 / frames,
+                spans as f64 / frames,
+                outers as f64 / frames,
+            ));
+            host_log(format!(
+                "Draw per frame: jobs={:.0} vertices={:.0} indices={:.0} allocs={:.0} alloc-kb={:.0}",
+                PAINT_JOBS.swap(0, Relaxed) as f64 / frames,
+                PAINT_VERTICES.swap(0, Relaxed) as f64 / frames,
+                PAINT_INDICES.swap(0, Relaxed) as f64 / frames,
+                ALLOCS.swap(0, Relaxed) as f64 / frames,
+                ALLOC_BYTES.swap(0, Relaxed) as f64 / frames / 1024.0,
+            ));
+        }
         let mut gaps = crate::presenter::drain_intervals();
         gaps.retain(|gap| *gap < 250.0);
         let mut stages = crate::presenter::drain_stages();
