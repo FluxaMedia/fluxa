@@ -314,13 +314,13 @@ hero-synopsis-size { font-size: 16; }
 .nav-pill, .chip-active { background: var(--ink-strong); border-radius: var(--radius-pill); }
 .nav-pill { stretch: 0.6; squash: 0.1; magnify: 0.18; magnify-span: 0.9; }
 .shelf-title { color: #ffffff; }
+.chip, .chip-active { height: 2rem; padding: 0 var(--space-4); justify-content: center; }
 .chip { background: var(--ink-raised); color: var(--ink-body); border-radius: var(--radius-pill); }
 .chip.selected { background: var(--ink-strong); color: var(--ink-full); }
 .download-row:focus, .profile-tile:focus { background: var(--ink-strong); }
 .chip:selected, .current .episode-chip { background: #ffffff; }
 .chip:selected .chip-label,
-.current .episode-chip-label,
-.tab:selected .tab-label { color: #000000; }
+.current .episode-chip-label { color: #000000; }
 
 .divider { background: var(--ink-raised); height: 1px; }
 
@@ -514,7 +514,7 @@ hero-synopsis-size { font-size: 16; }
 
 .side-heading { color: var(--ink-dim); }
 
-.setting-label, .tab-label { font-size: var(--text-md); font-weight: 500; }
+.setting-label { font-size: var(--text-md); font-weight: 500; }
 
 .switch:selected .knob { background: #0b0b0d; }
 
@@ -532,15 +532,6 @@ hero-synopsis-size { font-size: 16; }
 }
 
 .source-row:hover { background: var(--ink-soft); }
-
-.choice-chip {
-  padding: 0 var(--space-4);
-  align-items: center;
-  justify-content: center;
-  height: 28px;
-}
-
-.choice-chip:selected { background: #ffffff; color: #000000; }
 
 .swatch { border-radius: var(--radius-pill); border: 1px solid var(--ink-soft); width: 20px; height: 20px; }
 
@@ -647,10 +638,6 @@ hero-synopsis-size { font-size: 16; }
 .field-input { width: 420px; }
 
 .corner { align-items: flex-end; justify-content: flex-end; flex-fill: 1; }
-
-.tab { height: 34px; background: var(--ink-raised); border-radius: var(--radius-pill); padding: 0 var(--space-4); }
-
-.tab:selected { background: #ffffff; }
 
 .nav-dock {
   width: 100vw;
@@ -849,7 +836,7 @@ button:focus { scale: 1.04; }
 .skeleton p { height: 1rem; width: 26.25rem; }
 .skeleton h2 { height: 2.5rem; width: 8.75rem; }
 
-.chip, .chip-active, .tip { padding: var(--space-2) var(--space-4); }
+.tip { padding: var(--space-2) var(--space-4); }
 .hero-content { gap: var(--gap-base); padding: var(--space-5); align-items: flex-start; justify-content: flex-end; }
 .hero-content button { padding: 0 var(--space-5); }
 
@@ -1010,7 +997,6 @@ button:focus { scale: 1.04; }
 .option { padding: var(--space-2) var(--space-4); gap: var(--gap-base); }
 
 .readout { width: 4rem; justify-content: center; }
-.panel-sheet .choice-chip { padding: var(--space-2) var(--space-4); }
 .stepper-row { gap: var(--gap-base); justify-content: center; align-items: center; }
 .reading { gap: var(--gap-tight); align-items: flex-end; }
 

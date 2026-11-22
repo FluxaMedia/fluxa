@@ -3935,7 +3935,7 @@
             "as": "tab",
             "template": {
               "type": "row",
-              "class": "centered tab",
+              "class": "centered chip",
               "props": {
                 "selected": "{tab.selected}"
               },
@@ -3948,7 +3948,8 @@
               "children": [
                 {
                   "type": "text",
-                  "class": "tab-label",
+                  "class": "chip-label",
+                  "style": "meta",
                   "text": "{tab.label}"
                 }
               ]

@@ -937,7 +937,7 @@
                                   "as": "part",
                                   "template": {
                                     "type": "row",
-                                    "class": "choice-chip surface pill",
+                                    "class": "chip",
                                     "props": {
                                       "selected": "{part.selected}"
                                     },
@@ -1195,7 +1195,7 @@
                                       "as": "part",
                                       "template": {
                                         "type": "row",
-                                        "class": "choice-chip surface pill",
+                                        "class": "chip",
                                         "props": {
                                           "selected": "{part.selected}"
                                         },
@@ -1470,7 +1470,7 @@
                                   "as": "part",
                                   "template": {
                                     "type": "row",
-                                    "class": "choice-chip surface pill",
+                                    "class": "chip",
                                     "props": {
                                       "selected": "{part.selected}"
                                     },
@@ -1837,7 +1837,7 @@
                   "as": "chip",
                   "template": {
                     "type": "row",
-                    "class": "choice-chip surface pill",
+                    "class": "chip",
                     "props": {
                       "selected": "{chip.selected}"
                     },

@@ -261,13 +261,6 @@
       "since": 6
     },
     {
-      "name": "choice-chip",
-      "element": "row",
-      "meaning": "Chip used as one option in a choice list",
-      "stability": "internal",
-      "since": 1
-    },
-    {
       "name": "choices",
       "element": "grid",
       "meaning": "",
@@ -1939,20 +1932,6 @@
       "meaning": "Plot summary text",
       "stability": "stable",
       "since": 1
-    },
-    {
-      "name": "tab",
-      "element": "row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "tab-label",
-      "element": "text",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
     },
     {
       "name": "tabs",
