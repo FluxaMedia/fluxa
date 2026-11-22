@@ -65,7 +65,9 @@
               "children": [
                 {
                   "type": "row",
-                  "class": "btn-secondary button-fill button-tall",
+                  "class": "btn-secondary",
+                  "justify": "center",
+                  "height": 40,
                   "grow": 1,
                   "action": {
                     "name": "node",
@@ -84,7 +86,9 @@
                 },
                 {
                   "type": "row",
-                  "class": "btn-primary button-fill button-tall",
+                  "class": "btn-primary",
+                  "justify": "center",
+                  "height": 40,
                   "grow": 1,
                   "action": {
                     "name": "node",
@@ -104,7 +108,9 @@
                 },
                 {
                   "type": "row",
-                  "class": "btn-secondary button-fill button-tall",
+                  "class": "btn-secondary",
+                  "justify": "center",
+                  "height": 40,
                   "grow": 1,
                   "action": {
                     "name": "node",
@@ -178,7 +184,9 @@
               "children": [
                 {
                   "type": "row",
-                  "class": "btn-secondary button-fill button-tall",
+                  "class": "btn-secondary",
+                  "justify": "center",
+                  "height": 40,
                   "grow": 1,
                   "action": {
                     "name": "node",
@@ -197,7 +205,9 @@
                 },
                 {
                   "type": "row",
-                  "class": "btn-primary button-fill button-tall",
+                  "class": "btn-primary",
+                  "justify": "center",
+                  "height": 40,
                   "grow": 1,
                   "action": {
                     "name": "node",

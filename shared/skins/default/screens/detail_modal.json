@@ -78,7 +78,10 @@
                               "children": [
                                 {
                                   "type": "row",
-                                  "class": "btn-primary modal-play",
+                                  "class": "btn-primary",
+                                  "height": 44,
+                                  "padding": "0 20",
+                                  "justify": "center",
                                   "gap": 8,
                                   "action": {
                                     "name": "modal",

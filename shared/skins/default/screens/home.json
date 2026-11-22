@@ -22,7 +22,9 @@
         },
         {
           "type": "row",
-          "class": "btn-primary empty-action",
+          "class": "btn-primary",
+          "padding": "0 40",
+          "justify": "center",
           "action": {
             "name": "open_settings",
             "args": {
@@ -68,17 +70,20 @@
           "children": [
             {
               "type": "column",
-              "class": "skeleton-bar skeleton-heading",
+              "class": "skeleton-bar",
+              "height": 32,
               "width": 260
             },
             {
               "type": "column",
-              "class": "skeleton-bar skeleton-line",
+              "class": "skeleton-bar",
+              "height": 16,
               "width": 420
             },
             {
               "type": "column",
-              "class": "skeleton-bar skeleton-block",
+              "class": "skeleton-bar",
+              "height": 40,
               "width": 140
             },
             {

@@ -47,7 +47,8 @@
               "children": [
                 {
                   "type": "row",
-                  "class": "btn-secondary button-fill",
+                  "class": "btn-secondary",
+                  "justify": "center",
                   "grow": 1,
                   "action": {
                     "name": "update",
@@ -65,7 +66,8 @@
                 },
                 {
                   "type": "row",
-                  "class": "btn-primary button-fill",
+                  "class": "btn-primary",
+                  "justify": "center",
                   "grow": 1,
                   "action": {
                     "name": "update",

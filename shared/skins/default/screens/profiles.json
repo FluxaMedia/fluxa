@@ -79,7 +79,9 @@
           "children": [
             {
               "type": "row",
-              "class": "btn-secondary action-wide",
+              "class": "btn-secondary",
+              "padding": "0 28",
+              "justify": "center",
               "children": [
                 {
                   "type": "text",
@@ -180,7 +182,9 @@
           "children": [
             {
               "type": "row",
-              "class": "btn-secondary action-wide",
+              "class": "btn-secondary",
+              "padding": "0 28",
+              "justify": "center",
               "children": [
                 {
                   "type": "text",
@@ -291,7 +295,9 @@
                 },
                 {
                   "type": "row",
-                  "class": "btn-secondary profiles-action",
+                  "class": "btn-secondary",
+                  "padding": "0 24",
+                  "justify": "center",
                   "action": {
                     "name": "profiles",
                     "args": {
@@ -409,7 +415,8 @@
                     },
                     {
                       "type": "row",
-                      "class": "switch profiles-switch",
+                      "class": "switch",
+                      "padding": 3,
                       "props": {
                         "selected": "profiles.form.addons"
                       },
@@ -427,7 +434,9 @@
                         },
                         {
                           "type": "column",
-                          "class": "knob profiles-knob"
+                          "class": "knob",
+                          "width": 22,
+                          "height": 22
                         },
                         {
                           "type": "spacer",
@@ -450,7 +459,8 @@
                     },
                     {
                       "type": "row",
-                      "class": "switch profiles-switch",
+                      "class": "switch",
+                      "padding": 3,
                       "props": {
                         "selected": "profiles.form.plugins"
                       },
@@ -468,7 +478,9 @@
                         },
                         {
                           "type": "column",
-                          "class": "knob profiles-knob"
+                          "class": "knob",
+                          "width": 22,
+                          "height": 22
                         },
                         {
                           "type": "spacer",
@@ -489,7 +501,9 @@
               "children": [
                 {
                   "type": "row",
-                  "class": "btn-secondary profiles-action-fill",
+                  "class": "btn-secondary",
+                  "padding": "0 24",
+                  "justify": "center",
                   "grow": 1,
                   "action": {
                     "name": "profiles",
@@ -507,7 +521,8 @@
                 },
                 {
                   "type": "row",
-                  "class": "btn-primary profiles-save",
+                  "class": "btn-primary",
+                  "justify": "center",
                   "grow": 1,
                   "action": {
                     "name": "profiles",
@@ -526,7 +541,8 @@
                 },
                 {
                   "type": "row",
-                  "class": "btn-secondary profiles-save",
+                  "class": "btn-secondary",
+                  "justify": "center",
                   "grow": 1,
                   "when": "!profiles.form.canSave",
                   "children": [
@@ -782,7 +798,9 @@
               "children": [
                 {
                   "type": "row",
-                  "class": "btn-secondary profiles-action-fill",
+                  "class": "btn-secondary",
+                  "padding": "0 24",
+                  "justify": "center",
                   "grow": 1,
                   "action": {
                     "name": "profiles",
@@ -800,7 +818,9 @@
                 },
                 {
                   "type": "row",
-                  "class": "btn-secondary profiles-action-fill",
+                  "class": "btn-secondary",
+                  "padding": "0 24",
+                  "justify": "center",
                   "grow": 1,
                   "action": {
                     "name": "profiles",
@@ -843,7 +863,9 @@
             },
             {
               "type": "row",
-              "class": "btn-primary profiles-action",
+              "class": "btn-primary",
+              "padding": "0 24",
+              "justify": "center",
               "action": {
                 "name": "profiles",
                 "args": {
@@ -861,7 +883,8 @@
             },
             {
               "type": "row",
-              "class": "btn-secondary profiles-action-bare",
+              "class": "btn-secondary",
+              "justify": "center",
               "when": "!profiles.settings.canAdd",
               "children": [
                 {
@@ -902,7 +925,9 @@
                   },
                   {
                     "type": "row",
-                    "class": "btn-secondary profiles-action",
+                    "class": "btn-secondary",
+                    "padding": "0 24",
+                    "justify": "center",
                     "action": {
                       "name": "profiles",
                       "args": {
@@ -920,7 +945,9 @@
                   },
                   {
                     "type": "row",
-                    "class": "btn-secondary profiles-action",
+                    "class": "btn-secondary",
+                    "padding": "0 24",
+                    "justify": "center",
                     "action": {
                       "name": "profiles",
                       "args": {
@@ -1016,7 +1043,9 @@
                   "children": [
                     {
                       "type": "row",
-                      "class": "btn-secondary profiles-action-fill",
+                      "class": "btn-secondary",
+                      "padding": "0 24",
+                      "justify": "center",
                       "grow": 1,
                       "action": {
                         "name": "profiles",
@@ -1034,7 +1063,9 @@
                     },
                     {
                       "type": "row",
-                      "class": "btn-primary profiles-action-fill",
+                      "class": "btn-primary",
+                      "padding": "0 24",
+                      "justify": "center",
                       "grow": 1,
                       "action": {
                         "name": "profiles",
@@ -1100,7 +1131,9 @@
                   "children": [
                     {
                       "type": "row",
-                      "class": "btn-secondary profiles-action-fill",
+                      "class": "btn-secondary",
+                      "padding": "0 24",
+                      "justify": "center",
                       "grow": 1,
                       "action": {
                         "name": "profiles",
@@ -1118,7 +1151,9 @@
                     },
                     {
                       "type": "row",
-                      "class": "btn-primary profiles-action-fill",
+                      "class": "btn-primary",
+                      "padding": "0 24",
+                      "justify": "center",
                       "grow": 1,
                       "action": {
                         "name": "profiles",

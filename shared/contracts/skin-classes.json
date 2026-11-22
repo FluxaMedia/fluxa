@@ -9,13 +9,6 @@
       "since": 1
     },
     {
-      "name": "action-wide",
-      "element": "row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
       "name": "addon-art",
       "element": "image",
       "meaning": "",
@@ -119,20 +112,6 @@
       "meaning": "",
       "stability": "internal",
       "since": 2
-    },
-    {
-      "name": "button-fill",
-      "element": "row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
-      "name": "button-tall",
-      "element": "row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
     },
     {
       "name": "card-badge",
@@ -364,13 +343,6 @@
       "meaning": "One row in the downloads list",
       "stability": "internal",
       "since": 1
-    },
-    {
-      "name": "empty-action",
-      "element": "row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
     },
     {
       "name": "empty-hint",
@@ -639,13 +611,6 @@
       "since": 1
     },
     {
-      "name": "hero-play",
-      "element": "row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
       "name": "hero-skeleton",
       "element": "column",
       "meaning": "Placeholder shown while the hero loads",
@@ -737,13 +702,6 @@
       "since": 2
     },
     {
-      "name": "menu-item",
-      "element": "row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
       "name": "menu-panel",
       "element": "column",
       "meaning": "Panel of a context menu",
@@ -798,13 +756,6 @@
       "meaning": "Gradient over the detail modal hero",
       "stability": "internal",
       "since": 1
-    },
-    {
-      "name": "modal-play",
-      "element": "row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
     },
     {
       "name": "modal-scrim",
@@ -1045,20 +996,6 @@
       "since": 1
     },
     {
-      "name": "player-next-dismiss",
-      "element": "row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
-      "name": "player-next-play",
-      "element": "row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
       "name": "player-panel",
       "element": "column",
       "meaning": "Floating panel in the player (audio, subtitles, settings)",
@@ -1068,13 +1005,6 @@
     {
       "name": "player-scroll",
       "element": "scroll",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
-      "name": "player-skip",
-      "element": "row",
       "meaning": "",
       "stability": "internal",
       "since": 3
@@ -1115,13 +1045,6 @@
       "since": 1
     },
     {
-      "name": "preview-play",
-      "element": "row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
       "name": "primary",
       "element": "",
       "meaning": "",
@@ -1157,50 +1080,8 @@
       "since": 1
     },
     {
-      "name": "profiles-action",
-      "element": "row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
-      "name": "profiles-action-bare",
-      "element": "row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
-      "name": "profiles-action-fill",
-      "element": "row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
       "name": "profiles-avatar-grid",
       "element": "grid",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
-      "name": "profiles-knob",
-      "element": "column",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
-      "name": "profiles-save",
-      "element": "row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
-      "name": "profiles-switch",
-      "element": "row",
       "meaning": "",
       "stability": "internal",
       "since": 3
@@ -1239,13 +1120,6 @@
       "meaning": "Numeric rating text",
       "stability": "internal",
       "since": 1
-    },
-    {
-      "name": "reco-action",
-      "element": "row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
     },
     {
       "name": "reco-logo",
@@ -1402,13 +1276,6 @@
       "since": 2
     },
     {
-      "name": "sheet-row",
-      "element": "row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
       "name": "sheet-scroll",
       "element": "scroll",
       "meaning": "",
@@ -1472,46 +1339,11 @@
       "since": 1
     },
     {
-      "name": "skeleton-block",
-      "element": "column",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
       "name": "skeleton-card",
       "element": "column",
       "meaning": "Placeholder card while content loads",
       "stability": "stable",
       "since": 1
-    },
-    {
-      "name": "skeleton-heading",
-      "element": "column",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
-      "name": "skeleton-line",
-      "element": "column",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
-      "name": "skeleton-shelf",
-      "element": "column",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
-      "name": "skeleton-title",
-      "element": "column",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
     },
     {
       "name": "slide",
@@ -1759,41 +1591,6 @@
       "since": 1
     },
     {
-      "name": "watch-action",
-      "element": "row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
-      "name": "watch-copy",
-      "element": "row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
-      "name": "watch-join",
-      "element": "row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
-      "name": "watch-knob",
-      "element": "column",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
-      "name": "watch-switch",
-      "element": "row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
       "name": "watched",
       "element": "",
       "meaning": "Marks a watched item",
@@ -1806,13 +1603,6 @@
       "meaning": "Busy text on the welcome screen",
       "stability": "internal",
       "since": 1
-    },
-    {
-      "name": "welcome-busy-action",
-      "element": "row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
     },
     {
       "name": "welcome-code",
@@ -3046,6 +2836,186 @@
     },
     {
       "name": "window-bar",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "action-wide",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "button-fill",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "button-tall",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "empty-action",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "hero-play",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "menu-item",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "modal-play",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "player-next-dismiss",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "player-next-play",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "player-skip",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "preview-play",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "profiles-action",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "profiles-action-bare",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "profiles-action-fill",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "profiles-knob",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "profiles-save",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "profiles-switch",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "reco-action",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "sheet-row",
+      "since": 2,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "skeleton-block",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "skeleton-heading",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "skeleton-line",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "skeleton-shelf",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "skeleton-title",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "watch-action",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "watch-copy",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "watch-join",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "watch-knob",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "watch-switch",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "welcome-busy-action",
       "since": 3,
       "removedIn": 4,
       "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"

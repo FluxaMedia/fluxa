@@ -97,7 +97,10 @@
               "children": [
                 {
                   "type": "row",
-                  "class": "btn-primary reco-action",
+                  "class": "btn-primary",
+                  "height": 44,
+                  "padding": "0 24",
+                  "justify": "center",
                   "action": {
                     "name": "node",
                     "args": {
@@ -114,7 +117,10 @@
                 },
                 {
                   "type": "row",
-                  "class": "btn-secondary reco-action",
+                  "class": "btn-secondary",
+                  "height": 44,
+                  "padding": "0 24",
+                  "justify": "center",
                   "action": {
                     "name": "node",
                     "args": {

@@ -1979,7 +1979,8 @@
         {
           "type": "row",
           "when": "player.skip",
-          "class": "btn-secondary player-skip",
+          "class": "btn-secondary",
+          "padding": "0 24",
           "action": {
             "name": "player",
             "args": {
@@ -2023,7 +2024,8 @@
               "children": [
                 {
                   "type": "row",
-                  "class": "btn-primary player-next-play",
+                  "class": "btn-primary",
+                  "padding": "0 18",
                   "grow": 1,
                   "action": {
                     "name": "player",
@@ -2041,7 +2043,8 @@
                 },
                 {
                   "type": "row",
-                  "class": "btn-secondary player-next-dismiss",
+                  "class": "btn-secondary",
+                  "padding": "0 18",
                   "action": {
                     "name": "player",
                     "args": {

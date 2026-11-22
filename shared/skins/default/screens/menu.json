@@ -40,7 +40,8 @@
                   "as": "item",
                   "template": {
                     "type": "row",
-                    "class": "select-row menu-item",
+                    "class": "select-row",
+                    "gap": 10,
                     "props": {
                       "selected": "{item.selected}"
                     },
@@ -146,7 +147,8 @@
                   "as": "item",
                   "template": {
                     "type": "row",
-                    "class": "select-row menu-item",
+                    "class": "select-row",
+                    "gap": 10,
                     "props": {
                       "selected": "{item.selected}"
                     },

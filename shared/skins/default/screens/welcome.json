@@ -124,7 +124,9 @@
         },
         {
           "type": "row",
-          "class": "btn-primary action-wide",
+          "class": "btn-primary",
+          "padding": "0 28",
+          "justify": "center",
           "when": "!welcome.busy",
           "action": {
             "name": "welcome",
@@ -142,7 +144,9 @@
         },
         {
           "type": "row",
-          "class": "btn-secondary welcome-busy-action",
+          "class": "btn-secondary",
+          "padding": "0 28",
+          "justify": "center",
           "gap": 10,
           "when": "welcome.busy",
           "children": [
@@ -193,7 +197,9 @@
         },
         {
           "type": "row",
-          "class": "btn-secondary action-wide",
+          "class": "btn-secondary",
+          "padding": "0 28",
+          "justify": "center",
           "action": {
             "name": "welcome",
             "args": {
@@ -354,7 +360,9 @@
             },
             {
               "type": "row",
-              "class": "btn-secondary action-wide",
+              "class": "btn-secondary",
+              "padding": "0 28",
+              "justify": "center",
               "action": {
                 "name": "welcome",
                 "args": {
@@ -500,7 +508,9 @@
             },
             {
               "type": "row",
-              "class": "btn-primary action-wide",
+              "class": "btn-primary",
+              "padding": "0 28",
+              "justify": "center",
               "when": "!welcome.busy",
               "action": {
                 "name": "welcome",
@@ -518,7 +528,9 @@
             },
             {
               "type": "row",
-              "class": "btn-secondary welcome-busy-action",
+              "class": "btn-secondary",
+              "padding": "0 28",
+              "justify": "center",
               "gap": 10,
               "when": "welcome.busy",
               "children": [
@@ -569,7 +581,9 @@
             },
             {
               "type": "row",
-              "class": "btn-secondary action-wide",
+              "class": "btn-secondary",
+              "padding": "0 28",
+              "justify": "center",
               "action": {
                 "name": "welcome",
                 "args": {
