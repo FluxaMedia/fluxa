@@ -1,7 +1,7 @@
 {
   "navbar": {
     "type": "row",
-    "class": "navbar gap-4 pad-6 items-center",
+    "class": "navbar",
     "props": {
       "group": "navbar",
       "indicator": "nav-pill",
@@ -13,7 +13,7 @@
         "as": "item",
         "template": {
           "type": "row",
-          "class": "{item.class} gap-8 pad-10-14 items-center nav-slot",
+          "class": "{item.class} nav-slot",
           "action": {
             "name": "navigate",
             "args": {
@@ -56,7 +56,7 @@
         "as": "item",
         "template": {
           "type": "row",
-          "class": "{item.class} gap-8 pad-10-14 items-center nav-slot",
+          "class": "{item.class} nav-slot",
           "action": {
             "name": "page",
             "args": {
@@ -128,7 +128,7 @@
             }
           }
         ],
-        "class": "navbar-item gap-8 pad-4-10 items-center",
+        "class": "navbar-item",
         "props": {
           "selected": "{nav.profile.active}"
         }
@@ -137,7 +137,7 @@
   },
   "card": {
     "type": "column",
-    "class": "poster {card.collectionShape} {card.shape} gap-8",
+    "class": "poster {card.collectionShape} {card.shape}",
     "action": {
       "name": "open_detail",
       "args": {
@@ -226,7 +226,7 @@
             "children": [
               {
                 "type": "image",
-                "class": "expanded-logo h-84",
+                "class": "expanded-logo",
                 "props": {
                   "fit": "contain",
                   "position": "start",
@@ -356,16 +356,16 @@
                       "text": "{rating.value}"
                     }
                   ],
-                  "class": "gap-4 items-center"
+                  "class": "rating"
                 }
               }
             ],
             "when": "len(slide.ratings) > 0",
-            "class": "gap-12 items-center"
+            "class": "inline-row"
           },
           {
             "type": "text",
-            "class": "synopsis wide-only w-560",
+            "class": "synopsis wide-only",
             "text": "{slide.description}",
             "props": {
               "lines": 3
@@ -379,7 +379,7 @@
                 "children": [
                   {
                     "type": "row",
-                    "class": "btn-primary gap-8 pad-0-28 justify-center fill-space",
+                    "class": "btn-primary hero-play fill-space",
                     "children": [
                       {
                         "type": "icon",
@@ -432,7 +432,7 @@
                 }
               }
             ],
-            "class": "gap-12 items-center"
+            "class": "inline-row"
           }
         ]
       }
@@ -440,7 +440,7 @@
   },
   "shelf": {
     "type": "column",
-    "class": "shelf gap-8",
+    "class": "shelf",
     "children": [
       {
         "type": "text",
@@ -470,13 +470,13 @@
             }
           }
         ],
-        "class": "gap-16"
+        "class": "shelf-row"
       }
     ]
   },
   "continue_shelf": {
     "type": "column",
-    "class": "shelf gap-8",
+    "class": "shelf",
     "children": [
       {
         "type": "text",
@@ -496,17 +496,17 @@
             }
           }
         ],
-        "class": "gap-16"
+        "class": "shelf-row"
       }
     ]
   },
   "skeleton_shelf": {
     "type": "column",
-    "class": "shelf gap-12",
+    "class": "shelf skeleton-shelf",
     "children": [
       {
         "type": "column",
-        "class": "skeleton-bar w-180 h-20"
+        "class": "skeleton-bar skeleton-title"
       },
       {
         "type": "row",
@@ -544,13 +544,13 @@
             "class": "skeleton-card"
           }
         ],
-        "class": "gap-16"
+        "class": "shelf-row"
       }
     ]
   },
   "chip": {
     "type": "row",
-    "class": "chip pad-8-16 items-center",
+    "class": "chip chip-filter",
     "action": {
       "name": "choose",
       "args": {
@@ -568,7 +568,7 @@
   },
   "chip_active": {
     "type": "row",
-    "class": "chip-active pad-8-16 items-center",
+    "class": "chip-active chip-filter",
     "action": {
       "name": "choose",
       "args": {
@@ -603,7 +603,7 @@
                   "style": "subtitle"
                 }
               ],
-              "class": "pad-8-4"
+              "class": "tab-strip-item"
             },
             {
               "type": "row",
@@ -622,17 +622,17 @@
                   "style": "subtitle muted"
                 }
               ],
-              "class": "pad-8-4"
+              "class": "tab-strip-item"
             }
           ]
         }
       }
     ],
-    "class": "gap-20 items-center"
+    "class": "tab-strip"
   },
   "day_cell": {
     "type": "stack",
-    "class": "{cell.class} h-88",
+    "class": "{cell.class} day-cell",
     "action": {
       "name": "calendar_day",
       "args": {
@@ -652,7 +652,7 @@
         "children": [
           {
             "type": "row",
-            "class": "{cell.numClass} w-24 h-24 items-center justify-center",
+            "class": "{cell.numClass} day-number",
             "when": "!cell.blank",
             "children": [
               {
@@ -672,7 +672,7 @@
             "when": "cell.count > 0"
           }
         ],
-        "class": "gap-4 pad-8"
+        "class": "day-body"
       }
     ]
   },
@@ -705,7 +705,7 @@
             }
           }
         ],
-        "class": "gap-4 grow"
+        "class": "download-text"
       },
       {
         "type": "row",
@@ -779,7 +779,7 @@
             "when": "group.active"
           }
         ],
-        "class": "gap-4 grow"
+        "class": "download-text"
       }
     ]
   },
@@ -1001,7 +1001,7 @@
   },
   "episode_card": {
     "type": "column",
-    "class": "episode {ep.state} w-296 gap-10 pad-10",
+    "class": "episode {ep.state}",
     "action": {
       "name": "detail",
       "args": {
@@ -1016,7 +1016,7 @@
           {
             "type": "image",
             "src": "{ep.thumb}",
-            "class": "episode-thumb w-276 h-155",
+            "class": "episode-thumb",
             "props": {
               "fit": "cover"
             }
@@ -1044,12 +1044,12 @@
                         }
                       }
                     ],
-                    "class": "items-center justify-center fill-space"
+                    "class": "center"
                   }
                 ]
               }
             ],
-            "class": "pad-8 items-end justify-start fill-space"
+            "class": "episode-corner"
           },
           {
             "type": "column",
@@ -1075,7 +1075,7 @@
                     "when": "ep.runtime"
                   }
                 ],
-                "class": "pad-0-8-10-8 items-end justify-space-between"
+                "class": "episode-footer"
               },
               {
                 "include": "progress",
@@ -1085,10 +1085,10 @@
                 "when": "ep.progress > 0"
               }
             ],
-            "class": "items-stretch justify-end fill-space"
+            "class": "episode-info"
           }
         ],
-        "class": "w-276 h-155"
+        "class": "episode-frame"
       },
       {
         "type": "column",
@@ -1110,7 +1110,7 @@
             }
           }
         ],
-        "class": "w-276 gap-4 pad-0-4-4-4"
+        "class": "episode-body"
       }
     ]
   },
@@ -1145,7 +1145,7 @@
         "style": "meta muted"
       }
     ],
-    "class": "w-120 gap-6 items-center"
+    "class": "cast-card"
   },
   "trailer_card": {
     "type": "column",
@@ -1163,7 +1163,7 @@
         "props": {
           "fit": "cover"
         },
-        "class": "w-296 h-166"
+        "class": "trailer-art"
       },
       {
         "type": "text",
@@ -1171,7 +1171,7 @@
         "style": "meta"
       }
     ],
-    "class": "w-296 gap-6"
+    "class": "trailer-card"
   },
   "info_row": {
     "type": "row",
@@ -1180,7 +1180,7 @@
         "type": "text",
         "text": "{line.label}",
         "style": "meta muted",
-        "class": "w-180"
+        "class": "detail-line-label"
       },
       {
         "type": "text",
@@ -1188,7 +1188,7 @@
         "style": "meta"
       }
     ],
-    "class": "gap-24 pad-8-0"
+    "class": "detail-line"
   },
   "detail_hero": {
     "type": "stack",
@@ -1241,7 +1241,7 @@
             }
           }
         ],
-        "class": "compact-only pad-84-24-0-24 items-start justify-start fill-space"
+        "class": "compact-only detail-top-compact"
       },
       {
         "type": "column",
@@ -1265,7 +1265,7 @@
             }
           }
         ],
-        "class": "wide-only pad-0-24-0-24 items-start justify-start fill-space"
+        "class": "wide-only detail-top-wide"
       },
       {
         "type": "column",
@@ -1326,16 +1326,16 @@
                       "text": "{rating.value}"
                     }
                   ],
-                  "class": "gap-4 items-center"
+                  "class": "rating"
                 }
               }
             ],
             "when": "len(detail.ratings) > 0",
-            "class": "gap-12 items-center"
+            "class": "inline-row"
           },
           {
             "type": "text",
-            "class": "synopsis wide-only w-620",
+            "class": "synopsis wide-only",
             "text": "{detail.description}",
             "props": {
               "lines": 4
@@ -1349,7 +1349,7 @@
                 "children": [
                   {
                     "type": "row",
-                    "class": "btn-primary gap-8 pad-0-28 justify-center fill-space",
+                    "class": "btn-primary hero-play fill-space",
                     "children": [
                       {
                         "type": "icon",
@@ -1467,12 +1467,12 @@
                 }
               }
             ],
-            "class": "gap-12 items-center"
+            "class": "inline-row"
           }
         ]
       }
     ],
-    "class": "h-68vh"
+    "class": "detail-hero"
   },
   "profile_tile": {
     "type": "column",
@@ -1546,7 +1546,7 @@
             "style": "subtitle"
           }
         ],
-        "class": "gap-8 items-center"
+        "class": "profile-stack"
       },
       {
         "type": "row",
@@ -1596,7 +1596,7 @@
   },
   "folder_tab": {
     "type": "row",
-    "class": "chip pad-8-16 items-center",
+    "class": "chip chip-filter",
     "action": {
       "name": "folder",
       "args": {
@@ -1614,7 +1614,7 @@
   },
   "folder_tab_active": {
     "type": "row",
-    "class": "chip-active pad-8-16 items-center",
+    "class": "chip-active chip-filter",
     "action": {
       "name": "folder",
       "args": {
@@ -1645,7 +1645,7 @@
         }
       }
     ],
-    "class": "w-200 h-4"
+    "class": "progress"
   },
   "avatar": {
     "type": "stack",
@@ -1708,7 +1708,7 @@
         "style": "headline"
       }
     ],
-    "class": "items-start"
+    "class": "logo-slot"
   },
   "continue_card": {
     "type": "stack",
@@ -1736,7 +1736,7 @@
           {
             "type": "row",
             "when": "card.episodes",
-            "class": "card-badge pad-4",
+            "class": "card-badge corner-badge",
             "children": [
               {
                 "type": "text",
@@ -1747,12 +1747,12 @@
           },
           {
             "type": "spacer",
-            "class": "grow"
+            "class": "slide"
           },
           {
             "type": "row",
             "when": "card.detail",
-            "class": "card-badge pad-4",
+            "class": "card-badge corner-badge",
             "children": [
               {
                 "type": "text",
@@ -1762,7 +1762,7 @@
             ]
           }
         ],
-        "class": "pad-8 items-start fill-space"
+        "class": "card-badges"
       },
       {
         "type": "column",
@@ -1799,10 +1799,10 @@
                 }
               }
             ],
-            "class": "h-4"
+            "class": "progress-wide"
           }
         ],
-        "class": "gap-4 pad-12 items-stretch justify-end fill-space"
+        "class": "continue-info"
       },
       {
         "include": "card_preview"
@@ -1971,7 +1971,7 @@
               },
               {
                 "type": "spacer",
-                "class": "grow"
+                "class": "slide"
               },
               {
                 "type": "icon",
@@ -1994,7 +1994,7 @@
                 "as": "opt",
                 "template": {
                   "type": "row",
-                  "class": "select-row gap-8",
+                  "class": "select-row",
                   "action": {
                     "name": "choose",
                     "args": {
@@ -2055,7 +2055,7 @@
               },
               {
                 "type": "spacer",
-                "class": "grow"
+                "class": "slide"
               },
               {
                 "type": "icon",
@@ -2653,7 +2653,7 @@
             ]
           }
         ],
-        "class": "gap-8 items-center"
+        "class": "control-row"
       },
       {
         "type": "text",
@@ -2667,7 +2667,7 @@
         "children": [
           {
             "type": "row",
-            "class": "btn-primary justify-center",
+            "class": "btn-primary watch-action",
             "action": {
               "name": "watch",
               "args": {
@@ -2702,7 +2702,7 @@
               },
               {
                 "type": "row",
-                "class": "btn-secondary pad-0-18 justify-center",
+                "class": "btn-secondary watch-join",
                 "action": {
                   "name": "watch",
                   "args": {
@@ -2718,10 +2718,10 @@
                 ]
               }
             ],
-            "class": "gap-8 items-center"
+            "class": "control-row"
           }
         ],
-        "class": "gap-14 items-stretch"
+        "class": "watch-form"
       },
       {
         "type": "column",
@@ -2739,7 +2739,7 @@
               },
               {
                 "type": "row",
-                "class": "btn-secondary pad-0-14 justify-center",
+                "class": "btn-secondary watch-copy",
                 "action": {
                   "name": "watch",
                   "args": {
@@ -2782,11 +2782,11 @@
                         "style": "meta muted"
                       }
                     ],
-                    "class": "gap-2 grow"
+                    "class": "row-text"
                   },
                   {
                     "type": "row",
-                    "class": "switch w-46 h-28 pad-3-3-3-3 items-center",
+                    "class": "switch watch-switch",
                     "props": {
                       "selected": "w.locked"
                     },
@@ -2800,16 +2800,16 @@
                       {
                         "type": "spacer",
                         "when": "w.locked",
-                        "class": "grow"
+                        "class": "slide"
                       },
                       {
                         "type": "column",
-                        "class": "knob w-22 h-22"
+                        "class": "knob watch-knob"
                       },
                       {
                         "type": "spacer",
                         "when": "!w.locked",
-                        "class": "grow"
+                        "class": "slide"
                       }
                     ]
                   }
@@ -2832,11 +2832,11 @@
                         "style": "meta muted"
                       }
                     ],
-                    "class": "gap-2 grow"
+                    "class": "row-text"
                   },
                   {
                     "type": "row",
-                    "class": "switch w-46 h-28 pad-3-3-3-3 items-center",
+                    "class": "switch watch-switch",
                     "props": {
                       "selected": "w.shareStream"
                     },
@@ -2850,23 +2850,23 @@
                       {
                         "type": "spacer",
                         "when": "w.shareStream",
-                        "class": "grow"
+                        "class": "slide"
                       },
                       {
                         "type": "column",
-                        "class": "knob w-22 h-22"
+                        "class": "knob watch-knob"
                       },
                       {
                         "type": "spacer",
                         "when": "!w.shareStream",
-                        "class": "grow"
+                        "class": "slide"
                       }
                     ]
                   }
                 ]
               }
             ],
-            "class": "gap-6 items-stretch"
+            "class": "watch-toggles"
           },
           {
             "each": "w.members",
@@ -2904,7 +2904,7 @@
                       }
                     }
                   ],
-                  "class": "gap-2 grow"
+                  "class": "row-text"
                 },
                 {
                   "type": "row",
@@ -2991,11 +2991,11 @@
                 ]
               }
             ],
-            "class": "gap-8 items-center"
+            "class": "control-row"
           },
           {
             "type": "row",
-            "class": "btn-secondary justify-center",
+            "class": "btn-secondary watch-action",
             "when": "w.host",
             "action": {
               "name": "watch",
@@ -3013,7 +3013,7 @@
           },
           {
             "type": "row",
-            "class": "btn-secondary justify-center",
+            "class": "btn-secondary watch-action",
             "when": "!w.host",
             "action": {
               "name": "watch",
@@ -3030,7 +3030,7 @@
             ]
           }
         ],
-        "class": "gap-14 items-stretch"
+        "class": "watch-form"
       },
       {
         "type": "text",
@@ -3039,7 +3039,7 @@
         "style": "meta"
       }
     ],
-    "class": "gap-10 items-stretch"
+    "class": "section"
   },
   "empty_state": {
     "type": "column",
@@ -3067,7 +3067,7 @@
         "when": "hint != \"\""
       }
     ],
-    "class": "gap-8 pad-0-24 items-center justify-center"
+    "class": "empty-state"
   },
   "block_row": {
     "type": "column",
@@ -4033,7 +4033,7 @@
                     "props": {
                       "fit": "contain"
                     },
-                    "class": "h-64"
+                    "class": "sources-logo"
                   },
                   {
                     "type": "text",
@@ -4054,7 +4054,7 @@
                     "class": "sources-episode"
                   }
                 ],
-                "class": "gap-6 pad-0-20 items-start"
+                "class": "sources-title"
               },
               {
                 "type": "row",
@@ -4069,10 +4069,10 @@
                     }
                   }
                 ],
-                "class": "pad-0-20 items-stretch"
+                "class": "sources-text"
               }
             ],
-            "class": "gap-6 pad-60-0-20-0 items-stretch justify-end"
+            "class": "sources-info"
           },
           {
             "type": "row",
@@ -4097,10 +4097,10 @@
                 ]
               }
             ],
-            "class": "pad-12 items-start"
+            "class": "sources-top"
           }
         ],
-        "class": "h-240"
+        "class": "sources-hero"
       },
       {
         "type": "row",
@@ -4133,7 +4133,7 @@
                 "as": "f",
                 "template": {
                   "type": "row",
-                  "class": "chip pad-8-16 items-center",
+                  "class": "chip chip-filter",
                   "props": {
                     "selected": "{f.selected}"
                   },
@@ -4157,10 +4157,10 @@
             "props": {
               "within": true
             },
-            "class": "gap-8 grow"
+            "class": "sources-chips"
           }
         ],
-        "class": "gap-10 pad-0-16 items-center"
+        "class": "sources-filters"
       },
       {
         "type": "row",
@@ -4175,7 +4175,7 @@
             }
           }
         ],
-        "class": "pad-0-16"
+        "class": "sources-status"
       },
       {
         "type": "scroll",
@@ -4211,7 +4211,7 @@
                               "as": "b",
                               "template": {
                                 "type": "row",
-                                "class": "card-badge pad-3-8",
+                                "class": "card-badge source-badge",
                                 "props": {
                                   "tint": "{b.fill}",
                                   "border": "{b.border}"
@@ -4229,7 +4229,7 @@
                               }
                             }
                           ],
-                          "class": "gap-6"
+                          "class": "source-badges"
                         },
                         {
                           "type": "text",
@@ -4257,7 +4257,7 @@
                               "as": "b",
                               "template": {
                                 "type": "row",
-                                "class": "card-badge pad-3-8",
+                                "class": "card-badge source-badge",
                                 "props": {
                                   "tint": "{b.fill}",
                                   "border": "{b.border}"
@@ -4275,10 +4275,10 @@
                               }
                             }
                           ],
-                          "class": "gap-6"
+                          "class": "source-badges"
                         }
                       ],
-                      "class": "gap-6 grow"
+                      "class": "source-text"
                     },
                     {
                       "type": "text",
@@ -4336,13 +4336,13 @@
                 "when": "sources.empty"
               }
             ],
-            "class": "gap-12 pad-0-16-24-16 items-stretch"
+            "class": "sources-rows"
           }
         ],
-        "class": "grow"
+        "class": "sources-list"
       }
     ],
-    "class": "gap-16 items-stretch fill-space"
+    "class": "sources fill-space"
   },
   "progress_wide": {
     "type": "stack",
@@ -4359,7 +4359,7 @@
         }
       }
     ],
-    "class": "h-4"
+    "class": "progress-wide"
   },
   "card_preview": {
     "type": "column",
@@ -4430,7 +4430,7 @@
         "children": [
           {
             "type": "row",
-            "class": "btn-primary gap-6 pad-0-18 justify-center",
+            "class": "btn-primary preview-play",
             "action": {
               "name": "play",
               "args": {
@@ -4573,20 +4573,20 @@
             "when": "card.hasProgress"
           }
         ],
-        "class": "gap-8 items-center"
+        "class": "control-row"
       }
     ]
   },
   "menu_sheet_items": {
     "type": "column",
-    "class": "gap-2 items-stretch",
+    "class": "menu-list",
     "children": [
       {
         "each": "menu.items",
         "as": "item",
         "template": {
           "type": "row",
-          "class": "select-row sheet-row gap-10",
+          "class": "select-row sheet-row",
           "props": {
             "selected": "{item.selected}"
           },
