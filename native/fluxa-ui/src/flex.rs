@@ -507,31 +507,7 @@ impl Node {
             Kind::Text(measure) => (measure.0)(None),
             Kind::Flex(Axis::Row) if self.wrap && self.width.is_some() => {
                 let avail = (self.width.unwrap_or(0.0) - self.padding.width()).max(0.0);
-                let (mut used, mut line_cross, mut total, mut first) = (0.0, 0.0_f32, 0.0, true);
-                let mut lines = 0;
-                for child in &self.children {
-                    let size = child.outer_size();
-                    let needed = if used == 0.0 {
-                        size.x
-                    } else {
-                        used + self.gap + size.x
-                    };
-                    if used > 0.0 && needed > avail {
-                        total += line_cross;
-                        lines += 1;
-                        used = size.x;
-                        line_cross = size.y;
-                    } else {
-                        used = needed;
-                        line_cross = line_cross.max(size.y);
-                    }
-                    first = false;
-                }
-                if !first {
-                    total += line_cross;
-                    lines += 1;
-                }
-                Vec2::new(avail, total + self.line_gap * (lines.max(1) - 1) as f32)
+                Vec2::new(avail, self.wrapped_lines_height(avail))
             }
             Kind::Flex(axis) => {
                 let sizes: Vec<Vec2> = self.children.iter().map(Node::outer_size).collect();
@@ -549,6 +525,49 @@ impl Node {
                 .map(Node::outer_size)
                 .fold(Vec2::ZERO, |acc, size| acc.max(size)),
         }
+    }
+
+    fn wrapped_lines_height(&self, avail: f32) -> f32 {
+        let (mut used, mut line_cross, mut total) = (0.0, 0.0_f32, 0.0);
+        let mut lines = 0;
+        for child in &self.children {
+            let size = child.outer_size();
+            let needed = if used == 0.0 {
+                size.x
+            } else {
+                used + self.gap + size.x
+            };
+            if used > 0.0 && needed > avail {
+                total += line_cross;
+                lines += 1;
+                used = size.x;
+                line_cross = size.y;
+            } else {
+                used = needed;
+                line_cross = line_cross.max(size.y);
+            }
+        }
+        if !self.children.is_empty() {
+            total += line_cross;
+            lines += 1;
+        }
+        total + self.line_gap * (lines.max(1) - 1) as f32
+    }
+
+    fn wrapped_outer_height(&self, width: f32) -> Option<f32> {
+        if !self.wrap || self.height.is_some() || !matches!(self.kind, Kind::Flex(Axis::Row)) {
+            return None;
+        }
+        let border = self
+            .width
+            .unwrap_or(width - self.margin.width())
+            .min(self.max_w.unwrap_or(f32::INFINITY))
+            .max(self.min_w.unwrap_or(0.0));
+        let avail = (border - self.padding.width()).max(0.0);
+        let height = (self.wrapped_lines_height(avail) + self.padding.height())
+            .min(self.max_h.unwrap_or(f32::INFINITY))
+            .max(self.min_h.unwrap_or(0.0));
+        Some(height + self.margin.height())
     }
 
     fn min_content(&self) -> Vec2 {
@@ -755,8 +774,20 @@ impl Node {
         let main_avail = main(axis, rect.size());
         let cross_avail = cross(axis, rect.size());
         let gaps = self.gap * (count - 1) as f32;
-        let spans: Vec<(f32, f32, f32)> =
-            line.iter().map(|&i| self.children[i].span(axis)).collect();
+        let spans: Vec<(f32, f32, f32)> = line
+            .iter()
+            .map(|&i| {
+                let child = &self.children[i];
+                let (base, min, max) = child.span(axis);
+                match child
+                    .wrapped_outer_height(cross_avail)
+                    .filter(|_| axis == Axis::Column)
+                {
+                    Some(height) => (height, min.min(height), max.max(height)),
+                    None => (base, min, max),
+                }
+            })
+            .collect();
         let mut lengths: Vec<f32> = spans.iter().map(|span| span.0).collect();
         let mut free = main_avail - gaps - lengths.iter().sum::<f32>();
 
@@ -1142,5 +1173,22 @@ mod tests {
             .align(Align::Center)
             .solve(Rect::from_min_size(Pos2::ZERO, Vec2::new(200.0, 60.0)));
         assert_eq!(placed.find(0).unwrap().center().y, 30.0);
+    }
+
+    #[test]
+    fn grow_stops_at_max_width_and_hands_the_rest_to_siblings() {
+        let out = rects(row([fill().max_width(50.0), fill()]), bounds(200.0, 10.0));
+        assert_eq!(out[0].width(), 50.0);
+        assert_eq!(out[1].width(), 150.0);
+    }
+
+    #[test]
+    fn wrapping_row_without_a_width_pushes_the_next_sibling_below_every_line() {
+        let chips = (0..5).map(|i| boxed(40.0, 20.0).id(i));
+        let tree = column([row(chips).wrap().gap(10.0), boxed(10.0, 10.0).id(9)]);
+        let placed = tree.solve(bounds(140.0, 200.0));
+        let last_line = placed.find(3).unwrap();
+        let below = placed.find(9).unwrap();
+        assert!(below.top() >= last_line.bottom());
     }
 }
