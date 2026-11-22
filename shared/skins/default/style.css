@@ -855,17 +855,15 @@ button:focus { scale: 1.04; }
 
 .splash .progress-track { width: 15rem; height: 3px; }
 .splash .progress-bar { height: 3px; }
-.top-bar { padding: var(--space-5); }
-.back-bar { padding: var(--space-5); align-items: flex-start; }
-.bottom-bar { gap: var(--gap-snug); padding: 0 var(--space-5) var(--space-5); justify-content: flex-end; }
-.trailer-bar { padding: 0 var(--space-5) var(--space-5); align-items: center; justify-content: flex-end; }
+.top-bar, .back-bar { padding: var(--space-5); }
+.back-bar, .warn-layer, .sync-layer { align-items: flex-start; }
+.bottom-bar, .trailer-bar { gap: var(--gap-snug); padding: 0 var(--space-5) var(--space-5); justify-content: flex-end; }
+.trailer-bar { align-items: center; }
 
-.panel-layer { align-items: flex-end; justify-content: flex-end; padding: var(--space-4) var(--space-4) var(--space-9); }
-.sync-layer { align-items: flex-start; justify-content: flex-end; padding: var(--space-4); }
+.panel-layer, .skip-layer { align-items: flex-end; justify-content: flex-end; gap: var(--gap-base); padding: var(--space-4) var(--space-5) var(--space-9); }
+.sync-layer, .watch-layer { justify-content: flex-end; padding: var(--space-4); }
 .episode footer, .mini-tile footer, .sheet-layer { justify-content: flex-end; }
-.watch-layer { justify-content: flex-end; padding: var(--space-4); }
-.skip-layer { align-items: flex-end; justify-content: flex-end; gap: var(--gap-base); padding: 0 var(--space-5) var(--space-9); }
-.warn-layer { padding: var(--space-8) var(--space-5); align-items: flex-start; }
+.warn-layer { padding: var(--space-8) var(--space-5); }
 .stats-layer { align-items: flex-start; justify-content: flex-end; padding: var(--space-8) var(--space-5) 0 0; }
 .pause-copy { align-items: flex-start; justify-content: flex-end; gap: var(--gap-base); padding: 0 0 var(--space-8) var(--space-8); }
 .entry, .panel-list { gap: var(--gap-tight); padding: var(--space-4); }
