@@ -1,4 +1,5 @@
 :root {
+  --page-end: 48px;
   --dialog-radius: 16px;
   --page-padding: 24px;
   --card-radius: 12px;
@@ -8,15 +9,23 @@
   --text-sm: 14px;
   --text-xs: 13px;
   --color-background: #060606;
+  --color-background-elevated: #0A0A0B;
   --color-surface: #141416;
   --color-surface-raised: #1C1C1F;
+  --color-navigation: #0D0D0D;
   --color-text-primary: #FFFFFF;
   --color-text-secondary: #B8B8BE;
   --color-text-muted: #8A8A91;
   --color-border: #FFFFFF14;
+  --color-border-strong: #FFFFFF29;
   --color-accent: #FFFFFF;
   --color-accent-foreground: #060606;
+  --color-success: #45D483;
+  --color-warning: #F0C674;
   --color-error: #FF6B6B;
+  --color-info: #2196F3;
+  --color-focus: #FFFFFF;
+  --color-scrim: #000000C7;
   --sash-foreign-fill: #465A96;
   --sash-foreign-text: #AABEF5;
   --sash-must-see-fill: #1E7850;
@@ -66,6 +75,8 @@
   --score-shadow-ink: #E1E1E1;
   --motion-enabled: 1;
   --motion-fast-ms: 120;
+  --motion-normal-ms: 180;
+  --motion-slow-ms: 300;
   --motion-curve-x1: 0.2;
   --motion-curve-y1: 0;
   --motion-curve-x2: 0;
@@ -75,6 +86,7 @@
   --space-3: .75rem;
   --space-4: 1rem;
   --space-5: 1.5rem;
+  --space-6: 2rem;
   --space-7: 3rem;
   --space-8: 4rem;
   --space-9: 6rem;
@@ -82,6 +94,18 @@
   --gap-snug: var(--space-2);
   --gap-base: var(--space-3);
   --gap-loose: var(--space-5);
+  --step-2: 2px;
+  --step-4: 4px;
+  --step-6: 6px;
+  --step-8: 8px;
+  --step-10: 10px;
+  --step-12: 12px;
+  --step-14: 14px;
+  --step-16: 16px;
+  --step-20: 20px;
+  --step-24: 24px;
+  --step-32: 32px;
+  --step-48: 48px;
   --radius-sm: 8px;
   --radius-md: 12px;
   --radius-lg: 16px;
@@ -107,6 +131,14 @@
   --ink-full: color-mix(in srgb, var(--color-text-primary) 100%, transparent);
   --fade-bg: linear-gradient(to bottom, color-mix(in srgb, var(--color-background) 0%, transparent) 0%, color-mix(in srgb, var(--color-background) 0%, transparent) 40%, color-mix(in srgb, var(--color-background) 90%, transparent) 100%);
   --fade-surface: linear-gradient(to bottom, color-mix(in srgb, var(--color-background) 0%, transparent) 0%, color-mix(in srgb, var(--color-background) 0%, transparent) 38%, color-mix(in srgb, var(--color-background) 55%, transparent) 72%, var(--color-surface) 100%);
+  --shade-faint: 90;
+  --shade-veil: 150;
+  --shade-scrim: 180;
+  --shade-strong: 215;
+  --shade-opaque: 240;
+  --stroke-hairline: 1px;
+  --stroke-icon: 1.6px;
+  --stroke-emphasis: 2px;
   motion-fast: 120ms;
   motion-normal: 180ms;
   motion-slow: 300ms;
@@ -116,7 +148,9 @@
 @media (theme: amoled) {
   :root {
     --color-background: #000000;
+    --color-background-elevated: #000000;
     --color-surface-raised: #222226;
+    --color-navigation: #000000;
     --color-accent-foreground: #FFFFFF;
   }
 }
@@ -124,8 +158,10 @@
 @media (theme: midnight-blue) {
   :root {
     --color-background: #080A10;
+    --color-background-elevated: #0D1220;
     --color-surface: #121A2A;
     --color-surface-raised: #1B263D;
+    --color-navigation: #090E1A;
     --color-text-secondary: #A9B4C8;
     --color-text-muted: #71809A;
     --color-accent-foreground: #FFFFFF;
@@ -554,6 +590,7 @@ hero-synopsis-size { font-size: 16; }
 
 @media (size: compact) {
   :root {
+    --page-end: 112px;
     --page-padding: 16px;
     --text-xl: 20px;
     --text-lg: 16px;
