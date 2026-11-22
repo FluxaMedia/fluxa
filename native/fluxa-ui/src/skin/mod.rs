@@ -294,7 +294,12 @@ fn draw_tree(
                 item
             })
             .collect();
-        let root = layout_items::column(items).padding(safe);
+        let root = layout_items::column(items)
+            .padding(safe)
+            .percent_of(Vec2::new(
+                viewport.width - safe.left - safe.right,
+                viewport.height - safe.top - safe.bottom,
+            ));
         kit::lay(ui, vec![root]);
         if let replay::Plan::Build(session) = plan {
             session.finish(ui, &env);

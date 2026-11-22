@@ -191,6 +191,10 @@ impl<'a> Item<'a> {
         self.with(|node| node.height_rel(rel))
     }
 
+    pub fn percent_of(self, space: Vec2) -> Self {
+        self.with(|node| node.percent_of(space))
+    }
+
     pub fn placed(self, horizontal: Option<Align>, vertical: Option<Align>) -> Self {
         self.with(|node| node.placed(horizontal, vertical))
     }

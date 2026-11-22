@@ -504,6 +504,27 @@ fn a_later_width_replaces_an_earlier_one_of_another_unit() {
     assert_eq!(padded_bar(css, "bar wide calc").width(), 1200.0);
 }
 
+#[test]
+fn full_size_root_layer_fills_the_viewport_without_viewport_units() {
+    crate::reload_styles_with(".pct-box { width: 100%; height: 100%; }").unwrap();
+    let tree = skin_from(json!({
+        "type": "stack",
+        "class": "pct-box",
+        "children": [{
+            "type": "column",
+            "class": "pct-box",
+            "children": [{
+                "type": "row",
+                "class": "pct-box",
+                "action": {"name": "back"},
+                "children": []
+            }]
+        }]
+    }));
+    let (_, targets) = render(&tree);
+    assert_eq!(targets[0].1.size(), Vec2::new(1280.0, 800.0));
+}
+
 fn corner_tree(stack_class: &str, child_class: &str) -> Vec<Resolved> {
     skin_from(json!({
         "type": "column",

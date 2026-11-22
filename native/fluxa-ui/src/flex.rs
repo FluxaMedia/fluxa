@@ -194,6 +194,7 @@ pub(crate) struct Node {
     height: Option<f32>,
     width_rel: Option<Rel>,
     height_rel: Option<Rel>,
+    percent_basis: Option<Vec2>,
     min_w: Option<f32>,
     min_h: Option<f32>,
     max_w: Option<f32>,
@@ -416,6 +417,7 @@ impl Node {
             height: None,
             width_rel: None,
             height_rel: None,
+            percent_basis: None,
             min_w: None,
             min_h: None,
             max_w: None,
@@ -454,6 +456,14 @@ impl Node {
 
     pub fn with_children(mut self, children: impl IntoIterator<Item = Node>) -> Self {
         self.children = children.into_iter().collect();
+        if let Some(space) = self.percent_basis {
+            self.resolve_children(space);
+        }
+        self
+    }
+
+    pub fn percent_of(mut self, space: Vec2) -> Self {
+        self.percent_basis = Some(space);
         self
     }
 
@@ -881,7 +891,12 @@ impl Node {
 
     fn with_percent_sizes(&self, space: Vec2) -> Node {
         let mut node = self.clone();
-        for child in &mut node.children {
+        node.resolve_children(space);
+        node
+    }
+
+    fn resolve_children(&mut self, space: Vec2) {
+        for child in &mut self.children {
             if let Some(rel) = child.width_rel.take() {
                 child.width = Some((rel.at(space.x) - child.margin.width()).max(0.0));
                 child.memo.set(Memo::default());
@@ -891,7 +906,6 @@ impl Node {
                 child.memo.set(Memo::default());
             }
         }
-        node
     }
 
     fn solve_flex(&self, axis: Axis, inner: Rect) -> Vec<Placed> {
@@ -1565,6 +1579,18 @@ mod tests {
         let placed = tree.solve(bounds(100.0, 10.0));
         assert_eq!(placed.find(0).unwrap().width(), 96.0);
         assert_eq!(tree.outer_size(), Vec2::new(30.0, 10.0));
+    }
+
+    #[test]
+    fn explicit_percent_basis_ignores_what_the_hugging_parent_contains() {
+        let tree = column([])
+            .padding(Insets::all(10.0))
+            .gap(0.0)
+            .percent_of(Vec2::new(180.0, 80.0))
+            .with_children([boxed(10.0, 10.0).height_pct(0.5).id(0), boxed(10.0, 20.0)]);
+        assert_eq!(tree.outer_size(), Vec2::new(30.0, 80.0));
+        let placed = tree.solve(bounds(200.0, 100.0));
+        assert_eq!(placed.find(0).unwrap().height(), 40.0);
     }
 
     #[test]
