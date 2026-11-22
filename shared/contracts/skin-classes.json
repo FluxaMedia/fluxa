@@ -2,13 +2,6 @@
   "version": 4,
   "classes": [
     {
-      "name": "about-name",
-      "element": "text",
-      "meaning": "App name text on the About card",
-      "stability": "internal",
-      "since": 1
-    },
-    {
       "name": "addon-chip",
       "element": "text",
       "meaning": "Small label on an addon card",
@@ -121,13 +114,6 @@
       "since": 1
     },
     {
-      "name": "card-strip",
-      "element": "scroll",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
       "name": "card-subtitle",
       "element": "text",
       "meaning": "Second line under a media card title",
@@ -140,13 +126,6 @@
       "meaning": "Title text of a media card",
       "stability": "stable",
       "since": 1
-    },
-    {
-      "name": "center",
-      "element": "column",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
     },
     {
       "name": "centered",
@@ -324,20 +303,6 @@
       "since": 1
     },
     {
-      "name": "empty-hint",
-      "element": "text",
-      "meaning": "Secondary text of an empty state",
-      "stability": "internal",
-      "since": 1
-    },
-    {
-      "name": "empty-icon",
-      "element": "icon",
-      "meaning": "Icon of an empty state",
-      "stability": "internal",
-      "since": 1
-    },
-    {
       "name": "empty-title",
       "element": "text",
       "meaning": "Title of an empty state",
@@ -448,13 +413,6 @@
       "meaning": "Outline drawn around the focused element",
       "stability": "stable",
       "since": 1
-    },
-    {
-      "name": "folder-tabs",
-      "element": "scroll",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
     },
     {
       "name": "fullscreen",
@@ -681,13 +639,6 @@
       "since": 1
     },
     {
-      "name": "menu-title",
-      "element": "text",
-      "meaning": "Title row of a menu",
-      "stability": "internal",
-      "since": 1
-    },
-    {
       "name": "mini-controls",
       "element": "row",
       "meaning": "Control row of the mini player",
@@ -714,13 +665,6 @@
       "meaning": "Dimmed backdrop behind a modal",
       "stability": "stable",
       "since": 1
-    },
-    {
-      "name": "modal-scroll",
-      "element": "scroll",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
     },
     {
       "name": "nav-dock",
@@ -902,13 +846,6 @@
       "element": "column",
       "meaning": "Playback progress bar on a card",
       "stability": "stable",
-      "since": 1
-    },
-    {
-      "name": "player-black",
-      "element": "column stack",
-      "meaning": "Black background behind the video",
-      "stability": "internal",
       "since": 1
     },
     {
@@ -1248,13 +1185,6 @@
       "since": 1
     },
     {
-      "name": "slide",
-      "element": "spacer",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
       "name": "slider",
       "element": "stack",
       "meaning": "Slider control",
@@ -1304,13 +1234,6 @@
       "since": 1
     },
     {
-      "name": "sources",
-      "element": "column",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
       "name": "sources-chips",
       "element": "scroll",
       "meaning": "",
@@ -1321,27 +1244,6 @@
       "name": "sources-episode",
       "element": "text",
       "meaning": "Episode text in the sources list",
-      "stability": "internal",
-      "since": 1
-    },
-    {
-      "name": "sources-list",
-      "element": "scroll",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
-      "name": "sources-season",
-      "element": "text",
-      "meaning": "Season text in the sources list",
-      "stability": "internal",
-      "since": 1
-    },
-    {
-      "name": "sources-synopsis",
-      "element": "text",
-      "meaning": "Synopsis text in the sources list",
       "stability": "internal",
       "since": 1
     },
@@ -1416,13 +1318,6 @@
       "since": 2
     },
     {
-      "name": "thumb-strip",
-      "element": "scroll",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
       "name": "tile",
       "element": "column row stack",
       "meaning": "",
@@ -1493,13 +1388,6 @@
       "since": 1
     },
     {
-      "name": "welcome-code",
-      "element": "text",
-      "meaning": "Pairing code on the welcome screen",
-      "stability": "internal",
-      "since": 1
-    },
-    {
       "name": "welcome-error",
       "element": "row",
       "meaning": "Error row on the welcome screen",
@@ -1510,20 +1398,6 @@
       "name": "welcome-error-text",
       "element": "text",
       "meaning": "Error text on the welcome screen",
-      "stability": "internal",
-      "since": 1
-    },
-    {
-      "name": "welcome-label",
-      "element": "text",
-      "meaning": "Field label on the welcome screen",
-      "stability": "internal",
-      "since": 1
-    },
-    {
-      "name": "welcome-or",
-      "element": "text",
-      "meaning": "Separator text on the welcome screen",
       "stability": "internal",
       "since": 1
     },
@@ -3003,6 +2877,114 @@
       "since": 3,
       "removedIn": 4,
       "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "about-name",
+      "since": 1,
+      "removedIn": 4,
+      "replacement": "page-title"
+    },
+    {
+      "name": "card-strip",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "shelf-row"
+    },
+    {
+      "name": "center",
+      "since": 2,
+      "removedIn": 4,
+      "replacement": "fill-space"
+    },
+    {
+      "name": "empty-hint",
+      "since": 1,
+      "removedIn": 4,
+      "replacement": "page-hint"
+    },
+    {
+      "name": "empty-icon",
+      "since": 1,
+      "removedIn": 4,
+      "replacement": "side-heading"
+    },
+    {
+      "name": "folder-tabs",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "day-grid"
+    },
+    {
+      "name": "menu-title",
+      "since": 1,
+      "removedIn": 4,
+      "replacement": "hero-meta"
+    },
+    {
+      "name": "modal-scroll",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "grow"
+    },
+    {
+      "name": "player-black",
+      "since": 1,
+      "removedIn": 4,
+      "replacement": "slider-chapter"
+    },
+    {
+      "name": "slide",
+      "since": 2,
+      "removedIn": 4,
+      "replacement": "grow"
+    },
+    {
+      "name": "sources",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "shelf-row"
+    },
+    {
+      "name": "sources-list",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "grow"
+    },
+    {
+      "name": "sources-season",
+      "since": 1,
+      "removedIn": 4,
+      "replacement": "welcome-subtitle"
+    },
+    {
+      "name": "sources-synopsis",
+      "since": 1,
+      "removedIn": 4,
+      "replacement": "welcome-subtitle"
+    },
+    {
+      "name": "thumb-strip",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "page-snug"
+    },
+    {
+      "name": "welcome-code",
+      "since": 1,
+      "removedIn": 4,
+      "replacement": "welcome-title"
+    },
+    {
+      "name": "welcome-label",
+      "since": 1,
+      "removedIn": 4,
+      "replacement": "group-heading"
+    },
+    {
+      "name": "welcome-or",
+      "since": 1,
+      "removedIn": 4,
+      "replacement": "group-heading"
     }
   ]
 }

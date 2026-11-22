@@ -64,7 +64,7 @@
                       }
                     }
                   ],
-                  "class": "thumb-strip"
+                  "class": "page-snug"
                 }
               ],
               "gap": 12
@@ -93,7 +93,7 @@
                   }
                 }
               ],
-              "class": "card-strip"
+              "class": "shelf-row"
             }
           ],
           "class": "section"
@@ -146,7 +146,7 @@
                       }
                     }
                   ],
-                  "class": "thumb-strip"
+                  "class": "page-snug"
                 }
               ],
               "gap": 12
@@ -175,7 +175,7 @@
                   }
                 }
               ],
-              "class": "card-strip"
+              "class": "shelf-row"
             }
           ],
           "class": "section"
@@ -201,7 +201,7 @@
                   }
                 }
               ],
-              "class": "card-strip"
+              "class": "shelf-row"
             }
           ],
           "class": "section"

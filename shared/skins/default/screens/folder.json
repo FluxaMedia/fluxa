@@ -71,7 +71,7 @@
               }
             }
           ],
-          "class": "folder-tabs"
+          "class": "day-grid"
         },
         {
           "type": "text",

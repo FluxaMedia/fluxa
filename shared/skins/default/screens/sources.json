@@ -30,7 +30,7 @@
     },
     {
       "type": "column",
-      "class": "fullscreen player-black compact-only",
+      "class": "fullscreen slider-chapter compact-only",
       "children": [
         {
           "include": "sources_body"

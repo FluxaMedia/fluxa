@@ -1101,14 +1101,36 @@ pub(crate) fn look(context: &crate::gfx::Context, rule: &str) -> Style {
 
 /// Rule names older skins used for the canonical button names. They keep
 /// parsing and matching, so a third-party sheet that styles `.action-primary`
-/// or `button.primary` still restyles `btn-primary` nodes and widgets.
-const ALIASES: [(&str, &str); 6] = [
+/// or `button.primary` still restyles `btn-primary` nodes and widgets. The
+/// same holds for one-off classes the default skin folded into a shared one
+/// (`.slide` is `.grow`, `.about-name` is `.page-title`, ...).
+const ALIASES: &[(&str, &str)] = &[
     ("button.primary", "btn-primary"),
     ("btn-secondary", "btn-secondary"),
     ("button.selected", "btn-selected"),
     ("button.danger", "btn-danger"),
     ("action-primary", "btn-primary"),
     ("action-secondary", "btn-secondary"),
+    ("menu-title", "hero-meta"),
+    ("slide", "grow"),
+    ("sources-list", "grow"),
+    ("search-fill", "grow"),
+    ("modal-scroll", "grow"),
+    ("center", "fill-space"),
+    ("empty-hint", "page-hint"),
+    ("about-name", "page-title"),
+    ("welcome-code", "welcome-title"),
+    ("welcome-or", "group-heading"),
+    ("welcome-label", "group-heading"),
+    ("sources-season", "welcome-subtitle"),
+    ("sources-synopsis", "welcome-subtitle"),
+    ("sources-logo", "h-64"),
+    ("thumb-strip", "page-snug"),
+    ("card-strip", "shelf-row"),
+    ("sources", "shelf-row"),
+    ("folder-tabs", "day-grid"),
+    ("player-black", "slider-chapter"),
+    ("empty-icon", "side-heading"),
 ];
 
 fn canonical(name: &str) -> &str {
@@ -1889,6 +1911,16 @@ mod tests {
         assert_eq!(canonical("action-primary"), "btn-primary");
         assert_eq!(canonical("button.danger"), "btn-danger");
         assert_eq!(canonical("chip"), "chip");
+    }
+
+    #[test]
+    fn folded_one_off_classes_still_restyle_the_shared_class() {
+        let sheet = Sheet::parse(".slide { padding: 3; } .about-name { color: #ffffff; }")
+            .expect("parses");
+        assert!(sheet.rules.contains_key("grow"));
+        assert!(sheet.rules.contains_key("page-title"));
+        assert_eq!(canonical("modal-scroll"), "grow");
+        assert_eq!(canonical("empty-icon"), "side-heading");
     }
 
     #[test]

@@ -28,7 +28,7 @@
                 {
                   "type": "text",
                   "when": "menu.title",
-                  "class": "menu-title",
+                  "class": "hero-meta",
                   "padding": "8 12",
                   "text": "{menu.title}",
                   "props": {
@@ -93,7 +93,7 @@
                 {
                   "type": "text",
                   "when": "menu.title",
-                  "class": "menu-title",
+                  "class": "hero-meta",
                   "padding": "8 12",
                   "text": "{menu.title}",
                   "props": {
@@ -135,7 +135,7 @@
                 {
                   "type": "text",
                   "when": "menu.title",
-                  "class": "menu-title",
+                  "class": "hero-meta",
                   "padding": "8 12",
                   "text": "{menu.title}",
                   "props": {

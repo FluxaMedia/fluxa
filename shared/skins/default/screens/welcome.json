@@ -78,7 +78,7 @@
         },
         {
           "type": "text",
-          "class": "welcome-label",
+          "class": "group-heading",
           "i18n": "auth.field.email"
         },
         {
@@ -101,7 +101,7 @@
         },
         {
           "type": "text",
-          "class": "welcome-label",
+          "class": "group-heading",
           "i18n": "auth.field.password"
         },
         {
@@ -179,7 +179,7 @@
             },
             {
               "type": "text",
-              "class": "welcome-or",
+              "class": "group-heading",
               "i18n": "auth.or"
             },
             {
@@ -250,7 +250,7 @@
               "children": [
                 {
                   "type": "text",
-                  "class": "welcome-code",
+                  "class": "welcome-title",
                   "text": "{welcome.code}"
                 }
               ],
@@ -462,7 +462,7 @@
             },
             {
               "type": "text",
-              "class": "welcome-label",
+              "class": "group-heading",
               "i18n": "auth.field.email"
             },
             {
@@ -485,7 +485,7 @@
             },
             {
               "type": "text",
-              "class": "welcome-label",
+              "class": "group-heading",
               "i18n": "auth.field.password"
             },
             {
@@ -563,7 +563,7 @@
                 },
                 {
                   "type": "text",
-                  "class": "welcome-or",
+                  "class": "group-heading",
                   "i18n": "auth.or"
                 },
                 {

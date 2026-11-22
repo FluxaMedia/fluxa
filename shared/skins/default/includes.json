@@ -824,7 +824,7 @@
         "children": [
           {
             "type": "spacer",
-            "class": "slide",
+            "class": "grow",
             "when": "row.on"
           },
           {
@@ -833,7 +833,7 @@
           },
           {
             "type": "spacer",
-            "class": "slide",
+            "class": "grow",
             "when": "!row.on"
           }
         ]
@@ -937,7 +937,7 @@
         "children": [
           {
             "type": "column",
-            "class": "centered center",
+            "class": "centered fill-space",
             "children": [
               {
                 "type": "icon",
@@ -1064,7 +1064,7 @@
                         }
                       }
                     ],
-                    "class": "centered center"
+                    "class": "centered fill-space"
                   }
                 ]
               }
@@ -1715,7 +1715,7 @@
             "children": [
               {
                 "type": "column",
-                "class": "centered center",
+                "class": "centered fill-space",
                 "children": [
                   {
                     "type": "icon",
@@ -1793,7 +1793,7 @@
           },
           {
             "type": "spacer",
-            "class": "slide"
+            "class": "grow"
           },
           {
             "type": "row",
@@ -1896,7 +1896,7 @@
               },
               {
                 "type": "spacer",
-                "class": "slide"
+                "class": "grow"
               },
               {
                 "type": "icon",
@@ -1978,7 +1978,7 @@
               },
               {
                 "type": "spacer",
-                "class": "slide"
+                "class": "grow"
               },
               {
                 "type": "icon",
@@ -2023,7 +2023,7 @@
               },
               {
                 "type": "spacer",
-                "class": "slide"
+                "class": "grow"
               },
               {
                 "type": "icon",
@@ -2107,7 +2107,7 @@
               },
               {
                 "type": "spacer",
-                "class": "slide"
+                "class": "grow"
               },
               {
                 "type": "icon",
@@ -2234,7 +2234,7 @@
                       "children": [
                         {
                           "type": "spacer",
-                          "class": "slide",
+                          "class": "grow",
                           "when": "skin.active"
                         },
                         {
@@ -2243,7 +2243,7 @@
                         },
                         {
                           "type": "spacer",
-                          "class": "slide",
+                          "class": "grow",
                           "when": "!skin.active"
                         }
                       ]
@@ -2264,7 +2264,7 @@
                       "children": [
                         {
                           "type": "spacer",
-                          "class": "slide",
+                          "class": "grow",
                           "when": "skin.active"
                         },
                         {
@@ -2273,7 +2273,7 @@
                         },
                         {
                           "type": "spacer",
-                          "class": "slide",
+                          "class": "grow",
                           "when": "!skin.active"
                         }
                       ]
@@ -2870,7 +2870,7 @@
                       {
                         "type": "spacer",
                         "when": "w.locked",
-                        "class": "slide"
+                        "class": "grow"
                       },
                       {
                         "type": "column",
@@ -2881,7 +2881,7 @@
                       {
                         "type": "spacer",
                         "when": "!w.locked",
-                        "class": "slide"
+                        "class": "grow"
                       }
                     ]
                   }
@@ -2925,7 +2925,7 @@
                       {
                         "type": "spacer",
                         "when": "w.shareStream",
-                        "class": "slide"
+                        "class": "grow"
                       },
                       {
                         "type": "column",
@@ -2936,7 +2936,7 @@
                       {
                         "type": "spacer",
                         "when": "!w.shareStream",
-                        "class": "slide"
+                        "class": "grow"
                       }
                     ]
                   }
@@ -3134,7 +3134,7 @@
           "name": "{icon}",
           "size": 36
         },
-        "class": "empty-icon"
+        "class": "side-heading"
       },
       {
         "type": "text",
@@ -3143,7 +3143,7 @@
       },
       {
         "type": "text",
-        "class": "empty-hint",
+        "class": "page-hint",
         "i18n": "{hint}",
         "props": {
           "lines": 2
@@ -3436,7 +3436,7 @@
             "children": [
               {
                 "type": "text",
-                "class": "about-name",
+                "class": "page-title",
                 "text": "Fluxa"
               },
               {
@@ -3600,7 +3600,7 @@
                   },
                   {
                     "type": "column",
-                    "class": "centered center",
+                    "class": "centered fill-space",
                     "when": "!row.logo",
                     "children": [
                       {
@@ -3675,7 +3675,7 @@
                 "children": [
                   {
                     "type": "spacer",
-                    "class": "slide",
+                    "class": "grow",
                     "when": "row.toggle.on"
                   },
                   {
@@ -3684,7 +3684,7 @@
                   },
                   {
                     "type": "spacer",
-                    "class": "slide",
+                    "class": "grow",
                     "when": "!row.toggle.on"
                   }
                 ]
@@ -3741,7 +3741,7 @@
                 "children": [
                   {
                     "type": "spacer",
-                    "class": "slide",
+                    "class": "grow",
                     "when": "row.group.on"
                   },
                   {
@@ -3750,7 +3750,7 @@
                   },
                   {
                     "type": "spacer",
-                    "class": "slide",
+                    "class": "grow",
                     "when": "!row.group.on"
                   }
                 ]
@@ -3931,7 +3931,7 @@
             "children": [
               {
                 "type": "spacer",
-                "class": "slide",
+                "class": "grow",
                 "when": "row.toggle.on"
               },
               {
@@ -3940,7 +3940,7 @@
               },
               {
                 "type": "spacer",
-                "class": "slide",
+                "class": "grow",
                 "when": "!row.toggle.on"
               }
             ]
@@ -4160,7 +4160,7 @@
                     "type": "text",
                     "text": "{sources.season}",
                     "when": "sources.season",
-                    "class": "sources-season"
+                    "class": "welcome-subtitle"
                   },
                   {
                     "type": "text",
@@ -4180,7 +4180,7 @@
                   {
                     "type": "text",
                     "text": "{sources.overview}",
-                    "class": "sources-synopsis",
+                    "class": "welcome-subtitle",
                     "props": {
                       "lines": 3
                     }
@@ -4465,10 +4465,10 @@
             "padding": "0 16 24 16"
           }
         ],
-        "class": "sources-list"
+        "class": "grow"
       }
     ],
-    "class": "sources fill-space"
+    "class": "shelf-row fill-space"
   },
   "progress_wide": {
     "type": "stack",

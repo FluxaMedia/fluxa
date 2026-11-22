@@ -299,7 +299,7 @@
                                       }
                                     }
                                   ],
-                                  "class": "thumb-strip"
+                                  "class": "page-snug"
                                 }
                               ],
                               "class": "section"
@@ -312,7 +312,7 @@
                       "gap": 16
                     }
                   ],
-                  "class": "modal-scroll"
+                  "class": "grow"
                 }
               ]
             }
