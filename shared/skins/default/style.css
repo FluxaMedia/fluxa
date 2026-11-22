@@ -1086,22 +1086,9 @@ hero-synopsis-size { font-size: 16; }
 
 .select-field:hover { background: ink/soft; }
 
-.select-menu {
-  background: theme.surface;
-  border: ink/faint;
-  border-width: 1px;
-  border-radius: var(--radius-lg);
-  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.5);
-  gap: 2px;
-}
+.select-menu { box-shadow: 0 10px 28px rgba(0, 0, 0, 0.5); gap: 2px; }
 
-.card-preview {
-  background: theme.surface;
-  border: ink/faint;
-  border-width: 1px;
-  border-radius: var(--radius-lg);
-  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.55);
-}
+.card-preview { box-shadow: 0 14px 36px rgba(0, 0, 0, 0.55); }
 
 .preview-art { border-radius: var(--radius-md); }
 .menu-scrim { background: rgba(0, 0, 0, 0.35); }
@@ -1112,13 +1099,7 @@ hero-synopsis-size { font-size: 16; }
 
 .modal-scrim { background: rgba(0, 0, 0, 0.72); }
 
-.menu-panel {
-  background: theme.surface;
-  border: ink/faint;
-  border-width: 1px;
-  border-radius: var(--radius-lg);
-  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.5);
-}
+.menu-panel { box-shadow: 0 10px 28px rgba(0, 0, 0, 0.5); }
 
 .menu-sheet { border-radius: var(--radius-lg); }
 .menu-title { color: ink/subtle; padding: 8px 12px; }
@@ -1159,13 +1140,7 @@ hero-synopsis-size { font-size: 16; }
 
 .mini-tile:hover .mini-controls { opacity: 1; }
 
-.player-panel {
-  background: theme.surface;
-  border: ink/faint;
-  border-width: 1px;
-  border-radius: var(--radius-lg);
-  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.5);
-}
+.player-panel { box-shadow: 0 10px 28px rgba(0, 0, 0, 0.5); }
 
 .panel-heading { color: ink/muted; }
 
@@ -1699,6 +1674,13 @@ hero-synopsis-size { font-size: 16; }
 .centered { align-items: center; justify-content: center; }
 
 .label-strong { font-size: var(--text-label); font-weight: 600; }
+
+.popover {
+  background: theme.surface;
+  border-radius: var(--radius-lg);
+  border-width: 1px;
+  border: ink/faint;
+}
 
 .action-wide { padding: 0px 28px; justify-content: center; }
 

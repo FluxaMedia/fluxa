@@ -604,7 +604,7 @@
       "children": [
         {
           "type": "column",
-          "class": "player-panel player-panel-menu",
+          "class": "popover player-panel player-panel-menu",
           "children": [
             {
               "type": "row",
@@ -1511,7 +1511,7 @@
       "children": [
         {
           "type": "column",
-          "class": "player-panel player-panel-form",
+          "class": "popover player-panel player-panel-form",
           "width": "{const.panelWidth}",
           "children": [
             {
@@ -1792,7 +1792,7 @@
       "children": [
         {
           "type": "column",
-          "class": "player-panel player-panel-sheet",
+          "class": "popover player-panel player-panel-sheet",
           "children": [
             {
               "type": "row",
@@ -1867,7 +1867,7 @@
       "children": [
         {
           "type": "column",
-          "class": "player-panel player-panel-form",
+          "class": "popover player-panel player-panel-form",
           "width": "{const.panelWidth}",
           "children": [
             {
@@ -1905,7 +1905,7 @@
         {
           "type": "column",
           "when": "player.next",
-          "class": "player-panel player-panel-card",
+          "class": "popover player-panel player-panel-card",
           "width": "{const.panelWidth}",
           "children": [
             {

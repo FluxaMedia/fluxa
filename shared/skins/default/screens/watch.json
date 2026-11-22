@@ -16,7 +16,7 @@
       "children": [
         {
           "type": "column",
-          "class": "menu-panel dialog-card",
+          "class": "popover menu-panel dialog-card",
           "width": "{const.watchWidth}",
           "children": [
             {

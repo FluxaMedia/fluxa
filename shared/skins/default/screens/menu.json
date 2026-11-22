@@ -20,7 +20,7 @@
           "children": [
             {
               "type": "column",
-              "class": "menu-panel menu-list",
+              "class": "popover menu-panel menu-list",
               "width": "{const.menuWidth}",
               "padding": "{const.menuPadding}",
               "children": [
@@ -82,7 +82,7 @@
           "children": [
             {
               "type": "column",
-              "class": "menu-panel menu-sheet menu-list sheet-wide",
+              "class": "popover menu-panel menu-sheet menu-list sheet-wide",
               "padding": "{const.menuPadding}",
               "children": [
                 {
@@ -121,7 +121,7 @@
           "children": [
             {
               "type": "column",
-              "class": "menu-panel menu-list",
+              "class": "popover menu-panel menu-list",
               "width": "{const.menuWidth}",
               "padding": "{const.menuPadding}",
               "children": [

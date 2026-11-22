@@ -1857,7 +1857,7 @@
           },
           {
             "type": "column",
-            "class": "select-menu",
+            "class": "popover select-menu",
             "props": {
               "float": true
             },
@@ -1984,7 +1984,7 @@
           },
           {
             "type": "column",
-            "class": "select-menu",
+            "class": "popover select-menu",
             "props": {
               "float": true
             },
@@ -4363,7 +4363,7 @@
   },
   "card_preview": {
     "type": "column",
-    "class": "card-preview",
+    "class": "popover card-preview",
     "width": "{const.previewWidth}",
     "padding": "{const.previewPadding}",
     "gap": "{const.previewGap}",

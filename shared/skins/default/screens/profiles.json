@@ -927,7 +927,7 @@
           "children": [
             {
               "type": "column",
-              "class": "menu-panel profiles-dialog",
+              "class": "popover menu-panel profiles-dialog",
               "width": "{const.dialogWidth}",
               "children": [
                 {
@@ -1039,7 +1039,7 @@
           "children": [
             {
               "type": "column",
-              "class": "menu-panel profiles-dialog",
+              "class": "popover menu-panel profiles-dialog",
               "width": "{const.dialogWidth}",
               "children": [
                 {

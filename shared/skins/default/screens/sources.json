@@ -16,7 +16,7 @@
       "children": [
         {
           "type": "column",
-          "class": "menu-panel sheet-tall",
+          "class": "popover menu-panel sheet-tall",
           "width": "{const.modalWidth}",
           "children": [
             {

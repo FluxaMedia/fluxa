@@ -1864,6 +1864,13 @@
       "since": 3
     },
     {
+      "name": "popover",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
       "name": "poster",
       "element": "column",
       "meaning": "Media poster card",
