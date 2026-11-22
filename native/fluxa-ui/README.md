@@ -4,7 +4,7 @@ Layout, skin and paint for every Fluxa shell. Screens are JSON, style is `shared
 
 ## Engine design note
 
-Status: baseline measured, nothing optimised yet. The order below waits for approval.
+Status: baseline measured; phase B results below; phase C waits for approval.
 
 ### How to measure
 
@@ -67,3 +67,32 @@ C. Layout features, ordered by call sites in the skin today:
 Quality, alongside both: invariant tests (children stay inside the parent unless positioned, layout is idempotent, no NaN or negative sizes) run over the screen gallery; keep `FLUXA_LAYOUT_LINT`; a bench script in `scripts/` so every B commit reports the same table.
 
 Already done (percent sizing, stack `align` and `place`, aspect ratio from one side, wrap-row height) is covered by tests in `skin/tests.rs` and `flex.rs`.
+
+### Phase B results
+
+Best of several interleaved runs (machine shared with other builds, so single runs vary 2-5x; compare within a row, not across commits). Work ms per frame, p50 / p95, art fixture unless noted:
+
+| scene | before | after | outer_size calls | allocs per frame |
+|---|---|---|---|---|
+| home (no artwork, plain fixture) | 1.10 / 1.30 | 0.60 / 0.80 | 1148 -> 473 | 6170 -> 3028 |
+| phone home (plain fixture) | 0.70 / 0.80 | 0.50 / 0.60 | 946 -> 413 | 4001 -> 2402 |
+| home | 0.80 / 0.95 | 0.70 / 0.85 | 973 -> 479 | 4404 -> 3501 |
+| library | 0.60 / 0.65 | 0.50 / 0.60 | 800 -> 282 | 3681 -> 2690 |
+| detail | 0.50 / 0.55 | 0.40 / 0.50 | 665 -> 241 | 3091 -> 2338 |
+| player | 0.90 / 1.00 | 0.70 / 0.85 | 1866 -> 479 | 6599 -> 4373 |
+| settings | 1.40 / 1.70 | 1.20 / 1.40 | 4350 -> 910 | 10475 -> 5865 |
+
+What each commit did:
+
+- Cards without an artwork url were marked dirty on every frame, so the card and strip replay caches never stored them. They now replay: plain-fixture home 1.10 -> 0.70 ms, 6170 -> 3927 allocations.
+- Node sizes are memoised for the length of one solve. Text measuring per nested tree: 24 calls -> 1. Settings layout 0.14 -> 0.04 ms.
+- Resolved styles are memoised per node for one frame. Style time roughly halves (settings 0.22 -> 0.12 ms).
+- The focus frame is updated in place instead of copied for every registered target (quadratic). 40-frame heap profile: 89.9 MB -> 70.6 MB.
+- Token lookups no longer clone the value string; flex children are measured without collecting sizes. Blocks per 40 frames: 334k -> 255k in total across the three allocation commits.
+
+Not done, with reasons:
+
+- Dirty tracking. A pointer sweep over home produces about 78 % frames with unchanged output (51 presented of 227), each paying the full build and paint. Skipping them safely needs a hover-membership signature across the whole host frame (rendered layout, focus ring, cursor icon, hover tip, seek preview), so it is a design decision and not a drop-in cache.
+- Off-screen skipping. Horizontal strips (far cards) and grids (windows) already virtualise: a library of 6 items, 600 items and 6000 items all build 139 nodes per frame at 1.4-1.5 ms.
+
+Verified: 45 of 47 `check-screens` scenes are pixel-identical to baselines regenerated from the commit before phase B; the two player-sources scenes differ by 3-2055 px between runs of the same code. Layout lint counts are identical. Not verified: real GPU, real network artwork, live data, a real device.
