@@ -43,17 +43,14 @@ pub fn begin_focus_frame(context: &crate::gfx::Context, focused: Option<u64>) {
 }
 
 pub(crate) fn is_focused(context: &crate::gfx::Context, node: u64) -> bool {
-    context.data(|data| {
-        data.get_temp::<FocusFrame>(frame_id())
-            .is_some_and(|frame| frame.focused == Some(node))
+    context.data_mut(|data| {
+        data.get_temp_mut_or_default::<FocusFrame>(frame_id()).focused == Some(node)
     })
 }
 
 pub fn set_auto_focus(context: &crate::gfx::Context, on: bool) {
     context.data_mut(|data| {
-        let mut frame = data.get_temp::<FocusFrame>(frame_id()).unwrap_or_default();
-        frame.auto = on;
-        data.insert_temp(frame_id(), frame);
+        data.get_temp_mut_or_default::<FocusFrame>(frame_id()).auto = on;
     });
 }
 
@@ -62,14 +59,12 @@ pub(crate) fn auto_focus(ui: &crate::gfx::Ui, rect: Rect, clicked: bool) {
         return;
     }
     let node = ui.ctx().data_mut(|data| {
-        let mut frame = data.get_temp::<FocusFrame>(frame_id()).unwrap_or_default();
-        let node = frame.auto.then(|| {
+        let frame = data.get_temp_mut_or_default::<FocusFrame>(frame_id());
+        frame.auto.then(|| {
             let node = crate::NODE_AUTO_BASE + frame.auto_next;
             frame.auto_next += 1;
             node
-        });
-        data.insert_temp(frame_id(), frame);
-        node
+        })
     });
     if let Some(node) = node {
         register(ui, node, rect, clicked);
@@ -82,26 +77,15 @@ pub fn is_auto_node(node: u64) -> bool {
 
 pub fn take_focus_targets(context: &crate::gfx::Context) -> (Vec<(u64, Rect)>, Option<u64>) {
     context.data_mut(|data| {
-        let frame = data.get_temp::<FocusFrame>(frame_id()).unwrap_or_default();
-        data.insert_temp(
-            frame_id(),
-            FocusFrame {
-                focused: frame.focused,
-                neighbors: frame.neighbors.clone(),
-                auto: frame.auto,
-                ..Default::default()
-            },
-        );
-        (frame.targets, frame.activated)
+        let frame = data.get_temp_mut_or_default::<FocusFrame>(frame_id());
+        frame.auto_next = 0;
+        (std::mem::take(&mut frame.targets), frame.activated.take())
     })
 }
 
 pub fn take_focus_neighbors(context: &crate::gfx::Context) -> Vec<(u64, Dir, u64)> {
     context.data_mut(|data| {
-        let mut frame = data.get_temp::<FocusFrame>(frame_id()).unwrap_or_default();
-        let neighbors = std::mem::take(&mut frame.neighbors);
-        data.insert_temp(frame_id(), frame);
-        neighbors
+        std::mem::take(&mut data.get_temp_mut_or_default::<FocusFrame>(frame_id()).neighbors)
     })
 }
 
@@ -124,12 +108,11 @@ fn register(ui: &crate::gfx::Ui, node: u64, rect: Rect, clicked: bool) {
     crate::capture::note_register(node, rect);
     let rect = ui.ctx().layer_rect_to_global(ui.layer_id(), rect);
     ui.ctx().data_mut(|data| {
-        let mut frame = data.get_temp::<FocusFrame>(frame_id()).unwrap_or_default();
+        let frame = data.get_temp_mut_or_default::<FocusFrame>(frame_id());
         frame.targets.push((node, rect));
         if clicked {
             frame.activated = Some(node);
         }
-        data.insert_temp(frame_id(), frame);
     });
 }
 
