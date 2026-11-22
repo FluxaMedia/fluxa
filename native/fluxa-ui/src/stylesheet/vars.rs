@@ -135,7 +135,8 @@ pub(crate) fn generation() -> u64 {
 }
 
 pub(crate) fn color(name: &str) -> Option<crate::gfx::Color32> {
-    let value = raw(name)?;
+    let values = resolved();
+    let value = values.get(name)?;
     if value.trim().starts_with("color-mix(") {
         return super::parse_paint(value.trim()).map(|paint| super::resolve_paint(&paint));
     }
@@ -157,7 +158,8 @@ pub(crate) fn raw(name: &str) -> Option<String> {
 }
 
 pub(crate) fn px(name: &str) -> f32 {
-    let value = raw(name);
+    let values = resolved();
+    let value = values.get(name);
     debug_assert!(value.is_some(), "missing metric --{name}");
     value
         .and_then(|value| value.trim().trim_end_matches("px").parse::<f32>().ok())
@@ -173,9 +175,10 @@ pub(crate) fn signed(name: &str) -> i8 {
 }
 
 pub(crate) fn scaled(name: &str, basis: f32) -> f32 {
-    let value = raw(name);
+    let values = resolved();
+    let value = values.get(name);
     debug_assert!(value.is_some(), "missing metric --{name}");
-    value.map_or(0.0, |value| clamp(&value, basis))
+    value.map_or(0.0, |value| clamp(value, basis))
 }
 
 fn clamp(value: &str, basis: f32) -> f32 {
