@@ -25,7 +25,9 @@ pub(super) fn intern(vars: Vec<(String, String)>) -> u32 {
     if vars.is_empty() {
         return 0;
     }
-    let mut sets = SETS.write().unwrap_or_else(|poisoned| poisoned.into_inner());
+    let mut sets = SETS
+        .write()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
     if let Some(found) = sets.iter().position(|set| **set == vars) {
         return found as u32 + 1;
     }
@@ -116,6 +118,8 @@ pub(super) fn hover_fill(fill: Color32) -> Color32 {
     }
     let lifted = (f32::from(alpha) + (255.0 - f32::from(alpha)) * 0.08).round();
     let scale = lifted / f32::from(alpha);
-    let [r, g, b, _] = fill.to_array().map(|c| (f32::from(c) * scale).round().min(255.0) as u8);
+    let [r, g, b, _] = fill
+        .to_array()
+        .map(|c| (f32::from(c) * scale).round().min(255.0) as u8);
     Color32::from_rgba_premultiplied(r, g, b, lifted as u8)
 }

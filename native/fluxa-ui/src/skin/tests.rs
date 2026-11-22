@@ -362,7 +362,13 @@ fn row_children_center_across_unless_the_class_says_otherwise() {
         ]
     }))
     .map(|node| {
-        fluxa_skin::resolve(&node, &Default::default(), &json!({}), &mut Default::default()).unwrap()
+        fluxa_skin::resolve(
+            &node,
+            &Default::default(),
+            &json!({}),
+            &mut Default::default(),
+        )
+        .unwrap()
     })
     .unwrap();
     let (_, targets) = render(&tree);

@@ -80,12 +80,9 @@ pub(super) fn class_parts(node: &Resolved, position: Option<(usize, usize)>) -> 
             cache.generation = generation;
         }
         let bucket = cache.entries.entry(key).or_default();
-        if let Some(found) = bucket
-            .iter()
-            .find(|entry| {
-                *entry.class == *class && *entry.kind == *node.kind && entry.position == position
-            })
-        {
+        if let Some(found) = bucket.iter().find(|entry| {
+            *entry.class == *class && *entry.kind == *node.kind && entry.position == position
+        }) {
             return found.parts;
         }
         let parts = compute_class_parts(class, &node.kind, position);

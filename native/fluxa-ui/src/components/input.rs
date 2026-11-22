@@ -539,11 +539,7 @@ pub(crate) fn code_input_styled(
     let hit = field_hit(ui, rect, id);
     let output = put_edit(
         ui,
-        row_rect(
-            ui,
-            field,
-            crate::fonts::regular(crate::vars::px("text-md")),
-        ),
+        row_rect(ui, field, crate::fonts::regular(crate::vars::px("text-md"))),
         id,
         crate::gfx::TextEdit::singleline(value)
             .frame(crate::gfx::Frame::NONE)

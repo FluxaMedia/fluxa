@@ -12,13 +12,12 @@ pub(super) fn sheet_from_value(root: &Value, lenient: bool) -> Result<Sheet, Str
         }
     }
     for rule in sheet.rules.values_mut() {
-        rule.variants
-            .sort_by_key(|variant| {
-                (
-                    variant.ancestors.len() + variant.modifiers.len(),
-                    variant.query.is_some(),
-                )
-            });
+        rule.variants.sort_by_key(|variant| {
+            (
+                variant.ancestors.len() + variant.modifiers.len(),
+                variant.query.is_some(),
+            )
+        });
     }
     Ok(sheet)
 }
@@ -279,7 +278,11 @@ pub(super) fn parse_patch(rule: &str, value: &Value) -> Result<Patch, String> {
         auto_states: match value.get("states").and_then(Value::as_str) {
             Some("auto") => Some(true),
             Some("none") => Some(false),
-            Some(other) => return Err(format!("{rule}.states: expected auto or none, found {other}")),
+            Some(other) => {
+                return Err(format!(
+                    "{rule}.states: expected auto or none, found {other}"
+                ));
+            }
             None => None,
         },
         gradient,
