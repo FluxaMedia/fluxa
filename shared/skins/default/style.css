@@ -155,7 +155,8 @@
 
 icon.plain { background: #00000000; border-radius: var(--radius-pill); }
 
-icon.plain:hover, track { background: var(--ink-soft); }
+icon.plain:hover { background: var(--ink-soft); }
+track { background: var(--ink-soft); }
 
 card {
   background: var(--color-surface-raised);
@@ -206,8 +207,6 @@ dropdown {
   border-width: hairline;
 }
 
-dropdown:hover { background: var(--ink-strong); }
-
 dropdown:selected {
   background: var(--ink-strong);
   border-color: color-mix(in srgb, var(--color-text-primary) 27.451%, transparent);
@@ -235,12 +234,13 @@ outline,
 well,
 .icon-btn:hover,
 .select-row:hover,
-.panel-row:hover { background: var(--ink-faint); }
+.panel-row:hover,
+.avatar-choice:hover { background: var(--ink-faint); }
 segmented.indicator, dim { background: var(--ink-dim); }
 segmented.label, .expanded-meta { color: var(--ink-body); }
 segmented.label:hover, segmented.label:selected { color: var(--ink-full); }
 stepper.button { background: var(--ink-soft); color: var(--ink-full); }
-stepper.button:hover, strong { background: var(--ink-strong); }
+strong { background: var(--ink-strong); }
 stepper.button:disabled { background: var(--ink-faint); color: var(--ink-muted); }
 
 divider { background: color-mix(in srgb, var(--color-text-primary) 13.333%, transparent); }
@@ -250,7 +250,6 @@ text.body { background: var(--ink-body); }
 text.subtle { background: var(--ink-subtle); }
 raised,
 .navbar-item:hover,
-.day:hover,
 .download-row:hover,
 .profile-tile:hover { background: var(--ink-raised); }
 
@@ -309,13 +308,8 @@ hero-synopsis-size { font-size: 16; }
 }
 .shelf-title { color: #ffffff; }
 .chip { background: var(--ink-raised); color: var(--ink-body); border-radius: var(--radius-pill); }
-.chip:hover { color: var(--ink-full); }
 .chip.selected { background: var(--ink-strong); color: var(--ink-full); }
-.chip:hover,
-.day:focus,
-.download-row:focus,
-.profile-tile:focus { background: var(--ink-strong); }
-.chip:focus { background: var(--ink-dim); }
+.download-row:focus, .profile-tile:focus { background: var(--ink-strong); }
 .chip:selected, .current .episode-chip { background: #ffffff; }
 .chip:selected .chip-label,
 .current .episode-chip-label,
@@ -340,9 +334,9 @@ hero-synopsis-size { font-size: 16; }
   padding: var(--space-10);
 }
 
-.episode:hover { background: var(--ink-raised); scale: 1.02; }
+.episode:hover { scale: 1.02; }
 
-.episode:focus { background: var(--ink-raised); border: 3px solid #ffffff; scale: 1.06; }
+.episode:focus { border: 3px solid #ffffff; scale: 1.06; }
 
 .episode.current { border: 2px solid #ffffff; }
 .watched .episode-thumb { opacity: 0.55; }
@@ -370,11 +364,7 @@ hero-synopsis-size { font-size: 16; }
 .profile-tile { border-radius: var(--radius-lg); gap: 8px; padding: 8px; align-items: center; }
 
 .day, .guide-cell, .tile { background: var(--ink-soft); border-radius: var(--radius-md); }
-.guide-cell:hover { background: var(--ink-raised); }
-.guide-cell:focus { background: var(--ink-strong); }
 .guide-cell-live { background: var(--ink-raised); border-radius: var(--radius-md); }
-.guide-cell-live:hover { background: var(--ink-strong); }
-.guide-cell-live:focus { background: var(--ink-dim); }
 
 .scrim-side {
   background: linear-gradient(to right, color-mix(in srgb, var(--color-background) 97%, transparent) 0%, color-mix(in srgb, var(--color-background) 97%, transparent) 31.5%, color-mix(in srgb, var(--color-background) 48.5%, transparent) 60.75%, color-mix(in srgb, var(--color-background) 0%, transparent) 90%);
@@ -478,7 +468,7 @@ hero-synopsis-size { font-size: 16; }
   padding: 0px var(--space-14);
 }
 
-.select-field:hover, .select-row:focus, .panel-row:focus { background: var(--ink-soft); }
+.select-row:focus, .panel-row:focus { background: var(--ink-soft); }
 
 .select-menu { box-shadow: 0 10px 28px rgba(0, 0, 0, 0.5); gap: 2px; }
 
@@ -544,8 +534,6 @@ hero-synopsis-size { font-size: 16; }
 
 .avatar-choice { border-radius: var(--radius-pill); padding: 4px; }
 
-.avatar-choice:hover { background: var(--ink-faint); }
-
 .step-btn {
   background: var(--ink-faint);
   border-radius: var(--radius-pill);
@@ -555,7 +543,7 @@ hero-synopsis-size { font-size: 16; }
   justify-content: center;
 }
 
-.step-btn:hover, .source-row:hover { background: var(--ink-soft); }
+.source-row:hover { background: var(--ink-soft); }
 
 .choice-chip {
   padding: 0 .625rem;
@@ -688,7 +676,6 @@ hero-synopsis-size { font-size: 16; }
 
 .tab { height: 34px; background: var(--ink-raised); border-radius: var(--radius-pill); padding: 0px var(--space-16); }
 
-.tab:hover { background: var(--ink-strong); }
 .tab:selected { background: #ffffff; }
 .tab-label { font-size: var(--text-body); font-weight: 500; }
 
@@ -826,6 +813,8 @@ a:focus, a:selected { background: var(--ink-raised); }
 /* Buttons: every `button` node, and the Rust widgets through the legacy names.
    A variant only swaps the two scoped colors; hover (except primary) and
    disabled are derived by the engine. Labels (`span`, `i`) inherit them. */
+* { states: auto; }
+
 button, .btn-primary, .btn-secondary, .btn-selected, .btn-danger {
   --btn-bg: color-mix(in srgb, var(--color-text-primary) 10.98%, transparent);
   --btn-fg: var(--color-text-primary);
@@ -836,13 +825,11 @@ button, .btn-primary, .btn-secondary, .btn-selected, .btn-danger {
   justify-content: center;
   border-radius: var(--radius-pill);
   font-size: .9375rem;
-  states: auto;
 }
 .primary, .btn-primary { --btn-bg: var(--ink-full); --btn-fg: var(--color-background); }
 .btn-selected { --btn-bg: var(--color-accent); --btn-fg: var(--color-accent-foreground); }
 .btn-danger { --btn-bg: var(--color-error); --btn-fg: var(--color-text-primary); }
-.primary:hover, .btn-primary:hover { background: color-mix(in srgb, var(--color-text-primary) 88.235%, transparent); }
-button:focus { background: color-mix(in srgb, var(--color-text-primary) 18.039%, transparent); scale: 1.04; }
+button:focus { scale: 1.04; }
 .primary:focus, .btn-primary:focus { background: var(--ink-full); }
 
 .danger { color: var(--color-error); }
@@ -871,8 +858,6 @@ button:focus { background: color-mix(in srgb, var(--color-text-primary) 18.039%,
   transition: .15s;
 }
 .rows li label { flex-grow: 1; }
-.rows li:hover { background: var(--ink-soft); }
-.rows li:focus { background: var(--ink-raised); }
 .hub { height: 4.5rem; gap: 1rem; }
 .profile { height: 5.5rem; gap: .875rem; }
 
