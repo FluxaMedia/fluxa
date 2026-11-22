@@ -19,7 +19,7 @@
           "children": [
             {
               "type": "column",
-              "class": "menu-panel h-88vh",
+              "class": "menu-panel sheet-tall",
               "width": "{const.modalWidth}",
               "children": [
                 {
@@ -60,10 +60,10 @@
                                   "style": "meta muted"
                                 }
                               ],
-                              "class": "gap-8 pad-20 items-start justify-end fill-space"
+                              "class": "modal-banner-info fill-space"
                             }
                           ],
-                          "class": "h-300"
+                          "class": "modal-banner"
                         },
                         {
                           "type": "column",
@@ -73,7 +73,7 @@
                               "children": [
                                 {
                                   "type": "row",
-                                  "class": "btn-primary h-44 gap-8 pad-0-20 justify-center",
+                                  "class": "btn-primary modal-play",
                                   "action": {
                                     "name": "modal",
                                     "args": {
@@ -133,7 +133,7 @@
                                   ]
                                 }
                               ],
-                              "class": "gap-10 items-center"
+                              "class": "field-row"
                             },
                             {
                               "type": "text",
@@ -174,7 +174,7 @@
                                       }
                                     }
                                   ],
-                                  "class": "gap-8"
+                                  "class": "chip-list"
                                 },
                                 {
                                   "type": "column",
@@ -184,7 +184,7 @@
                                       "as": "ep",
                                       "template": {
                                         "type": "row",
-                                        "class": "panel-row gap-12",
+                                        "class": "panel-row modal-episode",
                                         "action": {
                                           "name": "modal",
                                           "args": {
@@ -199,7 +199,7 @@
                                             "props": {
                                               "fit": "cover"
                                             },
-                                            "class": "w-160 h-90"
+                                            "class": "modal-thumb"
                                           },
                                           {
                                             "type": "column",
@@ -227,16 +227,16 @@
                                                 }
                                               }
                                             ],
-                                            "class": "gap-2 grow"
+                                            "class": "row-text"
                                           }
                                         ]
                                       }
                                     }
                                   ],
-                                  "class": "gap-8 items-stretch"
+                                  "class": "modal-episodes"
                                 }
                               ],
-                              "class": "gap-10"
+                              "class": "section"
                             },
                             {
                               "type": "column",
@@ -269,7 +269,7 @@
                                             "props": {
                                               "fit": "cover"
                                             },
-                                            "class": "w-140 h-210"
+                                            "class": "modal-cast-photo"
                                           },
                                           {
                                             "type": "text",
@@ -280,31 +280,31 @@
                                             }
                                           }
                                         ],
-                                        "class": "w-140 gap-6"
+                                        "class": "modal-cast"
                                       }
                                     }
                                   ],
-                                  "class": "gap-12"
+                                  "class": "thumb-strip"
                                 }
                               ],
-                              "class": "gap-10"
+                              "class": "section"
                             }
                           ],
-                          "class": "gap-16 pad-0-20-20-20 items-stretch"
+                          "class": "modal-body"
                         }
                       ],
-                      "class": "gap-16 items-stretch"
+                      "class": "modal-content"
                     }
                   ],
-                  "class": "grow"
+                  "class": "modal-scroll"
                 }
               ]
             }
           ],
-          "class": "w-100vw h-100vh items-center justify-center"
+          "class": "fullscreen-center"
         }
       ],
-      "class": "w-100vw h-100vh"
+      "class": "fullscreen"
     }
   ]
 }

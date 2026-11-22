@@ -16,7 +16,7 @@
       "children": [
         {
           "type": "column",
-          "class": "menu-panel gap-12 pad-20 items-stretch",
+          "class": "menu-panel dialog-card",
           "width": "{const.dialogWidth}",
           "children": [
             {
@@ -33,7 +33,7 @@
                   "style": "subtitle"
                 }
               ],
-              "class": "gap-6"
+              "class": "title-pair"
             },
             {
               "type": "text",
@@ -45,7 +45,7 @@
               "children": [
                 {
                   "type": "row",
-                  "class": "btn-secondary justify-center grow",
+                  "class": "btn-secondary button-fill",
                   "action": {
                     "name": "update",
                     "args": {
@@ -62,7 +62,7 @@
                 },
                 {
                   "type": "row",
-                  "class": "btn-primary justify-center grow",
+                  "class": "btn-primary button-fill",
                   "action": {
                     "name": "update",
                     "args": {
@@ -78,13 +78,13 @@
                   ]
                 }
               ],
-              "class": "gap-8"
+              "class": "button-row"
             }
           ]
         }
       ],
-      "class": "w-100vw h-100vh items-center justify-center"
+      "class": "fullscreen-center"
     }
   ],
-  "class": "w-100vw h-100vh"
+  "class": "fullscreen"
 }

@@ -1,6 +1,6 @@
 {
   "type": "column",
-  "class": "screen gap-20 items-stretch",
+  "class": "screen screen-detail",
   "children": [
     {
       "include": "detail_hero"
@@ -49,7 +49,7 @@
                       }
                     }
                   ],
-                  "class": "gap-8"
+                  "class": "chip-list"
                 },
                 {
                   "type": "scroll",
@@ -62,13 +62,13 @@
                       }
                     }
                   ],
-                  "class": "gap-12"
+                  "class": "thumb-strip"
                 }
               ],
-              "class": "gap-12"
+              "class": "strip-group"
             }
           ],
-          "class": "gap-10"
+          "class": "section"
         },
         {
           "type": "column",
@@ -91,10 +91,10 @@
                   }
                 }
               ],
-              "class": "gap-16"
+              "class": "card-strip"
             }
           ],
-          "class": "gap-10"
+          "class": "section"
         },
         {
           "type": "column",
@@ -130,7 +130,7 @@
                       }
                     }
                   ],
-                  "class": "gap-8"
+                  "class": "chip-list"
                 },
                 {
                   "type": "scroll",
@@ -143,13 +143,13 @@
                       }
                     }
                   ],
-                  "class": "gap-12"
+                  "class": "thumb-strip"
                 }
               ],
-              "class": "gap-12"
+              "class": "strip-group"
             }
           ],
-          "class": "gap-10"
+          "class": "section"
         },
         {
           "type": "column",
@@ -172,10 +172,10 @@
                   }
                 }
               ],
-              "class": "gap-16"
+              "class": "card-strip"
             }
           ],
-          "class": "gap-10"
+          "class": "section"
         },
         {
           "type": "column",
@@ -198,10 +198,10 @@
                   }
                 }
               ],
-              "class": "gap-16"
+              "class": "card-strip"
             }
           ],
-          "class": "gap-10"
+          "class": "section"
         },
         {
           "type": "column",
@@ -223,14 +223,13 @@
                     "include": "info_row"
                   }
                 }
-              ],
-              "class": "gap-0"
+              ]
             }
           ],
-          "class": "gap-10"
+          "class": "section"
         }
       ],
-      "class": "gap-24"
+      "class": "page"
     },
     {
       "type": "fixed",
@@ -246,7 +245,7 @@
               "include": "navbar"
             }
           ],
-          "class": "w-100vw h-100vh pad-0-0-16-0 items-center justify-flex-end compact-only nav-dock"
+          "class": "compact-only nav-dock"
         }
       ]
     }

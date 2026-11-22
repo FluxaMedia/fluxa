@@ -20,7 +20,7 @@
           "children": [
             {
               "type": "column",
-              "class": "menu-panel gap-2 items-stretch",
+              "class": "menu-panel menu-list",
               "width": "{const.menuWidth}",
               "padding": "{const.menuPadding}",
               "children": [
@@ -38,7 +38,7 @@
                   "as": "item",
                   "template": {
                     "type": "row",
-                    "class": "select-row gap-10",
+                    "class": "select-row menu-item",
                     "props": {
                       "selected": "{item.selected}"
                     },
@@ -82,7 +82,7 @@
           "children": [
             {
               "type": "column",
-              "class": "menu-panel menu-sheet w-100vw gap-2 items-stretch",
+              "class": "menu-panel menu-sheet menu-list sheet-wide",
               "padding": "{const.menuPadding}",
               "children": [
                 {
@@ -101,7 +101,7 @@
                 {
                   "type": "scroll",
                   "when": "menu.long",
-                  "class": "h-55vh",
+                  "class": "sheet-scroll",
                   "props": {
                     "axis": "y"
                   },
@@ -121,7 +121,7 @@
           "children": [
             {
               "type": "column",
-              "class": "menu-panel gap-2 items-stretch",
+              "class": "menu-panel menu-list",
               "width": "{const.menuWidth}",
               "padding": "{const.menuPadding}",
               "children": [
@@ -139,7 +139,7 @@
                   "as": "item",
                   "template": {
                     "type": "row",
-                    "class": "select-row gap-10",
+                    "class": "select-row menu-item",
                     "props": {
                       "selected": "{item.selected}"
                     },
@@ -174,7 +174,7 @@
           "class": "tv-only"
         }
       ],
-      "class": "w-100vw h-100vh"
+      "class": "fullscreen"
     }
   ]
 }

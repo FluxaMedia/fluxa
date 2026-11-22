@@ -1,10 +1,10 @@
 {
   "type": "column",
-  "class": "screen gap-14 items-stretch",
+  "class": "screen screen-list",
   "children": [
     {
       "type": "spacer",
-      "class": "h-72"
+      "class": "top-inset"
     },
     {
       "type": "page",
@@ -25,7 +25,7 @@
                 "value": "{fields.librarySearch}",
                 "kind": "search"
               },
-              "class": "wide-only w-320"
+              "class": "wide-only search-field"
             },
             {
               "type": "input",
@@ -35,10 +35,10 @@
                 "value": "{fields.librarySearch}",
                 "kind": "search"
               },
-              "class": "grow compact-only"
+              "class": "compact-only search-fill"
             }
           ],
-          "class": "gap-12 items-center justify-space-between fill-space"
+          "class": "title-bar inline-row fill-space"
         },
         {
           "include": "section_tabs"
@@ -76,7 +76,7 @@
             }
           ],
           "when": "!library.downloadsOpen",
-          "class": "gap-10 items-center"
+          "class": "field-row"
         },
         {
           "type": "row",
@@ -121,7 +121,7 @@
               "style": "title"
             }
           ],
-          "class": "gap-12 items-center"
+          "class": "inline-row"
         },
         {
           "type": "row",
@@ -140,7 +140,7 @@
             },
             {
               "type": "row",
-              "class": "chip pad-8-16",
+              "class": "chip chip-pad",
               "action": {
                 "name": "downloads",
                 "args": {
@@ -158,7 +158,7 @@
               ]
             }
           ],
-          "class": "gap-12 items-center"
+          "class": "inline-row"
         },
         {
           "type": "column",
@@ -172,7 +172,7 @@
               }
             }
           ],
-          "class": "gap-10"
+          "class": "section"
         },
         {
           "type": "column",
@@ -186,7 +186,7 @@
               }
             }
           ],
-          "class": "gap-10"
+          "class": "section"
         },
         {
           "include": "empty_state",
@@ -199,10 +199,10 @@
         },
         {
           "type": "spacer",
-          "class": "compact-only h-96"
+          "class": "compact-only bottom-inset"
         }
       ],
-      "class": "gap-14"
+      "class": "page-dense"
     },
     {
       "type": "grid",
@@ -232,7 +232,7 @@
               "include": "navbar"
             }
           ],
-          "class": "w-100vw h-100vh pad-0-0-16-0 items-center justify-flex-end compact-only nav-dock"
+          "class": "compact-only nav-dock"
         }
       ]
     }

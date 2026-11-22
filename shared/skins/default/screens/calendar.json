@@ -1,10 +1,10 @@
 {
   "type": "column",
-  "class": "screen gap-14 items-stretch",
+  "class": "screen screen-list",
   "children": [
     {
       "type": "spacer",
-      "class": "h-72"
+      "class": "top-inset"
     },
     {
       "type": "page",
@@ -19,7 +19,7 @@
             },
             {
               "type": "spacer",
-              "class": "grow"
+              "class": "spring"
             },
             {
               "type": "text",
@@ -63,7 +63,7 @@
               }
             }
           ],
-          "class": "gap-12 items-center fill-space"
+          "class": "inline-row fill-space"
         },
         {
           "include": "section_tabs"
@@ -75,7 +75,7 @@
           "when": "!calendar.valid"
         }
       ],
-      "class": "gap-14"
+      "class": "page-dense"
     },
     {
       "type": "grid",
@@ -94,7 +94,7 @@
           }
         }
       ],
-      "class": "gap-8"
+      "class": "day-grid"
     },
     {
       "type": "grid",
@@ -111,7 +111,7 @@
           }
         }
       ],
-      "class": "gap-8"
+      "class": "day-grid"
     },
     {
       "type": "page",
@@ -123,7 +123,7 @@
           "style": "subtitle"
         }
       ],
-      "class": "gap-12"
+      "class": "page-snug"
     },
     {
       "type": "grid",
@@ -153,7 +153,7 @@
               "include": "navbar"
             }
           ],
-          "class": "w-100vw h-100vh pad-0-0-16-0 items-center justify-flex-end compact-only nav-dock"
+          "class": "compact-only nav-dock"
         }
       ]
     }

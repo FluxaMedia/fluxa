@@ -1,10 +1,10 @@
 {
   "type": "column",
-  "class": "screen gap-16 items-stretch",
+  "class": "screen screen-browse",
   "children": [
     {
       "type": "spacer",
-      "class": "h-72"
+      "class": "top-inset"
     },
     {
       "type": "page",
@@ -25,10 +25,10 @@
                 "value": "{fields.discoverSearch}",
                 "kind": "search"
               },
-              "class": "wide-only w-320"
+              "class": "wide-only search-field"
             }
           ],
-          "class": "items-center justify-space-between"
+          "class": "title-bar"
         },
         {
           "type": "input",
@@ -73,7 +73,7 @@
               "when": "discover.hasExtra"
             }
           ],
-          "class": "gap-10 items-center"
+          "class": "field-row"
         },
         {
           "include": "empty_state",
@@ -85,7 +85,7 @@
           "when": "len(discover.results) == 0"
         }
       ],
-      "class": "gap-12"
+      "class": "page-snug"
     },
     {
       "type": "grid",
@@ -119,7 +119,7 @@
               "include": "navbar"
             }
           ],
-          "class": "w-100vw h-100vh pad-0-0-16-0 items-center justify-flex-end compact-only nav-dock"
+          "class": "compact-only nav-dock"
         }
       ]
     }
