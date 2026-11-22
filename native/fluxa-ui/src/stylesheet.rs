@@ -415,6 +415,8 @@ struct Selector {
 struct Variant {
     ancestors: Vec<String>,
     modifiers: Vec<String>,
+    /// Set for a descendant rule written inside an `@media` block.
+    query: Option<Query>,
     layer: Layer,
 }
 
@@ -1358,7 +1360,8 @@ fn layers<'a>(sheet: &'a Sheet, name: &str, modifiers: &[&str]) -> Vec<&'a Layer
             rule.variants
                 .iter()
                 .filter(|variant| {
-                    ancestors_match(variant, false)
+                    variant.query.as_ref().map_or(true, Query::matches)
+                        && ancestors_match(variant, false)
                         && variant
                             .modifiers
                             .iter()
@@ -1376,7 +1379,8 @@ fn stateful<'a>(sheet: &'a Sheet, name: &str, modifiers: &[&str]) -> Vec<&'a Var
         .chain(chain(sheet, name))
         .flat_map(|rule| rule.variants.iter())
         .filter(|variant| {
-            ancestors_match(variant, true)
+            variant.query.as_ref().map_or(true, Query::matches)
+                && ancestors_match(variant, true)
                 && variant
                     .modifiers
                     .iter()
@@ -2160,6 +2164,29 @@ mod tests {
         assert_eq!(b.padding_box, Some([0.5 * root, 20.0, 0.5 * root, 20.0]));
         assert_eq!(b.margin, 2.0 * root);
         assert_eq!(b.max_width, Some(20.5));
+    }
+
+    #[test]
+    fn descendant_rules_work_inside_media_blocks() {
+        let sheet = Sheet::parse(
+            ".bar a { padding: 1rem; }\n@media (max-width: 1) { .bar a { padding: 2rem; } }\n\
+             @media (min-width: 0) { .bar a { gap: 3px; } }",
+        )
+        .unwrap();
+        let frames = [Frame::plain("bar".into(), 0)];
+        let inside = within(&frames, || base_in(&sheet, "a", &[]));
+        let root = root_font_size();
+        // The second block can never match (width is never below 1 px at the default
+        // metrics), the third always does.
+        assert_eq!(inside.padding, root);
+        assert_eq!(inside.gap, 3.0);
+        // A matching media variant overrides the plain rule of the same weight.
+        let sheet = Sheet::parse(
+            "@media (min-width: 0) { .bar a { padding: 2rem; } }\n.bar a { padding: 1rem; }",
+        )
+        .unwrap();
+        let inside = within(&frames, || base_in(&sheet, "a", &[]));
+        assert_eq!(inside.padding, 2.0 * root);
     }
 
     #[test]

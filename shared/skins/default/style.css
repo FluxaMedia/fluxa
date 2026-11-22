@@ -335,12 +335,10 @@ hero-synopsis-size { font-size: 16; }
   padding: var(--space-6);
 }
 
+.navbar a { gap: .5rem; padding: .25rem .875rem; }
 .navbar-item {
   color: var(--ink-subtle);
   border-radius: var(--radius-pill);
-  transition: 0.15s;
-  gap: var(--space-8);
-  padding: var(--space-4) var(--space-10);
 }
 .navbar-item:focus { background: var(--ink-strong); }
 .navbar-item-active { color: #ffffff; border-radius: var(--radius-pill); }
@@ -475,38 +473,7 @@ hero-synopsis-size { font-size: 16; }
   to { opacity: 1; }
 }
 
-/* Buttons: one set of classes for layout nodes and Rust widgets. A variant
-   only swaps the two scoped colors; hover (except primary) and disabled are
-   derived by the engine (`states: auto`). Labels inherit color and size. */
-.btn-primary,
-.btn-secondary,
-.btn-selected,
-.btn-danger {
-  background: var(--btn-bg);
-  color: var(--btn-fg);
-  border-radius: var(--radius-pill);
-  height: control-height;
-  font-size: label-size;
-  states: auto;
-}
-
-.btn-primary { --btn-bg: var(--ink-full); --btn-fg: var(--color-background); }
-.btn-secondary { --btn-bg: color-mix(in srgb, var(--color-text-primary) 10.98%, transparent); --btn-fg: var(--color-text-primary); }
-.btn-selected { --btn-bg: var(--color-accent); --btn-fg: var(--color-accent-foreground); }
-.btn-danger { --btn-bg: var(--color-error); --btn-fg: var(--color-text-primary); }
-
-.btn-primary:hover { background: color-mix(in srgb, var(--color-text-primary) 88.235%, transparent); }
-
-.btn-primary:focus { background: var(--ink-full); scale: 1.04; }
 .guide-now { background: var(--ink-full); }
-.btn-secondary:focus {
-  background: color-mix(in srgb, var(--color-text-primary) 18.039%, transparent);
-  scale: 1.04;
-}
-
-/* An (empty) rule opts the label into the color and size it inherits. */
-.btn-label {}
-
 .icon-btn {
   width: icon-button;
   height: icon-button;
@@ -790,6 +757,7 @@ hero-synopsis-size { font-size: 16; }
   color: var(--ink-subtle);
 }
 
+.expanded-info { gap: .375rem; padding: .875rem; align-items: flex-start; justify-content: flex-end; }
 .expanded-scrim {
   background: linear-gradient(to bottom, color-mix(in srgb, var(--color-background) 0%, transparent) 0%, color-mix(in srgb, var(--color-background) 0%, transparent) 40%, color-mix(in srgb, var(--color-background) 90%, transparent) 100%);
   border-radius: var(--radius-md);
@@ -834,13 +802,7 @@ hero-synopsis-size { font-size: 16; }
 
 .slider { height: 24px; flex-grow: 1; }
 
-.hero-content {
-  gap: 12px;
-  padding: 24px;
-  align-items: flex-start;
-  justify-content: flex-end;
-}
-.hero { height: 62vh; }
+.hero, .hero-skeleton { height: 62vh; }
 
 .fill-space { flex-fill: 1; }
 
@@ -861,9 +823,6 @@ hero-synopsis-size { font-size: 16; }
   justify-content: flex-end;
   flex-fill: 1;
 }
-
-.btn-primary,
-.btn-secondary { padding: 0px var(--space-16); justify-content: center; }
 
 .tab {
   height: 34px;
@@ -908,10 +867,6 @@ hero-synopsis-size { font-size: 16; }
 
 .rating { gap: var(--space-4); }
 
-.nav-slot {
-  gap: var(--space-8);
-  padding: var(--space-10) var(--space-14);
-}
 .hero .synopsis { width: 560px; }
 .detail-hero .synopsis { width: 620px; }
 .day-cell { height: 88px; }
@@ -942,7 +897,7 @@ hero-synopsis-size { font-size: 16; }
 
   .title-logo { width: 240px; height: 84px; }
   .nav-dock { padding: 0px 0px 34px 0px; }
-  .nav-slot { padding: 16px 22px; }
+  .navbar a { padding: 1rem 1.375rem; }
   .poster-grid { columns: 3; gap: 10px; }
   .list { gap: var(--space-6); }
   .field-input { width: 200px; }
@@ -1009,7 +964,7 @@ small { font-size: .8125rem; }
 label { font-size: 1rem; font-weight: 500; }
 h2, p, small { color: var(--ink-subtle); }
 .danger { color: var(--color-error); }
-span {}
+span, i, .btn-label {}
 
 main { max-width: 65rem; padding: 6rem 3.5rem 3rem; flex-grow: 1; }
 nav { width: 17.5rem; gap: .75rem; padding: 6rem 1rem; background: var(--ink-faint); border: 1px solid var(--ink-soft); }
@@ -1049,7 +1004,10 @@ figure { width: 3rem; height: 3rem; background: var(--ink-soft); border-radius: 
 a { gap: .75rem; padding: .625rem .875rem; border-radius: var(--radius-md); color: var(--ink-muted); font-size: 1rem; font-weight: 500; transition: .15s; }
 .back { gap: .375rem; padding: .8125rem 1rem .8125rem .625rem; border-radius: var(--radius-pill); }
 
-button {
+/* Buttons: every `button` node, and the Rust widgets through the legacy names.
+   A variant only swaps the two scoped colors; hover (except primary) and
+   disabled are derived by the engine. Labels (`span`, `i`) inherit them. */
+button, .btn-primary, .btn-secondary, .btn-selected, .btn-danger {
   --btn-bg: color-mix(in srgb, var(--color-text-primary) 10.98%, transparent);
   --btn-fg: var(--color-text-primary);
   background: var(--btn-bg);
@@ -1061,15 +1019,42 @@ button {
   font-size: .9375rem;
   states: auto;
 }
-.primary { --btn-bg: var(--ink-full); --btn-fg: var(--color-background); }
+.primary, .btn-primary { --btn-bg: var(--ink-full); --btn-fg: var(--color-background); }
+.btn-selected { --btn-bg: var(--color-accent); --btn-fg: var(--color-accent-foreground); }
+.btn-danger { --btn-bg: var(--color-error); --btn-fg: var(--color-text-primary); }
+.primary:hover, .btn-primary:hover { background: color-mix(in srgb, var(--color-text-primary) 88.235%, transparent); }
+button:focus { background: color-mix(in srgb, var(--color-text-primary) 18.039%, transparent); scale: 1.04; }
+.primary:focus, .btn-primary:focus { background: var(--ink-full); }
 
-a:hover, .rows li:hover { background: var(--ink-soft); }
-a:hover, a:selected { color: var(--ink-full); }
-a:focus, a:selected, .rows li:focus { background: var(--ink-raised); }
-button:focus { scale: 1.04; }
 
 @media (size: compact), (max-height: 479px) {
   .settings-compact { display: flex; }
   .settings-wide { display: none; }
 }
+/* ==== Home ============================================================== */
+.empty-home { align-items: center; justify-content: center; height: 70vh; gap: 1.75rem; }
+.empty-home button { padding: 0 2.5rem; }
+.empty { align-items: center; justify-content: center; gap: .5rem; padding: 0 1.5rem; }
+.feed { gap: 1.25rem; padding: 0 1.5rem 1.5rem; }
+.skeleton { gap: 1.25rem; }
+.skeleton h1 { height: 2rem; width: 16.25rem; }
+.skeleton p { height: 1rem; width: 26.25rem; }
+.skeleton h2 { height: 2.5rem; width: 8.75rem; }
+.skeleton-shelf { gap: .75rem; }
+.chip, .chip-active { padding: .5rem 1rem; }
+.hero-content {
+  gap: .75rem;
+  padding: 1.5rem;
+  align-items: flex-start;
+  justify-content: flex-end;
+}
+.hero-content button { padding: 0 1.75rem; gap: .5rem; }
+.ratings { gap: .75rem; }
+.card-preview button { padding: 0 1.125rem; gap: .375rem; }
+.card-preview .actions { gap: .5rem; }
+.badges { padding: .5rem; align-items: flex-start; }
+.badges .card-badge { padding: .25rem; }
+.caption { gap: .25rem; padding: .75rem; justify-content: flex-end; }
+.bar { height: 4px; }
+
 /* ==== end of settings section ============================================ */

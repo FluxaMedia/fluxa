@@ -13,7 +13,12 @@ pub(super) fn sheet_from_value(root: &Value, lenient: bool) -> Result<Sheet, Str
     }
     for rule in sheet.rules.values_mut() {
         rule.variants
-            .sort_by_key(|variant| variant.ancestors.len() + variant.modifiers.len());
+            .sort_by_key(|variant| {
+                (
+                    variant.ancestors.len() + variant.modifiers.len(),
+                    variant.query.is_some(),
+                )
+            });
     }
     Ok(sheet)
 }
@@ -30,15 +35,18 @@ fn add_entry(sheet: &mut Sheet, key: &str, value: &Value) -> Result<(), String> 
             .ok_or_else(|| format!("{key}: expected an object of rules"))?;
         for (selector, layer) in rules {
             let target = Selector::parse(selector)?;
-            if !target.ancestors.is_empty() || !target.modifiers.is_empty() {
-                return Err(format!("{key} {selector}: media rules take a plain name"));
+            let layer = layer_from(selector, layer)?;
+            let rule = sheet.rules.entry(target.name).or_default();
+            if target.ancestors.is_empty() && target.modifiers.is_empty() {
+                rule.media.push((query.clone(), layer));
+            } else {
+                rule.variants.push(Variant {
+                    ancestors: target.ancestors,
+                    modifiers: target.modifiers,
+                    query: Some(query.clone()),
+                    layer,
+                });
             }
-            sheet
-                .rules
-                .entry(target.name)
-                .or_default()
-                .media
-                .push((query.clone(), layer_from(selector, layer)?));
         }
     } else {
         let target = Selector::parse(key)?;
@@ -51,6 +59,7 @@ fn add_entry(sheet: &mut Sheet, key: &str, value: &Value) -> Result<(), String> 
             rule.variants.push(Variant {
                 ancestors: target.ancestors,
                 modifiers: target.modifiers,
+                query: None,
                 layer,
             });
         }

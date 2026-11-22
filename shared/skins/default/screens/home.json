@@ -5,11 +5,12 @@
     {
       "type": "column",
       "class": "hero-skeleton",
-      "height": "62vh",
       "when": "len(home.heroSlides) == 0 && home.isLoading"
     },
     {
       "type": "column",
+      "tag": "section",
+      "class": "empty-home",
       "when": "len(home.heroSlides) == 0 && len(home.rows) == 0 && len(home.cards) == 0 && !home.isLoading",
       "children": [
         {
@@ -22,9 +23,8 @@
         },
         {
           "type": "row",
-          "class": "btn-primary",
-          "padding": "0 40",
-          "justify": "center",
+          "tag": "button",
+          "class": "primary",
           "action": {
             "name": "open_settings",
             "args": {
@@ -34,15 +34,12 @@
           "children": [
             {
               "type": "text",
-              "class": "btn-label",
+              "tag": "span",
               "i18n": "home.open_addons"
             }
           ]
         }
-      ],
-      "class": "centered",
-      "height": "70vh",
-      "gap": 28
+      ]
     },
     {
       "type": "pager",
@@ -62,29 +59,30 @@
     },
     {
       "type": "column",
+      "tag": "section",
+      "class": "feed",
       "when": "len(home.rows) == 0",
       "children": [
         {
           "type": "column",
+          "tag": "section",
+          "class": "skeleton",
           "when": "home.isLoading",
           "children": [
             {
               "type": "column",
-              "class": "skeleton-bar",
-              "height": 32,
-              "width": 260
+              "tag": "h1",
+              "class": "skeleton-bar"
             },
             {
               "type": "column",
-              "class": "skeleton-bar",
-              "height": 16,
-              "width": 420
+              "tag": "p",
+              "class": "skeleton-bar"
             },
             {
               "type": "column",
-              "class": "skeleton-bar",
-              "height": 40,
-              "width": 140
+              "tag": "h2",
+              "class": "skeleton-bar cta"
             },
             {
               "include": "skeleton_shelf"
@@ -92,18 +90,18 @@
             {
               "include": "skeleton_shelf"
             }
-          ],
-          "gap": 20
+          ]
         }
-      ],
-      "gap": 20,
-      "padding": "0 24 24"
+      ]
     },
     {
       "type": "column",
+      "tag": "section",
+      "class": "feed",
       "children": [
         {
           "type": "row",
+          "tag": "ul",
           "when": "len(home.categories) > 1",
           "children": [
             {
@@ -115,7 +113,6 @@
                   {
                     "type": "row",
                     "class": "chip-active",
-                    "padding": "8 16",
                     "action": {
                       "name": "node",
                       "args": {
@@ -125,7 +122,7 @@
                     "children": [
                       {
                         "type": "text",
-                        "class": "card-title",
+                        "tag": "label",
                         "i18n": "{c.label}"
                       }
                     ],
@@ -134,7 +131,6 @@
                   {
                     "type": "row",
                     "class": "chip",
-                    "padding": "8 16",
                     "action": {
                       "name": "node",
                       "args": {
@@ -144,7 +140,7 @@
                     "children": [
                       {
                         "type": "text",
-                        "class": "card-title",
+                        "tag": "label",
                         "i18n": "{c.label}"
                       }
                     ],
@@ -153,9 +149,7 @@
                 ]
               }
             }
-          ],
-          "gap": 8,
-          "align": "center"
+          ]
         },
         {
           "include": "skeleton_shelf",
@@ -175,9 +169,7 @@
             "include": "shelf"
           }
         }
-      ],
-      "gap": 20,
-      "padding": "0 24 24"
+      ]
     },
     {
       "type": "fixed",

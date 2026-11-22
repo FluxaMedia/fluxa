@@ -13,7 +13,8 @@
         "as": "item",
         "template": {
           "type": "row",
-          "class": "{item.class} nav-slot",
+          "tag": "a",
+          "class": "{item.class}",
           "action": {
             "name": "navigate",
             "args": {
@@ -56,7 +57,8 @@
         "as": "item",
         "template": {
           "type": "row",
-          "class": "{item.class} nav-slot",
+          "tag": "a",
+          "class": "{item.class}",
           "action": {
             "name": "page",
             "args": {
@@ -96,6 +98,8 @@
       },
       {
         "type": "row",
+        "tag": "a",
+        "class": "navbar-item",
         "action": {
           "name": "open_settings"
         },
@@ -128,7 +132,6 @@
             }
           }
         ],
-        "class": "navbar-item",
         "props": {
           "selected": "{nav.profile.active}"
         }
@@ -219,11 +222,8 @@
           },
           {
             "type": "column",
-            "class": "fill-space",
-            "gap": 6,
-            "padding": 14,
-            "align": "start",
-            "justify": "end",
+            "tag": "section",
+            "class": "fill-space expanded-info",
             "props": {
               "expandedOnly": true
             },
@@ -332,6 +332,8 @@
           },
           {
             "type": "row",
+            "tag": "ul",
+            "class": "ratings",
             "children": [
               {
                 "each": "slide.ratings",
@@ -364,8 +366,7 @@
                 }
               }
             ],
-            "when": "len(slide.ratings) > 0",
-            "gap": 12
+            "when": "len(slide.ratings) > 0"
           },
           {
             "type": "text",
@@ -377,28 +378,28 @@
           },
           {
             "type": "row",
+            "tag": "section",
+            "class": "actions",
             "children": [
               {
                 "type": "stack",
                 "children": [
                   {
                     "type": "row",
-                    "class": "btn-primary fill-space",
-                    "padding": "0 28",
-                    "justify": "center",
-                    "gap": 8,
+                    "tag": "button",
+                    "class": "fill-space primary",
                     "children": [
                       {
                         "type": "icon",
+                        "tag": "i",
                         "props": {
                           "name": "PlayFilled",
                           "size": 18
-                        },
-                        "class": "btn-label"
+                        }
                       },
                       {
                         "type": "text",
-                        "class": "btn-label",
+                        "tag": "span",
                         "text": "{slide.playLabel}"
                       }
                     ]
@@ -421,7 +422,7 @@
               },
               {
                 "type": "row",
-                "class": "centered icon-btn",
+                "class": "icon-btn",
                 "children": [
                   {
                     "type": "icon",
@@ -438,8 +439,7 @@
                   }
                 }
               }
-            ],
-            "gap": 12
+            ]
           }
         ]
       }
@@ -509,8 +509,8 @@
   },
   "skeleton_shelf": {
     "type": "column",
-    "class": "shelf",
-    "gap": 12,
+    "tag": "section",
+    "class": "shelf skeleton-shelf",
     "children": [
       {
         "type": "column",
@@ -561,7 +561,6 @@
   "chip": {
     "type": "row",
     "class": "chip",
-    "padding": "8 16",
     "action": {
       "name": "choose",
       "args": {
@@ -580,7 +579,6 @@
   "chip_active": {
     "type": "row",
     "class": "chip-active",
-    "padding": "8 16",
     "action": {
       "name": "choose",
       "args": {
@@ -1778,12 +1776,13 @@
       },
       {
         "type": "row",
+        "tag": "header",
+        "class": "badges fill-space",
         "children": [
           {
             "type": "row",
             "when": "card.episodes",
             "class": "card-badge",
-            "padding": 4,
             "children": [
               {
                 "type": "text",
@@ -1800,7 +1799,6 @@
             "type": "row",
             "when": "card.detail",
             "class": "card-badge",
-            "padding": 4,
             "children": [
               {
                 "type": "text",
@@ -1809,13 +1807,12 @@
               }
             ]
           }
-        ],
-        "padding": 8,
-        "align": "start",
-        "fill": true
+        ]
       },
       {
         "type": "column",
+        "tag": "footer",
+        "class": "caption fill-space",
         "children": [
           {
             "type": "text",
@@ -1836,6 +1833,8 @@
           },
           {
             "type": "stack",
+            "tag": "span",
+            "class": "bar",
             "children": [
               {
                 "type": "column",
@@ -1848,14 +1847,9 @@
                   "span": "{card.progress}"
                 }
               }
-            ],
-            "height": 4
+            ]
           }
-        ],
-        "gap": 4,
-        "padding": 12,
-        "justify": "end",
-        "fill": true
+        ]
       },
       {
         "include": "card_preview"
@@ -3127,6 +3121,8 @@
   },
   "empty_state": {
     "type": "column",
+    "tag": "section",
+    "class": "empty",
     "children": [
       {
         "type": "icon",
@@ -3150,10 +3146,7 @@
         },
         "when": "hint != \"\""
       }
-    ],
-    "class": "centered",
-    "gap": 8,
-    "padding": "0 24"
+    ]
   },
   "block_row": {
     "type": "column",
@@ -4468,7 +4461,8 @@
         }
       }
     ],
-    "height": 4
+    "tag": "span",
+    "class": "bar"
   },
   "card_preview": {
     "type": "column",
@@ -4536,13 +4530,13 @@
       },
       {
         "type": "row",
+        "tag": "section",
+        "class": "actions",
         "children": [
           {
             "type": "row",
-            "class": "btn-primary",
-            "padding": "0 18",
-            "justify": "center",
-            "gap": 6,
+            "tag": "button",
+            "class": "primary",
             "action": {
               "name": "play",
               "args": {
@@ -4553,7 +4547,7 @@
             "children": [
               {
                 "type": "icon",
-                "class": "btn-label",
+                "tag": "i",
                 "props": {
                   "name": "PlayFilled",
                   "size": 16
@@ -4561,14 +4555,14 @@
               },
               {
                 "type": "text",
-                "class": "btn-label",
+                "tag": "span",
                 "i18n": "common.play"
               }
             ]
           },
           {
             "type": "row",
-            "class": "centered icon-btn",
+            "class": "icon-btn",
             "action": {
               "name": "watchlist_toggle",
               "args": {
@@ -4588,7 +4582,7 @@
           },
           {
             "type": "row",
-            "class": "centered icon-btn",
+            "class": "icon-btn",
             "action": {
               "name": "watchlist_toggle",
               "args": {
@@ -4608,7 +4602,7 @@
           },
           {
             "type": "row",
-            "class": "centered icon-btn",
+            "class": "icon-btn",
             "action": {
               "name": "open_detail",
               "args": {
@@ -4627,7 +4621,7 @@
           },
           {
             "type": "row",
-            "class": "centered icon-btn",
+            "class": "icon-btn",
             "action": {
               "name": "mark_watched",
               "args": {
@@ -4647,7 +4641,7 @@
           },
           {
             "type": "row",
-            "class": "centered icon-btn",
+            "class": "icon-btn",
             "action": {
               "name": "mark_watched",
               "args": {
@@ -4667,7 +4661,7 @@
           },
           {
             "type": "row",
-            "class": "centered icon-btn",
+            "class": "icon-btn",
             "action": {
               "name": "clear_progress",
               "args": {
@@ -4684,9 +4678,7 @@
             ],
             "when": "card.hasProgress"
           }
-        ],
-        "gap": 8,
-        "align": "center"
+        ]
       }
     ]
   },
