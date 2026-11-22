@@ -1,10 +1,11 @@
 {
   "type": "column",
-  "class": "screen screen-browse",
+  "class": "screen",
+  "gap": 16,
   "children": [
     {
       "type": "spacer",
-      "class": "top-inset"
+      "height": 72
     },
     {
       "type": "page",
@@ -28,7 +29,7 @@
               "class": "wide-only search-field"
             }
           ],
-          "class": "title-bar"
+          "justify": "space_between"
         },
         {
           "type": "input",
@@ -73,7 +74,7 @@
               "when": "discover.hasExtra"
             }
           ],
-          "class": "field-row"
+          "gap": 10
         },
         {
           "include": "empty_state",

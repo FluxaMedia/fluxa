@@ -1,33 +1,12 @@
 {
-  "version": 3,
+  "version": 4,
   "classes": [
-    {
-      "name": "about-card",
-      "element": "row",
-      "meaning": "Card with app name and version on the About page",
-      "stability": "internal",
-      "since": 1
-    },
     {
       "name": "about-name",
       "element": "text",
       "meaning": "App name text on the About card",
       "stability": "internal",
       "since": 1
-    },
-    {
-      "name": "about-text",
-      "element": "column",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "action-row",
-      "element": "row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
     },
     {
       "name": "action-wide",
@@ -44,23 +23,9 @@
       "since": 2
     },
     {
-      "name": "addon-card",
-      "element": "column",
-      "meaning": "Card for one installed addon in settings",
-      "stability": "internal",
-      "since": 1
-    },
-    {
       "name": "addon-chip",
       "element": "text",
       "meaning": "Small label on an addon card",
-      "stability": "internal",
-      "since": 1
-    },
-    {
-      "name": "addon-logo",
-      "element": "stack",
-      "meaning": "Addon logo container",
       "stability": "internal",
       "since": 1
     },
@@ -114,13 +79,6 @@
       "since": 2
     },
     {
-      "name": "bottom-inset",
-      "element": "spacer",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
       "name": "btn-danger",
       "element": "",
       "meaning": "Destructive button variant, combined with a button class",
@@ -170,13 +128,6 @@
       "since": 3
     },
     {
-      "name": "button-row",
-      "element": "row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
       "name": "button-tall",
       "element": "row",
       "meaning": "",
@@ -189,20 +140,6 @@
       "meaning": "Badge on a media card (quality, status)",
       "stability": "stable",
       "since": 1
-    },
-    {
-      "name": "card-badges",
-      "element": "row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
-      "name": "card-head",
-      "element": "row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
     },
     {
       "name": "card-preview",
@@ -233,13 +170,6 @@
       "since": 1
     },
     {
-      "name": "cast-card",
-      "element": "column",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
       "name": "center",
       "element": "column",
       "meaning": "",
@@ -252,13 +182,6 @@
       "meaning": "",
       "stability": "internal",
       "since": 3
-    },
-    {
-      "name": "chat-line",
-      "element": "column",
-      "meaning": "One message row in watch-together chat",
-      "stability": "internal",
-      "since": 1
     },
     {
       "name": "chat-text",
@@ -289,32 +212,11 @@
       "since": 1
     },
     {
-      "name": "chip-filter",
-      "element": "row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
       "name": "chip-label",
       "element": "text",
       "meaning": "Text inside a chip",
       "stability": "stable",
       "since": 1
-    },
-    {
-      "name": "chip-list",
-      "element": "row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "chip-pad",
-      "element": "row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
     },
     {
       "name": "choice-chip",
@@ -359,13 +261,6 @@
       "since": 1
     },
     {
-      "name": "continue-info",
-      "element": "column",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
       "name": "continue-scrim",
       "element": "column",
       "meaning": "Gradient over continue-watching artwork",
@@ -373,25 +268,11 @@
       "since": 1
     },
     {
-      "name": "control-row",
-      "element": "row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
       "name": "corner",
       "element": "column",
       "meaning": "",
       "stability": "internal",
       "since": 2
-    },
-    {
-      "name": "corner-badge",
-      "element": "row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
     },
     {
       "name": "current",
@@ -420,13 +301,6 @@
       "meaning": "Empty calendar cell outside the month",
       "stability": "internal",
       "since": 1
-    },
-    {
-      "name": "day-body",
-      "element": "column",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
     },
     {
       "name": "day-cell",
@@ -471,41 +345,6 @@
       "since": 3
     },
     {
-      "name": "detail-line",
-      "element": "row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
-      "name": "detail-line-label",
-      "element": "text",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
-      "name": "detail-top-compact",
-      "element": "column",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
-      "name": "detail-top-wide",
-      "element": "column",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
-      "name": "dialog-card",
-      "element": "column",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
       "name": "dialog-field",
       "element": "input",
       "meaning": "",
@@ -520,46 +359,11 @@
       "since": 1
     },
     {
-      "name": "dock-corner",
-      "element": "column row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
-      "name": "dock-end",
-      "element": "column row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
-      "name": "dot",
-      "element": "row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
-      "name": "dot-row",
-      "element": "row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
       "name": "download-row",
       "element": "row",
       "meaning": "One row in the downloads list",
       "stability": "internal",
       "since": 1
-    },
-    {
-      "name": "download-text",
-      "element": "column",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
     },
     {
       "name": "empty-action",
@@ -583,20 +387,6 @@
       "since": 1
     },
     {
-      "name": "empty-page",
-      "element": "column",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
-      "name": "empty-state",
-      "element": "column",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
       "name": "empty-title",
       "element": "text",
       "meaning": "Title of an empty state",
@@ -609,13 +399,6 @@
       "meaning": "One episode entry in a season list",
       "stability": "stable",
       "since": 1
-    },
-    {
-      "name": "episode-body",
-      "element": "column",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
     },
     {
       "name": "episode-check",
@@ -637,34 +420,6 @@
       "meaning": "Text of an episode tag",
       "stability": "internal",
       "since": 1
-    },
-    {
-      "name": "episode-corner",
-      "element": "column",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
-      "name": "episode-footer",
-      "element": "row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
-      "name": "episode-frame",
-      "element": "stack",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
-      "name": "episode-info",
-      "element": "column",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
     },
     {
       "name": "episode-overview",
@@ -709,13 +464,6 @@
       "since": 1
     },
     {
-      "name": "expanded-info",
-      "element": "column",
-      "meaning": "Info block of an expanded card",
-      "stability": "internal",
-      "since": 1
-    },
-    {
       "name": "expanded-logo",
       "element": "image",
       "meaning": "Title logo of an expanded card",
@@ -744,13 +492,6 @@
       "since": 2
     },
     {
-      "name": "field-row",
-      "element": "row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
       "name": "fill-space",
       "element": "column image input row",
       "meaning": "",
@@ -772,25 +513,11 @@
       "since": 3
     },
     {
-      "name": "folder-shelves",
-      "element": "column",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
       "name": "folder-tabs",
       "element": "scroll",
       "meaning": "",
       "stability": "internal",
       "since": 3
-    },
-    {
-      "name": "form-card",
-      "element": "column",
-      "meaning": "Card that groups form fields",
-      "stability": "internal",
-      "since": 1
     },
     {
       "name": "fullscreen",
@@ -821,13 +548,6 @@
       "since": 1
     },
     {
-      "name": "gauge-lane",
-      "element": "row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
       "name": "gauge-track",
       "element": "column",
       "meaning": "Track of a gauge",
@@ -856,13 +576,6 @@
       "since": 2
     },
     {
-      "name": "guide-body",
-      "element": "stack",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
       "name": "guide-cell",
       "element": "",
       "meaning": "Programme cell in the live TV guide",
@@ -875,13 +588,6 @@
       "meaning": "Programme cell that is airing now",
       "stability": "internal",
       "since": 1
-    },
-    {
-      "name": "guide-cells",
-      "element": "row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
     },
     {
       "name": "guide-channel",
@@ -905,78 +611,8 @@
       "since": 1
     },
     {
-      "name": "guide-row",
-      "element": "row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
-      "name": "guide-rows",
-      "element": "column",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
-      "name": "h-10",
-      "element": "spacer",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "h-16",
-      "element": "spacer",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "h-20",
-      "element": "spacer",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "h-24",
-      "element": "spacer",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "h-28",
-      "element": "spacer",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "h-32",
-      "element": "spacer",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "h-4",
-      "element": "spacer",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
       "name": "h-64",
       "element": "column",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "h-8",
-      "element": "spacer",
       "meaning": "",
       "stability": "internal",
       "since": 2
@@ -1024,13 +660,6 @@
       "since": 2
     },
     {
-      "name": "hub-icon",
-      "element": "stack",
-      "meaning": "Icon tile on the hub screen",
-      "stability": "internal",
-      "since": 1
-    },
-    {
       "name": "hub-row",
       "element": "row",
       "meaning": "Row of hub entries",
@@ -1047,27 +676,6 @@
     {
       "name": "indicator",
       "element": "",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "info-card",
-      "element": "column",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "info-row",
-      "element": "column",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "inline-row",
-      "element": "row",
       "meaning": "",
       "stability": "internal",
       "since": 2
@@ -1122,13 +730,6 @@
       "since": 2
     },
     {
-      "name": "logo-slot",
-      "element": "column",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
       "name": "mark",
       "element": "",
       "meaning": "",
@@ -1138,13 +739,6 @@
     {
       "name": "menu-item",
       "element": "row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
-      "name": "menu-list",
-      "element": "column",
       "meaning": "",
       "stability": "internal",
       "since": 3
@@ -1178,25 +772,11 @@
       "since": 1
     },
     {
-      "name": "mini-body",
-      "element": "column",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
       "name": "mini-controls",
       "element": "row",
       "meaning": "Control row of the mini player",
       "stability": "stable",
       "since": 1
-    },
-    {
-      "name": "mini-progress",
-      "element": "column",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
     },
     {
       "name": "mini-tile",
@@ -1206,57 +786,8 @@
       "since": 1
     },
     {
-      "name": "modal-banner",
-      "element": "stack",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
-      "name": "modal-banner-info",
-      "element": "column",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
-      "name": "modal-body",
-      "element": "column",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
-      "name": "modal-cast",
-      "element": "column",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
       "name": "modal-cast-photo",
       "element": "image",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
-      "name": "modal-content",
-      "element": "column",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
-      "name": "modal-episode",
-      "element": "row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
-      "name": "modal-episodes",
-      "element": "column",
       "meaning": "",
       "stability": "internal",
       "since": 3
@@ -1409,13 +940,6 @@
       "since": 3
     },
     {
-      "name": "page-head",
-      "element": "column",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
       "name": "page-hint",
       "element": "text",
       "meaning": "Explanatory text under a page title",
@@ -1437,39 +961,11 @@
       "since": 1
     },
     {
-      "name": "panel-chip",
-      "element": "row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
-      "name": "panel-chips",
-      "element": "row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
-      "name": "panel-columns",
-      "element": "row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
       "name": "panel-detail",
       "element": "text",
       "meaning": "Secondary value text in a panel row",
       "stability": "internal",
       "since": 1
-    },
-    {
-      "name": "panel-head",
-      "element": "row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
     },
     {
       "name": "panel-heading",
@@ -1479,67 +975,11 @@
       "since": 1
     },
     {
-      "name": "panel-heading-inset",
-      "element": "text",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
-      "name": "panel-heading-row",
-      "element": "row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
       "name": "panel-label",
       "element": "text",
       "meaning": "Label text in a panel row",
       "stability": "internal",
       "since": 1
-    },
-    {
-      "name": "panel-line",
-      "element": "row",
-      "meaning": "Line inside a panel",
-      "stability": "internal",
-      "since": 1
-    },
-    {
-      "name": "panel-line-label",
-      "element": "text",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
-      "name": "panel-line-tight",
-      "element": "row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
-      "name": "panel-look",
-      "element": "row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
-      "name": "panel-look-sample",
-      "element": "row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
-      "name": "panel-message",
-      "element": "text",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
     },
     {
       "name": "panel-row",
@@ -1554,20 +994,6 @@
       "meaning": "Thumbnail inside a panel",
       "stability": "internal",
       "since": 1
-    },
-    {
-      "name": "panel-title",
-      "element": "text",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
-      "name": "panel-value",
-      "element": "row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
     },
     {
       "name": "plain",
@@ -1591,67 +1017,11 @@
       "since": 1
     },
     {
-      "name": "player-bottom",
-      "element": "column",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
       "name": "player-buffering-veil",
       "element": "column",
       "meaning": "Overlay shown while the player buffers",
       "stability": "internal",
       "since": 1
-    },
-    {
-      "name": "player-choice",
-      "element": "row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
-      "name": "player-choice-wrap",
-      "element": "row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
-      "name": "player-group",
-      "element": "column",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
-      "name": "player-layer",
-      "element": "stack",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
-      "name": "player-load-bar",
-      "element": "column",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
-      "name": "player-load-track",
-      "element": "column",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
-      "name": "player-loading-body",
-      "element": "column",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
     },
     {
       "name": "player-loading-mark",
@@ -1689,74 +1059,11 @@
       "since": 3
     },
     {
-      "name": "player-option",
-      "element": "row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
       "name": "player-panel",
       "element": "column",
       "meaning": "Floating panel in the player (audio, subtitles, settings)",
       "stability": "stable",
       "since": 1
-    },
-    {
-      "name": "player-panel-card",
-      "element": "column",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
-      "name": "player-panel-dock",
-      "element": "row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
-      "name": "player-panel-form",
-      "element": "column",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
-      "name": "player-panel-menu",
-      "element": "column",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
-      "name": "player-panel-sheet",
-      "element": "column",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
-      "name": "player-pause-info",
-      "element": "column",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
-      "name": "player-prompts",
-      "element": "column",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
-      "name": "player-row",
-      "element": "row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
     },
     {
       "name": "player-scroll",
@@ -1766,84 +1073,7 @@
       "since": 3
     },
     {
-      "name": "player-sheet-dock",
-      "element": "column",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
       "name": "player-skip",
-      "element": "row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
-      "name": "player-spacer",
-      "element": "spacer",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
-      "name": "player-stats-dock",
-      "element": "row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
-      "name": "player-sync-dock",
-      "element": "row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
-      "name": "player-top",
-      "element": "column",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
-      "name": "player-trailer-bar",
-      "element": "row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
-      "name": "player-trailer-bottom",
-      "element": "column",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
-      "name": "player-trailer-top",
-      "element": "column",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
-      "name": "player-veil",
-      "element": "column stack",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
-      "name": "player-warnings",
-      "element": "column",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
-      "name": "player-watch-dock",
       "element": "row",
       "meaning": "",
       "stability": "internal",
@@ -1920,13 +1150,6 @@
       "since": 2
     },
     {
-      "name": "profile-stack",
-      "element": "column",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
       "name": "profile-tile",
       "element": "column",
       "meaning": "Selectable profile on the profile picker",
@@ -1955,92 +1178,8 @@
       "since": 3
     },
     {
-      "name": "profiles-actions",
-      "element": "row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
       "name": "profiles-avatar-grid",
       "element": "grid",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
-      "name": "profiles-avatar-group",
-      "element": "column",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
-      "name": "profiles-avatar-row",
-      "element": "row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
-      "name": "profiles-buttons",
-      "element": "row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
-      "name": "profiles-cell",
-      "element": "column",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
-      "name": "profiles-dialog",
-      "element": "column",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
-      "name": "profiles-entry",
-      "element": "row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
-      "name": "profiles-fill",
-      "element": "column spacer text",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
-      "name": "profiles-form-page",
-      "element": "column",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
-      "name": "profiles-grid",
-      "element": "column",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
-      "name": "profiles-group-head",
-      "element": "row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
-      "name": "profiles-heading",
-      "element": "row",
       "meaning": "",
       "stability": "internal",
       "since": 3
@@ -2053,13 +1192,6 @@
       "since": 3
     },
     {
-      "name": "profiles-manage",
-      "element": "row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
       "name": "profiles-save",
       "element": "row",
       "meaning": "",
@@ -2067,42 +1199,7 @@
       "since": 3
     },
     {
-      "name": "profiles-select",
-      "element": "column",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
-      "name": "profiles-select-compact",
-      "element": "column",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
-      "name": "profiles-shared",
-      "element": "column",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
-      "name": "profiles-subhead",
-      "element": "text",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
       "name": "profiles-switch",
-      "element": "row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
-      "name": "profiles-toggle",
       "element": "row",
       "meaning": "",
       "stability": "internal",
@@ -2130,13 +1227,6 @@
       "since": 1
     },
     {
-      "name": "progress-wide",
-      "element": "stack",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
       "name": "rating",
       "element": "row",
       "meaning": "",
@@ -2158,46 +1248,11 @@
       "since": 3
     },
     {
-      "name": "reco-card",
-      "element": "column",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
-      "name": "reco-corner",
-      "element": "column",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
       "name": "reco-logo",
       "element": "image",
       "meaning": "",
       "stability": "internal",
       "since": 3
-    },
-    {
-      "name": "reco-top",
-      "element": "row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
-      "name": "row-note",
-      "element": "row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "row-text",
-      "element": "column",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
     },
     {
       "name": "rows",
@@ -2212,27 +1267,6 @@
       "meaning": "Root container of every screen",
       "stability": "stable",
       "since": 1
-    },
-    {
-      "name": "screen-browse",
-      "element": "column",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
-      "name": "screen-detail",
-      "element": "column",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
-      "name": "screen-list",
-      "element": "column",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
     },
     {
       "name": "scrim-bottom",
@@ -2305,13 +1339,6 @@
       "since": 1
     },
     {
-      "name": "select-value",
-      "element": "text",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
       "name": "selected",
       "element": "",
       "meaning": "",
@@ -2375,20 +1402,6 @@
       "since": 2
     },
     {
-      "name": "sheet-chips",
-      "element": "row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
-      "name": "sheet-head",
-      "element": "row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
       "name": "sheet-row",
       "element": "row",
       "meaning": "",
@@ -2403,20 +1416,6 @@
       "since": 3
     },
     {
-      "name": "sheet-tall",
-      "element": "column",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
-      "name": "sheet-wide",
-      "element": "column",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
       "name": "shelf",
       "element": "column",
       "meaning": "Horizontal row of cards with a title",
@@ -2424,22 +1423,8 @@
       "since": 1
     },
     {
-      "name": "shelf-page",
-      "element": "column",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
       "name": "shelf-row",
       "element": "row scroll",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
-      "name": "shelf-stack",
-      "element": "column",
       "meaning": "",
       "stability": "internal",
       "since": 3
@@ -2450,13 +1435,6 @@
       "meaning": "Title above a shelf",
       "stability": "stable",
       "since": 1
-    },
-    {
-      "name": "side-group",
-      "element": "column",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
     },
     {
       "name": "side-heading",
@@ -2571,20 +1549,6 @@
       "since": 1
     },
     {
-      "name": "slider-lane",
-      "element": "column",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
-      "name": "slider-line",
-      "element": "stack",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
       "name": "slider-segment",
       "element": "column",
       "meaning": "Segment of a segmented slider",
@@ -2599,32 +1563,11 @@
       "since": 1
     },
     {
-      "name": "source-badge",
-      "element": "row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
-      "name": "source-badges",
-      "element": "row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
       "name": "source-row",
       "element": "row",
       "meaning": "One source entry in the sources list",
       "stability": "internal",
       "since": 1
-    },
-    {
-      "name": "source-text",
-      "element": "column",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
     },
     {
       "name": "sources",
@@ -2648,27 +1591,6 @@
       "since": 1
     },
     {
-      "name": "sources-filters",
-      "element": "row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
-      "name": "sources-hero",
-      "element": "stack",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
-      "name": "sources-info",
-      "element": "column",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
       "name": "sources-list",
       "element": "scroll",
       "meaning": "",
@@ -2683,25 +1605,11 @@
       "since": 3
     },
     {
-      "name": "sources-rows",
-      "element": "column",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
       "name": "sources-season",
       "element": "text",
       "meaning": "Season text in the sources list",
       "stability": "internal",
       "since": 1
-    },
-    {
-      "name": "sources-status",
-      "element": "row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
     },
     {
       "name": "sources-synopsis",
@@ -2711,46 +1619,11 @@
       "since": 1
     },
     {
-      "name": "sources-text",
-      "element": "row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
-      "name": "sources-title",
-      "element": "column",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
-      "name": "sources-top",
-      "element": "row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
-      "name": "spring",
-      "element": "spacer",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
       "name": "square",
       "element": "",
       "meaning": "Square card shape modifier",
       "stability": "stable",
       "since": 1
-    },
-    {
-      "name": "stats-column",
-      "element": "column",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
     },
     {
       "name": "stats-panel",
@@ -2765,13 +1638,6 @@
       "meaning": "Plus or minus button next to a value",
       "stability": "internal",
       "since": 1
-    },
-    {
-      "name": "strip-group",
-      "element": "column",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
     },
     {
       "name": "subtle",
@@ -2802,20 +1668,6 @@
       "since": 1
     },
     {
-      "name": "sync-controls",
-      "element": "row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
-      "name": "sync-value",
-      "element": "row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
       "name": "synopsis",
       "element": "text",
       "meaning": "Plot summary text",
@@ -2835,20 +1687,6 @@
       "meaning": "",
       "stability": "internal",
       "since": 2
-    },
-    {
-      "name": "tab-strip",
-      "element": "row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
-      "name": "tab-strip-item",
-      "element": "row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
     },
     {
       "name": "thumb-strip",
@@ -2872,32 +1710,11 @@
       "since": 3
     },
     {
-      "name": "tip-body",
-      "element": "row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
-      "name": "title-bar",
-      "element": "row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
       "name": "title-logo",
       "element": "image",
       "meaning": "Title logo image",
       "stability": "stable",
       "since": 1
-    },
-    {
-      "name": "title-pair",
-      "element": "row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
     },
     {
       "name": "toast",
@@ -2907,36 +1724,8 @@
       "since": 1
     },
     {
-      "name": "toast-body",
-      "element": "row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
-      "name": "toast-lane",
-      "element": "column",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
-      "name": "top-inset",
-      "element": "spacer",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
       "name": "trailer-art",
       "element": "image",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
-      "name": "trailer-card",
-      "element": "column",
       "meaning": "",
       "stability": "internal",
       "since": 3
@@ -2977,29 +1766,8 @@
       "since": 3
     },
     {
-      "name": "watch-chat",
-      "element": "column",
-      "meaning": "Watch-together chat container",
-      "stability": "internal",
-      "since": 1
-    },
-    {
-      "name": "watch-code",
-      "element": "row",
-      "meaning": "Watch-together room code row",
-      "stability": "internal",
-      "since": 1
-    },
-    {
       "name": "watch-copy",
       "element": "row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
-      "name": "watch-form",
-      "element": "column",
       "meaning": "",
       "stability": "internal",
       "since": 3
@@ -3019,29 +1787,8 @@
       "since": 3
     },
     {
-      "name": "watch-member",
-      "element": "row",
-      "meaning": "Watch-together participant row",
-      "stability": "internal",
-      "since": 1
-    },
-    {
       "name": "watch-switch",
       "element": "row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
-      "name": "watch-toggle",
-      "element": "row",
-      "meaning": "Watch-together toggle row",
-      "stability": "internal",
-      "since": 1
-    },
-    {
-      "name": "watch-toggles",
-      "element": "column",
       "meaning": "",
       "stability": "internal",
       "since": 3
@@ -3062,20 +1809,6 @@
     },
     {
       "name": "welcome-busy-action",
-      "element": "row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
-      "name": "welcome-card",
-      "element": "column",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
-      "name": "welcome-center",
       "element": "row",
       "meaning": "",
       "stability": "internal",
@@ -3110,25 +1843,11 @@
       "since": 1
     },
     {
-      "name": "welcome-mobile",
-      "element": "column",
-      "meaning": "Mobile layout block of the welcome screen",
-      "stability": "internal",
-      "since": 1
-    },
-    {
       "name": "welcome-or",
       "element": "text",
       "meaning": "Separator text on the welcome screen",
       "stability": "internal",
       "since": 1
-    },
-    {
-      "name": "welcome-rule",
-      "element": "row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
     },
     {
       "name": "welcome-subtitle",
@@ -3145,27 +1864,6 @@
       "since": 1
     },
     {
-      "name": "welcome-tv",
-      "element": "row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
-      "name": "welcome-tv-qr",
-      "element": "column",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
-      "name": "welcome-tv-steps",
-      "element": "column",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
-    },
-    {
       "name": "wide",
       "element": "",
       "meaning": "Wide card shape modifier",
@@ -3178,13 +1876,6 @@
       "meaning": "",
       "stability": "internal",
       "since": 2
-    },
-    {
-      "name": "window-bar",
-      "element": "row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 3
     },
     {
       "name": "wrapped",
@@ -3236,6 +1927,1128 @@
       "since": 2,
       "removedIn": 3,
       "replacement": "btn-secondary"
+    },
+    {
+      "name": "about-card",
+      "since": 1,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "about-text",
+      "since": 2,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "action-row",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "addon-card",
+      "since": 1,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "addon-logo",
+      "since": 1,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "bottom-inset",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "button-row",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "card-badges",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "card-head",
+      "since": 2,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "cast-card",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "chat-line",
+      "since": 1,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "chip-filter",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "chip-list",
+      "since": 2,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "chip-pad",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "continue-info",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "control-row",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "corner-badge",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "day-body",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "detail-line",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "detail-line-label",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "detail-top-compact",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "detail-top-wide",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "dialog-card",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "dock-corner",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "dock-end",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "dot",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "dot-row",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "download-text",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "empty-page",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "empty-state",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "episode-body",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "episode-corner",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "episode-footer",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "episode-frame",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "episode-info",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "expanded-info",
+      "since": 1,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "field-row",
+      "since": 2,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "folder-shelves",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "form-card",
+      "since": 1,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "gauge-lane",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "guide-body",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "guide-cells",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "guide-row",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "guide-rows",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "h-10",
+      "since": 2,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "h-16",
+      "since": 2,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "h-20",
+      "since": 2,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "h-24",
+      "since": 2,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "h-28",
+      "since": 2,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "h-32",
+      "since": 2,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "h-4",
+      "since": 2,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "h-8",
+      "since": 2,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "hub-icon",
+      "since": 1,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "info-card",
+      "since": 2,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "info-row",
+      "since": 2,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "inline-row",
+      "since": 2,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "logo-slot",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "menu-list",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "mini-body",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "mini-progress",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "modal-banner",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "modal-banner-info",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "modal-body",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "modal-cast",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "modal-content",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "modal-episode",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "modal-episodes",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "page-head",
+      "since": 2,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "panel-chip",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "panel-chips",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "panel-columns",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "panel-head",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "panel-heading-inset",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "panel-heading-row",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "panel-line",
+      "since": 1,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "panel-line-label",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "panel-line-tight",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "panel-look",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "panel-look-sample",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "panel-message",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "panel-title",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "panel-value",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "player-bottom",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "player-choice",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "player-choice-wrap",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "player-group",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "player-layer",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "player-load-bar",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "player-load-track",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "player-loading-body",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "player-option",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "player-panel-card",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "player-panel-dock",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "player-panel-form",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "player-panel-menu",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "player-panel-sheet",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "player-pause-info",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "player-prompts",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "player-row",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "player-sheet-dock",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "player-spacer",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "player-stats-dock",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "player-sync-dock",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "player-top",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "player-trailer-bar",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "player-trailer-bottom",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "player-trailer-top",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "player-veil",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "player-warnings",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "player-watch-dock",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "profile-stack",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "profiles-actions",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "profiles-avatar-group",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "profiles-avatar-row",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "profiles-buttons",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "profiles-cell",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "profiles-dialog",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "profiles-entry",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "profiles-fill",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "profiles-form-page",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "profiles-grid",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "profiles-group-head",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "profiles-heading",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "profiles-manage",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "profiles-select",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "profiles-select-compact",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "profiles-shared",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "profiles-subhead",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "profiles-toggle",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "progress-wide",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "reco-card",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "reco-corner",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "reco-top",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "row-note",
+      "since": 2,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "row-text",
+      "since": 2,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "screen-browse",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "screen-detail",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "screen-list",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "select-value",
+      "since": 2,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "sheet-chips",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "sheet-head",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "sheet-tall",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "sheet-wide",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "shelf-page",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "shelf-stack",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "side-group",
+      "since": 2,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "slider-lane",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "slider-line",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "source-badge",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "source-badges",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "source-text",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "sources-filters",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "sources-hero",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "sources-info",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "sources-rows",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "sources-status",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "sources-text",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "sources-title",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "sources-top",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "spring",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "stats-column",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "strip-group",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "sync-controls",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "sync-value",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "tab-strip",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "tab-strip-item",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "tip-body",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "title-bar",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "title-pair",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "toast-body",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "toast-lane",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "top-inset",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "trailer-card",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "watch-chat",
+      "since": 1,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "watch-code",
+      "since": 1,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "watch-form",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "watch-member",
+      "since": 1,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "watch-toggle",
+      "since": 1,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "watch-toggles",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "welcome-card",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "welcome-center",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "welcome-mobile",
+      "since": 1,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "welcome-rule",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "welcome-tv",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "welcome-tv-qr",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "welcome-tv-steps",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
+    },
+    {
+      "name": "window-bar",
+      "since": 3,
+      "removedIn": 4,
+      "replacement": "layout fields on the node (gap, padding, width, height, align, justify, grow, fill)"
     }
   ]
 }

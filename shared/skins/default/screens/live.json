@@ -1,10 +1,11 @@
 {
   "type": "column",
-  "class": "screen screen-list",
+  "class": "screen",
+  "gap": 14,
   "children": [
     {
       "type": "spacer",
-      "class": "top-inset"
+      "height": 72
     },
     {
       "type": "page",
@@ -113,15 +114,15 @@
                               ]
                             }
                           ],
-                          "class": "guide-cells"
+                          "height": 64
                         }
                       }
                     ],
-                    "class": "guide-row"
+                    "gap": 4
                   }
                 }
               ],
-              "class": "guide-rows"
+              "gap": 6
             },
             {
               "type": "row",
@@ -133,12 +134,14 @@
                 },
                 {
                   "type": "column",
-                  "class": "guide-now"
+                  "class": "guide-now",
+                  "width": 2,
+                  "height": "100vh"
                 }
               ]
             }
           ],
-          "class": "guide-body"
+          "padding": "0 0 0 48"
         }
       ]
     },

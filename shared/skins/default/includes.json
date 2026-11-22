@@ -219,7 +219,11 @@
           },
           {
             "type": "column",
-            "class": "expanded-info fill-space",
+            "class": "fill-space",
+            "gap": 6,
+            "padding": 14,
+            "align": "start",
+            "justify": "end",
             "props": {
               "expandedOnly": true
             },
@@ -361,7 +365,7 @@
               }
             ],
             "when": "len(slide.ratings) > 0",
-            "class": "inline-row"
+            "gap": 12
           },
           {
             "type": "text",
@@ -380,6 +384,7 @@
                   {
                     "type": "row",
                     "class": "btn-primary hero-play fill-space",
+                    "gap": 8,
                     "children": [
                       {
                         "type": "icon",
@@ -432,7 +437,7 @@
                 }
               }
             ],
-            "class": "inline-row"
+            "gap": 12
           }
         ]
       }
@@ -506,7 +511,8 @@
     "children": [
       {
         "type": "column",
-        "class": "skeleton-bar skeleton-title"
+        "class": "skeleton-bar skeleton-title",
+        "width": 180
       },
       {
         "type": "row",
@@ -550,7 +556,8 @@
   },
   "chip": {
     "type": "row",
-    "class": "chip chip-filter",
+    "class": "chip",
+    "padding": "8 16",
     "action": {
       "name": "choose",
       "args": {
@@ -568,7 +575,8 @@
   },
   "chip_active": {
     "type": "row",
-    "class": "chip-active chip-filter",
+    "class": "chip-active",
+    "padding": "8 16",
     "action": {
       "name": "choose",
       "args": {
@@ -603,7 +611,7 @@
                   "style": "subtitle"
                 }
               ],
-              "class": "tab-strip-item"
+              "padding": "8 4"
             },
             {
               "type": "row",
@@ -622,13 +630,13 @@
                   "style": "subtitle muted"
                 }
               ],
-              "class": "tab-strip-item"
+              "padding": "8 4"
             }
           ]
         }
       }
     ],
-    "class": "tab-strip"
+    "gap": 20
   },
   "day_cell": {
     "type": "stack",
@@ -672,7 +680,8 @@
             "when": "cell.count > 0"
           }
         ],
-        "class": "day-body"
+        "gap": 4,
+        "padding": 8
       }
     ]
   },
@@ -705,7 +714,8 @@
             }
           }
         ],
-        "class": "download-text"
+        "gap": 4,
+        "grow": 1
       },
       {
         "type": "row",
@@ -779,7 +789,8 @@
             "when": "group.active"
           }
         ],
-        "class": "download-text"
+        "gap": 4,
+        "grow": 1
       }
     ]
   },
@@ -890,7 +901,7 @@
   },
   "nav_entry": {
     "type": "column",
-    "class": "side-group",
+    "gap": 2,
     "children": [
       {
         "type": "text",
@@ -916,7 +927,9 @@
     "children": [
       {
         "type": "stack",
-        "class": "tile hub-icon",
+        "class": "tile",
+        "width": 44,
+        "height": 44,
         "children": [
           {
             "type": "column",
@@ -935,7 +948,8 @@
       },
       {
         "type": "column",
-        "class": "row-text",
+        "gap": 2,
+        "grow": 1,
         "children": [
           {
             "type": "text",
@@ -1032,6 +1046,8 @@
               {
                 "type": "stack",
                 "class": "episode-check",
+                "width": 20,
+                "height": 20,
                 "children": [
                   {
                     "type": "column",
@@ -1049,7 +1065,9 @@
                 ]
               }
             ],
-            "class": "episode-corner"
+            "padding": 8,
+            "align": "end",
+            "fill": true
           },
           {
             "type": "column",
@@ -1075,7 +1093,9 @@
                     "when": "ep.runtime"
                   }
                 ],
-                "class": "episode-footer"
+                "padding": "0 8 10 8",
+                "align": "end",
+                "justify": "space_between"
               },
               {
                 "include": "progress",
@@ -1085,10 +1105,12 @@
                 "when": "ep.progress > 0"
               }
             ],
-            "class": "episode-info"
+            "justify": "end",
+            "fill": true
           }
         ],
-        "class": "episode-frame"
+        "width": 276,
+        "height": 155
       },
       {
         "type": "column",
@@ -1110,7 +1132,9 @@
             }
           }
         ],
-        "class": "episode-body"
+        "width": 276,
+        "gap": 4,
+        "padding": "0 4 4 4"
       }
     ]
   },
@@ -1145,7 +1169,9 @@
         "style": "meta muted"
       }
     ],
-    "class": "cast-card"
+    "width": 120,
+    "gap": 6,
+    "align": "center"
   },
   "trailer_card": {
     "type": "column",
@@ -1171,7 +1197,8 @@
         "style": "meta"
       }
     ],
-    "class": "trailer-card"
+    "width": 296,
+    "gap": 6
   },
   "info_row": {
     "type": "row",
@@ -1180,7 +1207,7 @@
         "type": "text",
         "text": "{line.label}",
         "style": "meta muted",
-        "class": "detail-line-label"
+        "width": 180
       },
       {
         "type": "text",
@@ -1188,7 +1215,8 @@
         "style": "meta"
       }
     ],
-    "class": "detail-line"
+    "gap": 24,
+    "padding": "8 0"
   },
   "detail_hero": {
     "type": "stack",
@@ -1241,7 +1269,10 @@
             }
           }
         ],
-        "class": "compact-only detail-top-compact"
+        "class": "compact-only",
+        "padding": "84 24 0 24",
+        "align": "start",
+        "fill": true
       },
       {
         "type": "column",
@@ -1265,7 +1296,10 @@
             }
           }
         ],
-        "class": "wide-only detail-top-wide"
+        "class": "wide-only",
+        "padding": "0 24 0 24",
+        "align": "start",
+        "fill": true
       },
       {
         "type": "column",
@@ -1331,7 +1365,7 @@
               }
             ],
             "when": "len(detail.ratings) > 0",
-            "class": "inline-row"
+            "gap": 12
           },
           {
             "type": "text",
@@ -1350,6 +1384,7 @@
                   {
                     "type": "row",
                     "class": "btn-primary hero-play fill-space",
+                    "gap": 8,
                     "children": [
                       {
                         "type": "icon",
@@ -1467,7 +1502,7 @@
                 }
               }
             ],
-            "class": "inline-row"
+            "gap": 12
           }
         ]
       }
@@ -1546,7 +1581,8 @@
             "style": "subtitle"
           }
         ],
-        "class": "profile-stack"
+        "gap": 8,
+        "align": "center"
       },
       {
         "type": "row",
@@ -1596,7 +1632,8 @@
   },
   "folder_tab": {
     "type": "row",
-    "class": "chip chip-filter",
+    "class": "chip",
+    "padding": "8 16",
     "action": {
       "name": "folder",
       "args": {
@@ -1614,7 +1651,8 @@
   },
   "folder_tab_active": {
     "type": "row",
-    "class": "chip-active chip-filter",
+    "class": "chip-active",
+    "padding": "8 16",
     "action": {
       "name": "folder",
       "args": {
@@ -1708,7 +1746,7 @@
         "style": "headline"
       }
     ],
-    "class": "logo-slot"
+    "align": "start"
   },
   "continue_card": {
     "type": "stack",
@@ -1736,7 +1774,8 @@
           {
             "type": "row",
             "when": "card.episodes",
-            "class": "card-badge corner-badge",
+            "class": "card-badge",
+            "padding": 4,
             "children": [
               {
                 "type": "text",
@@ -1752,7 +1791,8 @@
           {
             "type": "row",
             "when": "card.detail",
-            "class": "card-badge corner-badge",
+            "class": "card-badge",
+            "padding": 4,
             "children": [
               {
                 "type": "text",
@@ -1762,7 +1802,9 @@
             ]
           }
         ],
-        "class": "card-badges"
+        "padding": 8,
+        "align": "start",
+        "fill": true
       },
       {
         "type": "column",
@@ -1799,10 +1841,13 @@
                 }
               }
             ],
-            "class": "progress-wide"
+            "height": 4
           }
         ],
-        "class": "continue-info"
+        "gap": 4,
+        "padding": 12,
+        "justify": "end",
+        "fill": true
       },
       {
         "include": "card_preview"
@@ -1834,7 +1879,7 @@
                 "as": "opt",
                 "template": {
                   "type": "text",
-                  "class": "select-value",
+                  "grow": 1,
                   "when": "opt.value == value",
                   "text": "{opt.label}",
                   "props": {
@@ -1878,7 +1923,7 @@
                   "children": [
                     {
                       "type": "text",
-                      "class": "select-value",
+                      "grow": 1,
                       "text": "{opt.label}"
                     },
                     {
@@ -1916,7 +1961,7 @@
                 "as": "opt",
                 "template": {
                   "type": "text",
-                  "class": "select-value",
+                  "grow": 1,
                   "when": "opt.value == value",
                   "text": "{opt.label}",
                   "props": {
@@ -2086,7 +2131,7 @@
       },
       {
         "type": "column",
-        "class": "page-head",
+        "gap": 6,
         "children": [
           {
             "type": "text",
@@ -2230,7 +2275,8 @@
                 },
                 {
                   "type": "row",
-                  "class": "row-note",
+                  "gap": 12,
+                  "padding": "0 16",
                   "when": "skin.scripts",
                   "children": [
                     {
@@ -2283,7 +2329,7 @@
           },
           {
             "type": "row",
-            "class": "inline-row",
+            "gap": 12,
             "children": [
               {
                 "type": "input",
@@ -2531,7 +2577,9 @@
   },
   "setting_input": {
     "type": "column",
-    "class": "tile form-card",
+    "class": "tile",
+    "gap": 10,
+    "padding": "14 16",
     "children": [
       {
         "type": "text",
@@ -2548,7 +2596,7 @@
       },
       {
         "type": "row",
-        "class": "field-row",
+        "gap": 10,
         "children": [
           {
             "type": "input",
@@ -2592,14 +2640,16 @@
       },
       {
         "type": "column",
-        "class": "surface-card info-card",
+        "class": "surface-card",
+        "padding": "6 0",
         "children": [
           {
             "each": "list.rows",
             "as": "row",
             "template": {
               "type": "column",
-              "class": "info-row",
+              "gap": 4,
+              "padding": "12 16",
               "children": [
                 {
                   "type": "text",
@@ -2653,7 +2703,8 @@
             ]
           }
         ],
-        "class": "control-row"
+        "gap": 8,
+        "align": "center"
       },
       {
         "type": "text",
@@ -2718,10 +2769,11 @@
                 ]
               }
             ],
-            "class": "control-row"
+            "gap": 8,
+            "align": "center"
           }
         ],
-        "class": "watch-form"
+        "gap": 14
       },
       {
         "type": "column",
@@ -2729,7 +2781,9 @@
         "children": [
           {
             "type": "row",
-            "class": "tile-faint watch-code",
+            "class": "tile-faint",
+            "gap": 10,
+            "padding": "12 14",
             "children": [
               {
                 "type": "text",
@@ -2767,7 +2821,8 @@
             "children": [
               {
                 "type": "row",
-                "class": "watch-toggle",
+                "gap": 12,
+                "padding": "6 4",
                 "children": [
                   {
                     "type": "column",
@@ -2782,7 +2837,8 @@
                         "style": "meta muted"
                       }
                     ],
-                    "class": "row-text"
+                    "gap": 2,
+                    "grow": 1
                   },
                   {
                     "type": "row",
@@ -2817,7 +2873,8 @@
               },
               {
                 "type": "row",
-                "class": "watch-toggle",
+                "gap": 12,
+                "padding": "6 4",
                 "children": [
                   {
                     "type": "column",
@@ -2832,7 +2889,8 @@
                         "style": "meta muted"
                       }
                     ],
-                    "class": "row-text"
+                    "gap": 2,
+                    "grow": 1
                   },
                   {
                     "type": "row",
@@ -2866,14 +2924,15 @@
                 ]
               }
             ],
-            "class": "watch-toggles"
+            "gap": 6
           },
           {
             "each": "w.members",
             "as": "member",
             "template": {
               "type": "row",
-              "class": "watch-member",
+              "gap": 10,
+              "padding": "6 4",
               "children": [
                 {
                   "include": "avatar",
@@ -2904,7 +2963,8 @@
                       }
                     }
                   ],
-                  "class": "row-text"
+                  "gap": 2,
+                  "grow": 1
                 },
                 {
                   "type": "row",
@@ -2932,14 +2992,16 @@
           },
           {
             "type": "column",
-            "class": "tile-faint watch-chat",
+            "class": "tile-faint",
+            "gap": 6,
+            "padding": 10,
             "children": [
               {
                 "each": "w.chat",
                 "as": "line",
                 "template": {
                   "type": "column",
-                  "class": "chat-line",
+                  "gap": 2,
                   "children": [
                     {
                       "type": "text",
@@ -2991,7 +3053,8 @@
                 ]
               }
             ],
-            "class": "control-row"
+            "gap": 8,
+            "align": "center"
           },
           {
             "type": "row",
@@ -3030,7 +3093,7 @@
             ]
           }
         ],
-        "class": "watch-form"
+        "gap": 14
       },
       {
         "type": "text",
@@ -3067,7 +3130,9 @@
         "when": "hint != \"\""
       }
     ],
-    "class": "centered empty-state"
+    "class": "centered",
+    "gap": 8,
+    "padding": "0 24"
   },
   "block_row": {
     "type": "column",
@@ -3076,6 +3141,9 @@
       {
         "type": "row",
         "class": "profile-row",
+        "height": 88,
+        "gap": 14,
+        "padding": "0 16",
         "when": "row.kind == \"profile\"",
         "children": [
           {
@@ -3088,7 +3156,8 @@
           },
           {
             "type": "column",
-            "class": "row-text",
+            "gap": 2,
+            "grow": 1,
             "children": [
               {
                 "type": "text",
@@ -3129,7 +3198,8 @@
           },
           {
             "type": "column",
-            "class": "row-text",
+            "gap": 2,
+            "grow": 1,
             "children": [
               {
                 "type": "text",
@@ -3189,7 +3259,8 @@
           },
           {
             "type": "column",
-            "class": "row-text",
+            "gap": 2,
+            "grow": 1,
             "children": [
               {
                 "type": "text",
@@ -3251,7 +3322,8 @@
         "children": [
           {
             "type": "column",
-            "class": "row-text",
+            "gap": 2,
+            "grow": 1,
             "children": [
               {
                 "type": "text",
@@ -3331,12 +3403,15 @@
       },
       {
         "type": "row",
-        "class": "tile about-card",
+        "class": "tile",
+        "gap": 16,
+        "padding": "20 24",
         "when": "row.kind == \"about\"",
         "children": [
           {
             "type": "column",
-            "class": "about-text",
+            "gap": 10,
+            "grow": 1,
             "children": [
               {
                 "type": "text",
@@ -3345,7 +3420,7 @@
               },
               {
                 "type": "row",
-                "class": "inline-row",
+                "gap": 12,
                 "children": [
                   {
                     "type": "text",
@@ -3391,7 +3466,9 @@
       },
       {
         "type": "column",
-        "class": "tile form-card",
+        "class": "tile",
+        "gap": 10,
+        "padding": "14 16",
         "when": "row.kind == \"form\"",
         "children": [
           {
@@ -3401,7 +3478,7 @@
           },
           {
             "type": "row",
-            "class": "field-row",
+            "gap": 10,
             "children": [
               {
                 "type": "input",
@@ -3475,16 +3552,20 @@
       },
       {
         "type": "column",
-        "class": "tile addon-card",
+        "class": "tile",
+        "gap": 12,
+        "padding": 16,
         "when": "row.kind == \"card\"",
         "children": [
           {
             "type": "row",
-            "class": "card-head",
+            "gap": 14,
             "children": [
               {
                 "type": "stack",
-                "class": "tile addon-logo",
+                "class": "tile",
+                "width": 48,
+                "height": 48,
                 "children": [
                   {
                     "type": "image",
@@ -3513,11 +3594,12 @@
               },
               {
                 "type": "column",
-                "class": "row-text",
+                "gap": 2,
+                "grow": 1,
                 "children": [
                   {
                     "type": "row",
-                    "class": "inline-row",
+                    "gap": 12,
                     "children": [
                       {
                         "type": "text",
@@ -3598,7 +3680,8 @@
           },
           {
             "type": "row",
-            "class": "chip-list",
+            "gap": 8,
+            "align": "center",
             "children": [
               {
                 "each": "row.chips",
@@ -3613,7 +3696,7 @@
           },
           {
             "type": "row",
-            "class": "card-head",
+            "gap": 14,
             "when": "row.group",
             "children": [
               {
@@ -3654,7 +3737,7 @@
           },
           {
             "type": "row",
-            "class": "card-head",
+            "gap": 14,
             "children": [
               {
                 "type": "text",
@@ -3697,7 +3780,8 @@
         "children": [
           {
             "type": "column",
-            "class": "row-text",
+            "gap": 2,
+            "grow": 1,
             "when": "row.title",
             "children": [
               {
@@ -3752,7 +3836,8 @@
           },
           {
             "type": "row",
-            "class": "chip-list",
+            "gap": 8,
+            "align": "center",
             "children": [
               {
                 "each": "row.pills",
@@ -3780,7 +3865,8 @@
           },
           {
             "type": "row",
-            "class": "chip-list",
+            "gap": 8,
+            "align": "center",
             "children": [
               {
                 "each": "row.buttons",
@@ -3841,7 +3927,9 @@
       },
       {
         "type": "column",
-        "class": "tile form-card",
+        "class": "tile",
+        "gap": 10,
+        "padding": "14 16",
         "when": "row.kind == \"field\"",
         "children": [
           {
@@ -3882,7 +3970,8 @@
       },
       {
         "type": "row",
-        "class": "chip-list",
+        "gap": 8,
+        "align": "center",
         "when": "row.kind == \"tabs\"",
         "children": [
           {
@@ -3945,6 +4034,8 @@
           {
             "type": "row",
             "class": "centered keycap",
+            "height": 32,
+            "padding": "0 12",
             "when": "row.node",
             "action": {
               "name": "node",
@@ -3963,6 +4054,8 @@
           {
             "type": "row",
             "class": "centered keycap",
+            "height": 32,
+            "padding": "0 12",
             "when": "!row.node",
             "children": [
               {
@@ -4054,7 +4147,9 @@
                     "class": "sources-episode"
                   }
                 ],
-                "class": "sources-title"
+                "gap": 6,
+                "padding": "0 20",
+                "align": "start"
               },
               {
                 "type": "row",
@@ -4069,10 +4164,12 @@
                     }
                   }
                 ],
-                "class": "sources-text"
+                "padding": "0 20"
               }
             ],
-            "class": "sources-info"
+            "gap": 6,
+            "padding": "60 0 20 0",
+            "justify": "end"
           },
           {
             "type": "row",
@@ -4097,10 +4194,11 @@
                 ]
               }
             ],
-            "class": "sources-top"
+            "padding": 12,
+            "align": "start"
           }
         ],
-        "class": "sources-hero"
+        "height": 240
       },
       {
         "type": "row",
@@ -4133,7 +4231,8 @@
                 "as": "f",
                 "template": {
                   "type": "row",
-                  "class": "chip chip-filter",
+                  "class": "chip",
+                  "padding": "8 16",
                   "props": {
                     "selected": "{f.selected}"
                   },
@@ -4160,7 +4259,8 @@
             "class": "sources-chips"
           }
         ],
-        "class": "sources-filters"
+        "gap": 10,
+        "padding": "0 16"
       },
       {
         "type": "row",
@@ -4175,7 +4275,7 @@
             }
           }
         ],
-        "class": "sources-status"
+        "padding": "0 16"
       },
       {
         "type": "scroll",
@@ -4211,7 +4311,8 @@
                               "as": "b",
                               "template": {
                                 "type": "row",
-                                "class": "card-badge source-badge",
+                                "class": "card-badge",
+                                "padding": "3 8",
                                 "props": {
                                   "tint": "{b.fill}",
                                   "border": "{b.border}"
@@ -4229,7 +4330,7 @@
                               }
                             }
                           ],
-                          "class": "source-badges"
+                          "gap": 6
                         },
                         {
                           "type": "text",
@@ -4257,7 +4358,8 @@
                               "as": "b",
                               "template": {
                                 "type": "row",
-                                "class": "card-badge source-badge",
+                                "class": "card-badge",
+                                "padding": "3 8",
                                 "props": {
                                   "tint": "{b.fill}",
                                   "border": "{b.border}"
@@ -4275,10 +4377,11 @@
                               }
                             }
                           ],
-                          "class": "source-badges"
+                          "gap": 6
                         }
                       ],
-                      "class": "source-text"
+                      "gap": 6,
+                      "grow": 1
                     },
                     {
                       "type": "text",
@@ -4336,7 +4439,8 @@
                 "when": "sources.empty"
               }
             ],
-            "class": "sources-rows"
+            "gap": 12,
+            "padding": "0 16 24 16"
           }
         ],
         "class": "sources-list"
@@ -4359,7 +4463,7 @@
         }
       }
     ],
-    "class": "progress-wide"
+    "height": 4
   },
   "card_preview": {
     "type": "column",
@@ -4431,6 +4535,7 @@
           {
             "type": "row",
             "class": "btn-primary preview-play",
+            "gap": 6,
             "action": {
               "name": "play",
               "args": {
@@ -4573,13 +4678,14 @@
             "when": "card.hasProgress"
           }
         ],
-        "class": "control-row"
+        "gap": 8,
+        "align": "center"
       }
     ]
   },
   "menu_sheet_items": {
     "type": "column",
-    "class": "menu-list",
+    "gap": 2,
     "children": [
       {
         "each": "menu.items",
@@ -4587,6 +4693,7 @@
         "template": {
           "type": "row",
           "class": "select-row sheet-row",
+          "padding": "0 12",
           "props": {
             "selected": "{item.selected}"
           },

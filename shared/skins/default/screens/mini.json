@@ -88,11 +88,13 @@
             },
             {
               "type": "column",
-              "class": "progress-track mini-progress",
+              "class": "progress-track",
+              "height": 3,
               "children": [
                 {
                   "type": "column",
-                  "class": "progress-bar mini-progress",
+                  "class": "progress-bar",
+                  "height": 3,
                   "props": {
                     "span": "{mini.ratio}"
                   }
@@ -100,7 +102,8 @@
               ]
             }
           ],
-          "class": "mini-body fill-space"
+          "class": "fill-space",
+          "justify": "end"
         }
       ]
     }

@@ -16,11 +16,11 @@
               }
             }
           ],
-          "class": "welcome-center"
+          "justify": "center"
         },
         {
           "type": "spacer",
-          "class": "h-28"
+          "height": 28
         },
         {
           "type": "row",
@@ -31,11 +31,11 @@
               "i18n": "auth.welcome_back"
             }
           ],
-          "class": "welcome-center"
+          "justify": "center"
         },
         {
           "type": "spacer",
-          "class": "h-8"
+          "height": 8
         },
         {
           "type": "row",
@@ -53,11 +53,12 @@
         },
         {
           "type": "spacer",
-          "class": "h-28"
+          "height": 28
         },
         {
           "type": "row",
           "class": "welcome-error",
+          "padding": "12 16",
           "when": "welcome.error",
           "children": [
             {
@@ -73,7 +74,7 @@
         {
           "type": "spacer",
           "when": "welcome.error",
-          "class": "h-16"
+          "height": 16
         },
         {
           "type": "text",
@@ -82,7 +83,7 @@
         },
         {
           "type": "spacer",
-          "class": "h-8"
+          "height": 8
         },
         {
           "type": "input",
@@ -96,7 +97,7 @@
         },
         {
           "type": "spacer",
-          "class": "h-16"
+          "height": 16
         },
         {
           "type": "text",
@@ -105,7 +106,7 @@
         },
         {
           "type": "spacer",
-          "class": "h-8"
+          "height": 8
         },
         {
           "type": "input",
@@ -119,7 +120,7 @@
         },
         {
           "type": "spacer",
-          "class": "h-24"
+          "height": 24
         },
         {
           "type": "row",
@@ -142,6 +143,7 @@
         {
           "type": "row",
           "class": "btn-secondary welcome-busy-action",
+          "gap": 10,
           "when": "welcome.busy",
           "children": [
             {
@@ -160,14 +162,15 @@
         },
         {
           "type": "spacer",
-          "class": "h-20"
+          "height": 20
         },
         {
           "type": "row",
           "children": [
             {
               "type": "row",
-              "class": "divider welcome-rule",
+              "class": "divider",
+              "grow": 1,
               "children": []
             },
             {
@@ -177,15 +180,16 @@
             },
             {
               "type": "row",
-              "class": "divider welcome-rule",
+              "class": "divider",
+              "grow": 1,
               "children": []
             }
           ],
-          "class": "inline-row"
+          "gap": 12
         },
         {
           "type": "spacer",
-          "class": "h-20"
+          "height": 20
         },
         {
           "type": "row",
@@ -206,7 +210,9 @@
         }
       ],
       "when": "!welcome.pairing",
-      "class": "desktop-only welcome-card"
+      "class": "desktop-only",
+      "width": 440,
+      "padding": "36 36 32"
     },
     {
       "type": "row",
@@ -227,11 +233,11 @@
                   }
                 }
               ],
-              "class": "welcome-center"
+              "justify": "center"
             },
             {
               "type": "spacer",
-              "class": "h-20"
+              "height": 20
             },
             {
               "type": "row",
@@ -242,11 +248,11 @@
                   "text": "{welcome.code}"
                 }
               ],
-              "class": "welcome-center"
+              "justify": "center"
             },
             {
               "type": "spacer",
-              "class": "h-4"
+              "height": 4
             },
             {
               "type": "row",
@@ -257,10 +263,10 @@
                   "text": "{welcome.url}"
                 }
               ],
-              "class": "welcome-center"
+              "justify": "center"
             }
           ],
-          "class": "welcome-tv-qr"
+          "width": 280
         },
         {
           "type": "column",
@@ -279,7 +285,7 @@
             },
             {
               "type": "spacer",
-              "class": "h-20"
+              "height": 20
             },
             {
               "type": "text",
@@ -288,7 +294,7 @@
             },
             {
               "type": "spacer",
-              "class": "h-24"
+              "height": 24
             },
             {
               "type": "text",
@@ -300,7 +306,7 @@
             },
             {
               "type": "spacer",
-              "class": "h-10"
+              "height": 10
             },
             {
               "type": "text",
@@ -312,7 +318,7 @@
             },
             {
               "type": "spacer",
-              "class": "h-10"
+              "height": 10
             },
             {
               "type": "text",
@@ -324,11 +330,12 @@
             },
             {
               "type": "spacer",
-              "class": "h-24"
+              "height": 24
             },
             {
               "type": "row",
               "class": "welcome-error",
+              "padding": "12 16",
               "when": "welcome.error",
               "children": [
                 {
@@ -343,7 +350,7 @@
             },
             {
               "type": "spacer",
-              "class": "h-24"
+              "height": 24
             },
             {
               "type": "row",
@@ -363,10 +370,12 @@
               ]
             }
           ],
-          "class": "welcome-tv-steps"
+          "width": 440
         }
       ],
-      "class": "tv-only welcome-tv"
+      "class": "tv-only",
+      "gap": 48,
+      "padding": "40 48"
     },
     {
       "type": "scroll",
@@ -388,11 +397,11 @@
                   }
                 }
               ],
-              "class": "welcome-center"
+              "justify": "center"
             },
             {
               "type": "spacer",
-              "class": "h-28"
+              "height": 28
             },
             {
               "type": "row",
@@ -403,11 +412,11 @@
                   "i18n": "auth.welcome_back"
                 }
               ],
-              "class": "welcome-center"
+              "justify": "center"
             },
             {
               "type": "spacer",
-              "class": "h-8"
+              "height": 8
             },
             {
               "type": "text",
@@ -420,11 +429,12 @@
             },
             {
               "type": "spacer",
-              "class": "h-32"
+              "height": 32
             },
             {
               "type": "row",
               "class": "welcome-error",
+              "padding": "12 16",
               "when": "welcome.error",
               "children": [
                 {
@@ -440,7 +450,7 @@
             {
               "type": "spacer",
               "when": "welcome.error",
-              "class": "h-16"
+              "height": 16
             },
             {
               "type": "text",
@@ -449,7 +459,7 @@
             },
             {
               "type": "spacer",
-              "class": "h-8"
+              "height": 8
             },
             {
               "type": "input",
@@ -463,7 +473,7 @@
             },
             {
               "type": "spacer",
-              "class": "h-16"
+              "height": 16
             },
             {
               "type": "text",
@@ -472,7 +482,7 @@
             },
             {
               "type": "spacer",
-              "class": "h-8"
+              "height": 8
             },
             {
               "type": "input",
@@ -486,7 +496,7 @@
             },
             {
               "type": "spacer",
-              "class": "h-28"
+              "height": 28
             },
             {
               "type": "row",
@@ -509,6 +519,7 @@
             {
               "type": "row",
               "class": "btn-secondary welcome-busy-action",
+              "gap": 10,
               "when": "welcome.busy",
               "children": [
                 {
@@ -527,14 +538,15 @@
             },
             {
               "type": "spacer",
-              "class": "h-20"
+              "height": 20
             },
             {
               "type": "row",
               "children": [
                 {
                   "type": "row",
-                  "class": "divider welcome-rule",
+                  "class": "divider",
+                  "grow": 1,
                   "children": []
                 },
                 {
@@ -544,15 +556,16 @@
                 },
                 {
                   "type": "row",
-                  "class": "divider welcome-rule",
+                  "class": "divider",
+                  "grow": 1,
                   "children": []
                 }
               ],
-              "class": "inline-row"
+              "gap": 12
             },
             {
               "type": "spacer",
-              "class": "h-20"
+              "height": 20
             },
             {
               "type": "row",
@@ -572,7 +585,8 @@
               ]
             }
           ],
-          "class": "welcome-mobile"
+          "padding": "64 24 32",
+          "width": "100vw"
         }
       ],
       "when": "!welcome.pairing",

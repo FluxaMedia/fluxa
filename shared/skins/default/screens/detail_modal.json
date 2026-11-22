@@ -19,7 +19,8 @@
           "children": [
             {
               "type": "column",
-              "class": "popover menu-panel sheet-tall",
+              "class": "popover menu-panel",
+              "height": "88vh",
               "width": "{const.modalWidth}",
               "children": [
                 {
@@ -60,10 +61,14 @@
                                   "style": "meta muted"
                                 }
                               ],
-                              "class": "dock-corner modal-banner-info fill-space"
+                              "class": "fill-space",
+                              "align": "start",
+                              "justify": "end",
+                              "gap": 8,
+                              "padding": 20
                             }
                           ],
-                          "class": "modal-banner"
+                          "height": 300
                         },
                         {
                           "type": "column",
@@ -74,6 +79,7 @@
                                 {
                                   "type": "row",
                                   "class": "btn-primary modal-play",
+                                  "gap": 8,
                                   "action": {
                                     "name": "modal",
                                     "args": {
@@ -133,7 +139,7 @@
                                   ]
                                 }
                               ],
-                              "class": "field-row"
+                              "gap": 10
                             },
                             {
                               "type": "text",
@@ -174,7 +180,8 @@
                                       }
                                     }
                                   ],
-                                  "class": "chip-list"
+                                  "gap": 8,
+                                  "align": "center"
                                 },
                                 {
                                   "type": "column",
@@ -184,7 +191,8 @@
                                       "as": "ep",
                                       "template": {
                                         "type": "row",
-                                        "class": "panel-row modal-episode",
+                                        "class": "panel-row",
+                                        "gap": 12,
                                         "action": {
                                           "name": "modal",
                                           "args": {
@@ -227,13 +235,14 @@
                                                 }
                                               }
                                             ],
-                                            "class": "row-text"
+                                            "gap": 2,
+                                            "grow": 1
                                           }
                                         ]
                                       }
                                     }
                                   ],
-                                  "class": "modal-episodes"
+                                  "gap": 8
                                 }
                               ],
                               "class": "section"
@@ -280,7 +289,8 @@
                                             }
                                           }
                                         ],
-                                        "class": "modal-cast"
+                                        "width": 140,
+                                        "gap": 6
                                       }
                                     }
                                   ],
@@ -290,10 +300,11 @@
                               "class": "section"
                             }
                           ],
-                          "class": "modal-body"
+                          "gap": 16,
+                          "padding": "0 20 20 20"
                         }
                       ],
-                      "class": "modal-content"
+                      "gap": 16
                     }
                   ],
                   "class": "modal-scroll"

@@ -1,10 +1,11 @@
 {
   "type": "column",
-  "class": "screen screen-browse",
+  "class": "screen",
+  "gap": 16,
   "children": [
     {
       "type": "spacer",
-      "class": "top-inset"
+      "height": 72
     },
     {
       "type": "page",
@@ -45,7 +46,7 @@
               "style": "title"
             }
           ],
-          "class": "card-head"
+          "gap": 14
         },
         {
           "type": "scroll",
@@ -112,7 +113,7 @@
           }
         }
       ],
-      "class": "folder-shelves"
+      "gap": 16
     },
     {
       "type": "fixed",

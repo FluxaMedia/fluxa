@@ -1,6 +1,7 @@
 {
   "type": "column",
-  "class": "screen screen-detail",
+  "class": "screen",
+  "gap": 20,
   "children": [
     {
       "include": "detail_hero"
@@ -49,7 +50,8 @@
                       }
                     }
                   ],
-                  "class": "chip-list"
+                  "gap": 8,
+                  "align": "center"
                 },
                 {
                   "type": "scroll",
@@ -65,7 +67,7 @@
                   "class": "thumb-strip"
                 }
               ],
-              "class": "strip-group"
+              "gap": 12
             }
           ],
           "class": "section"
@@ -130,7 +132,8 @@
                       }
                     }
                   ],
-                  "class": "chip-list"
+                  "gap": 8,
+                  "align": "center"
                 },
                 {
                   "type": "scroll",
@@ -146,7 +149,7 @@
                   "class": "thumb-strip"
                 }
               ],
-              "class": "strip-group"
+              "gap": 12
             }
           ],
           "class": "section"

@@ -20,5 +20,8 @@
       ]
     }
   ],
-  "class": "desktop-only window-bar"
+  "class": "desktop-only",
+  "width": "100vw",
+  "padding": "12 12 0 0",
+  "justify": "end"
 }

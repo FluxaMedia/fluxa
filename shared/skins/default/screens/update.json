@@ -16,7 +16,9 @@
       "children": [
         {
           "type": "column",
-          "class": "popover menu-panel dialog-card",
+          "class": "popover menu-panel",
+          "gap": 12,
+          "padding": 20,
           "width": "{const.dialogWidth}",
           "children": [
             {
@@ -33,7 +35,7 @@
                   "style": "subtitle"
                 }
               ],
-              "class": "title-pair"
+              "gap": 6
             },
             {
               "type": "text",
@@ -46,6 +48,7 @@
                 {
                   "type": "row",
                   "class": "btn-secondary button-fill",
+                  "grow": 1,
                   "action": {
                     "name": "update",
                     "args": {
@@ -63,6 +66,7 @@
                 {
                   "type": "row",
                   "class": "btn-primary button-fill",
+                  "grow": 1,
                   "action": {
                     "name": "update",
                     "args": {
@@ -78,7 +82,7 @@
                   ]
                 }
               ],
-              "class": "button-row"
+              "gap": 8
             }
           ]
         }

@@ -1,10 +1,11 @@
 {
   "type": "column",
-  "class": "screen screen-list",
+  "class": "screen",
+  "gap": 14,
   "children": [
     {
       "type": "spacer",
-      "class": "top-inset"
+      "height": 72
     },
     {
       "type": "page",
@@ -38,7 +39,9 @@
               "class": "compact-only search-fill"
             }
           ],
-          "class": "title-bar inline-row fill-space"
+          "class": "fill-space",
+          "justify": "space_between",
+          "gap": 12
         },
         {
           "include": "section_tabs"
@@ -76,7 +79,7 @@
             }
           ],
           "when": "!library.downloadsOpen",
-          "class": "field-row"
+          "gap": 10
         },
         {
           "type": "row",
@@ -121,7 +124,7 @@
               "style": "title"
             }
           ],
-          "class": "inline-row"
+          "gap": 12
         },
         {
           "type": "row",
@@ -140,7 +143,8 @@
             },
             {
               "type": "row",
-              "class": "chip chip-pad",
+              "class": "chip",
+              "padding": "8 16",
               "action": {
                 "name": "downloads",
                 "args": {
@@ -158,7 +162,7 @@
               ]
             }
           ],
-          "class": "inline-row"
+          "gap": 12
         },
         {
           "type": "column",
@@ -199,7 +203,8 @@
         },
         {
           "type": "spacer",
-          "class": "compact-only bottom-inset"
+          "class": "compact-only",
+          "height": 96
         }
       ],
       "class": "page-dense"

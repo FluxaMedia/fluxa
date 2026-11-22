@@ -20,7 +20,8 @@
           "children": [
             {
               "type": "column",
-              "class": "popover menu-panel menu-list",
+              "class": "popover menu-panel",
+              "gap": 2,
               "width": "{const.menuWidth}",
               "padding": "{const.menuPadding}",
               "children": [
@@ -28,6 +29,7 @@
                   "type": "text",
                   "when": "menu.title",
                   "class": "menu-title",
+                  "padding": "8 12",
                   "text": "{menu.title}",
                   "props": {
                     "lines": 1
@@ -82,13 +84,16 @@
           "children": [
             {
               "type": "column",
-              "class": "popover menu-panel menu-sheet menu-list sheet-wide",
+              "class": "popover menu-panel menu-sheet",
+              "gap": 2,
+              "width": "100vw",
               "padding": "{const.menuPadding}",
               "children": [
                 {
                   "type": "text",
                   "when": "menu.title",
                   "class": "menu-title",
+                  "padding": "8 12",
                   "text": "{menu.title}",
                   "props": {
                     "lines": 1
@@ -121,7 +126,8 @@
           "children": [
             {
               "type": "column",
-              "class": "popover menu-panel menu-list",
+              "class": "popover menu-panel",
+              "gap": 2,
               "width": "{const.menuWidth}",
               "padding": "{const.menuPadding}",
               "children": [
@@ -129,6 +135,7 @@
                   "type": "text",
                   "when": "menu.title",
                   "class": "menu-title",
+                  "padding": "8 12",
                   "text": "{menu.title}",
                   "props": {
                     "lines": 1

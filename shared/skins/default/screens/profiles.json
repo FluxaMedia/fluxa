@@ -3,7 +3,8 @@
   "children": [
     {
       "type": "column",
-      "class": "screen wide-only fullscreen centered profiles-select",
+      "class": "screen wide-only fullscreen centered",
+      "gap": 28,
       "children": [
         {
           "type": "row",
@@ -32,7 +33,8 @@
               }
             }
           ],
-          "class": "centered profiles-heading"
+          "class": "centered",
+          "gap": 12
         },
         {
           "type": "column",
@@ -58,7 +60,7 @@
                         "when": "profiles.manage"
                       }
                     ],
-                    "class": "profiles-cell"
+                    "align": "center"
                   }
                 },
                 {
@@ -69,7 +71,7 @@
               "width": "{profiles.gridWidth}"
             }
           ],
-          "class": "profiles-grid"
+          "align": "center"
         },
         {
           "type": "row",
@@ -93,14 +95,17 @@
               }
             }
           ],
-          "class": "profiles-manage"
+          "justify": "center"
         }
       ],
       "when": "profiles.isSelect"
     },
     {
       "type": "column",
-      "class": "screen compact-only fullscreen profiles-select-compact",
+      "class": "screen compact-only fullscreen",
+      "gap": 28,
+      "padding": "72 0 0 0",
+      "align": "center",
       "children": [
         {
           "type": "row",
@@ -129,7 +134,8 @@
               }
             }
           ],
-          "class": "centered profiles-heading"
+          "class": "centered",
+          "gap": 12
         },
         {
           "type": "column",
@@ -155,7 +161,7 @@
                         "when": "profiles.manage"
                       }
                     ],
-                    "class": "profiles-cell"
+                    "align": "center"
                   }
                 },
                 {
@@ -166,7 +172,7 @@
               "width": "{profiles.gridWidth}"
             }
           ],
-          "class": "profiles-grid"
+          "align": "center"
         },
         {
           "type": "row",
@@ -190,7 +196,7 @@
               }
             }
           ],
-          "class": "profiles-manage"
+          "justify": "center"
         }
       ],
       "when": "profiles.isSelect"
@@ -198,11 +204,17 @@
     {
       "type": "column",
       "when": "profiles.isForm",
-      "class": "screen fullscreen profiles-form-page",
+      "class": "screen fullscreen",
+      "gap": 14,
+      "padding": "48 0 0 0",
+      "align": "center",
       "children": [
         {
           "type": "column",
           "class": "profile-form",
+          "gap": 12,
+          "padding": "0 24",
+          "width": "100vw",
           "children": [
             {
               "type": "row",
@@ -229,10 +241,10 @@
                   "type": "text",
                   "text": "{profiles.form.title}",
                   "style": "title",
-                  "class": "profiles-fill"
+                  "grow": 1
                 }
               ],
-              "class": "inline-row"
+              "gap": 12
             },
             {
               "type": "row",
@@ -262,12 +274,14 @@
                   "type": "text",
                   "text": "{profiles.form.name}",
                   "style": "subtitle",
-                  "class": "profiles-fill wide-only"
+                  "class": "wide-only",
+                  "grow": 1
                 },
                 {
                   "type": "column",
                   "children": [],
-                  "class": "compact-only profiles-fill"
+                  "class": "compact-only",
+                  "grow": 1
                 },
                 {
                   "type": "text",
@@ -293,7 +307,8 @@
                   ]
                 }
               ],
-              "class": "profiles-avatar-row"
+              "gap": 14,
+              "padding": "8 0"
             },
             {
               "type": "text",
@@ -390,7 +405,7 @@
                     {
                       "type": "text",
                       "i18n": "profiles.use_primary_addons",
-                      "class": "profiles-fill"
+                      "grow": 1
                     },
                     {
                       "type": "row",
@@ -408,7 +423,7 @@
                         {
                           "type": "spacer",
                           "when": "profiles.form.addons",
-                          "class": "profiles-fill"
+                          "grow": 1
                         },
                         {
                           "type": "column",
@@ -417,12 +432,13 @@
                         {
                           "type": "spacer",
                           "when": "!profiles.form.addons",
-                          "class": "profiles-fill"
+                          "grow": 1
                         }
                       ]
                     }
                   ],
-                  "class": "profiles-toggle"
+                  "gap": 12,
+                  "padding": "6 0"
                 },
                 {
                   "type": "row",
@@ -430,7 +446,7 @@
                     {
                       "type": "text",
                       "i18n": "profiles.use_primary_plugins",
-                      "class": "profiles-fill"
+                      "grow": 1
                     },
                     {
                       "type": "row",
@@ -448,7 +464,7 @@
                         {
                           "type": "spacer",
                           "when": "profiles.form.plugins",
-                          "class": "profiles-fill"
+                          "grow": 1
                         },
                         {
                           "type": "column",
@@ -457,15 +473,16 @@
                         {
                           "type": "spacer",
                           "when": "!profiles.form.plugins",
-                          "class": "profiles-fill"
+                          "grow": 1
                         }
                       ]
                     }
                   ],
-                  "class": "profiles-toggle"
+                  "gap": 12,
+                  "padding": "6 0"
                 }
               ],
-              "class": "profiles-shared"
+              "gap": 4
             },
             {
               "type": "row",
@@ -473,6 +490,7 @@
                 {
                   "type": "row",
                   "class": "btn-secondary profiles-action-fill",
+                  "grow": 1,
                   "action": {
                     "name": "profiles",
                     "args": {
@@ -490,6 +508,7 @@
                 {
                   "type": "row",
                   "class": "btn-primary profiles-save",
+                  "grow": 1,
                   "action": {
                     "name": "profiles",
                     "args": {
@@ -508,6 +527,7 @@
                 {
                   "type": "row",
                   "class": "btn-secondary profiles-save",
+                  "grow": 1,
                   "when": "!profiles.form.canSave",
                   "children": [
                     {
@@ -519,7 +539,8 @@
                   ]
                 }
               ],
-              "class": "profiles-actions"
+              "gap": 8,
+              "padding": "12 0 0 0"
             }
           ]
         }
@@ -528,11 +549,17 @@
     {
       "type": "column",
       "when": "profiles.isAvatars",
-      "class": "screen fullscreen profiles-form-page",
+      "class": "screen fullscreen",
+      "gap": 14,
+      "padding": "48 0 0 0",
+      "align": "center",
       "children": [
         {
           "type": "column",
           "class": "profile-form",
+          "gap": 12,
+          "padding": "0 24",
+          "width": "100vw",
           "children": [
             {
               "type": "row",
@@ -559,10 +586,10 @@
                   "type": "text",
                   "i18n": "profiles.choose_icon",
                   "style": "title",
-                  "class": "profiles-fill"
+                  "grow": 1
                 }
               ],
-              "class": "inline-row"
+              "gap": 12
             },
             {
               "type": "text",
@@ -595,7 +622,8 @@
                         "style": "meta muted"
                       }
                     ],
-                    "class": "profiles-group-head"
+                    "gap": 8,
+                    "align": "center"
                   },
                   {
                     "type": "grid",
@@ -677,7 +705,7 @@
                     "class": "compact-only profiles-avatar-grid"
                   }
                 ],
-                "class": "profiles-avatar-group"
+                "gap": 8
               }
             }
           ]
@@ -687,11 +715,17 @@
     {
       "type": "column",
       "when": "profiles.isSettings",
-      "class": "screen fullscreen profiles-form-page",
+      "class": "screen fullscreen",
+      "gap": 14,
+      "padding": "48 0 0 0",
+      "align": "center",
       "children": [
         {
           "type": "column",
           "class": "profile-form",
+          "gap": 12,
+          "padding": "0 24",
+          "width": "100vw",
           "children": [
             {
               "type": "row",
@@ -718,10 +752,10 @@
                   "type": "text",
                   "i18n": "profiles.picker_settings",
                   "style": "title",
-                  "class": "profiles-fill"
+                  "grow": 1
                 }
               ],
-              "class": "inline-row"
+              "gap": 12
             },
             {
               "type": "text",
@@ -749,6 +783,7 @@
                 {
                   "type": "row",
                   "class": "btn-secondary profiles-action-fill",
+                  "grow": 1,
                   "action": {
                     "name": "profiles",
                     "args": {
@@ -766,6 +801,7 @@
                 {
                   "type": "row",
                   "class": "btn-secondary profiles-action-fill",
+                  "grow": 1,
                   "action": {
                     "name": "profiles",
                     "args": {
@@ -782,13 +818,13 @@
                   "when": "profiles.settings.hasBackground"
                 }
               ],
-              "class": "profiles-buttons"
+              "gap": 8
             },
             {
               "type": "text",
               "i18n": "profiles.avatar_packs",
               "style": "subtitle",
-              "class": "profiles-subhead"
+              "padding": "12 0 0 0"
             },
             {
               "type": "text",
@@ -862,7 +898,7 @@
                         "style": "meta muted"
                       }
                     ],
-                    "class": "profiles-fill"
+                    "grow": 1
                   },
                   {
                     "type": "row",
@@ -901,7 +937,8 @@
                     ]
                   }
                 ],
-                "class": "profiles-entry"
+                "gap": 8,
+                "align": "center"
               }
             }
           ]
@@ -927,7 +964,9 @@
           "children": [
             {
               "type": "column",
-              "class": "popover menu-panel profiles-dialog",
+              "class": "popover menu-panel",
+              "gap": 12,
+              "padding": 20,
               "width": "{const.dialogWidth}",
               "children": [
                 {
@@ -949,7 +988,7 @@
                       "style": "subtitle"
                     }
                   ],
-                  "class": "inline-row"
+                  "gap": 12
                 },
                 {
                   "type": "text",
@@ -978,6 +1017,7 @@
                     {
                       "type": "row",
                       "class": "btn-secondary profiles-action-fill",
+                      "grow": 1,
                       "action": {
                         "name": "profiles",
                         "args": {
@@ -995,6 +1035,7 @@
                     {
                       "type": "row",
                       "class": "btn-primary profiles-action-fill",
+                      "grow": 1,
                       "action": {
                         "name": "profiles",
                         "args": {
@@ -1010,7 +1051,7 @@
                       ]
                     }
                   ],
-                  "class": "profiles-buttons"
+                  "gap": 8
                 }
               ]
             }
@@ -1039,7 +1080,9 @@
           "children": [
             {
               "type": "column",
-              "class": "popover menu-panel profiles-dialog",
+              "class": "popover menu-panel",
+              "gap": 12,
+              "padding": 20,
               "width": "{const.dialogWidth}",
               "children": [
                 {
@@ -1058,6 +1101,7 @@
                     {
                       "type": "row",
                       "class": "btn-secondary profiles-action-fill",
+                      "grow": 1,
                       "action": {
                         "name": "profiles",
                         "args": {
@@ -1075,6 +1119,7 @@
                     {
                       "type": "row",
                       "class": "btn-primary profiles-action-fill",
+                      "grow": 1,
                       "action": {
                         "name": "profiles",
                         "args": {
@@ -1090,7 +1135,7 @@
                       ]
                     }
                   ],
-                  "class": "profiles-buttons"
+                  "gap": 8
                 }
               ]
             }

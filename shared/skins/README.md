@@ -180,6 +180,7 @@ A node is exactly one of a primitive or component (`type`), an `include`, or an 
 Notes that save time:
 
 - `padding` is `"top right bottom left"` or a single number.
+- Put one-off spacing and sizes (`gap`, `padding`, `width`, `height`, `align`, `justify`, `grow`, `fill`) on the node itself rather than inventing a class for them; the default skin keeps classes for looks (colours, radii, type) and for values that change per form factor. A node field wins over the same property from a class.
 - `width` and `height` accept numbers, `"100vw"`, `"100vh"`, and constants such as `"{const.modalWidth}"`.
 - `scroll` is a horizontal strip; vertical scrolling uses `"type": "scroll", "props": { "axis": "y" }`.
 - `row` is a flex row. Content that does not fit is clipped to the row and can be panned horizontally; it does not overflow its container. Add `"props": { "wrap": true }` to wrap onto new lines instead.

@@ -5,6 +5,7 @@
     {
       "type": "column",
       "class": "hero-skeleton",
+      "height": "62vh",
       "when": "len(home.heroSlides) == 0 && home.isLoading"
     },
     {
@@ -37,7 +38,9 @@
           ]
         }
       ],
-      "class": "centered empty-page"
+      "class": "centered",
+      "height": "70vh",
+      "gap": 28
     },
     {
       "type": "pager",
@@ -65,15 +68,18 @@
           "children": [
             {
               "type": "column",
-              "class": "skeleton-bar skeleton-heading"
+              "class": "skeleton-bar skeleton-heading",
+              "width": 260
             },
             {
               "type": "column",
-              "class": "skeleton-bar skeleton-line"
+              "class": "skeleton-bar skeleton-line",
+              "width": 420
             },
             {
               "type": "column",
-              "class": "skeleton-bar skeleton-block"
+              "class": "skeleton-bar skeleton-block",
+              "width": 140
             },
             {
               "include": "skeleton_shelf"
@@ -82,10 +88,11 @@
               "include": "skeleton_shelf"
             }
           ],
-          "class": "shelf-stack"
+          "gap": 20
         }
       ],
-      "class": "shelf-page"
+      "gap": 20,
+      "padding": "0 24 24"
     },
     {
       "type": "column",
@@ -102,7 +109,8 @@
                 "children": [
                   {
                     "type": "row",
-                    "class": "chip-active chip-pad",
+                    "class": "chip-active",
+                    "padding": "8 16",
                     "action": {
                       "name": "node",
                       "args": {
@@ -120,7 +128,8 @@
                   },
                   {
                     "type": "row",
-                    "class": "chip chip-pad",
+                    "class": "chip",
+                    "padding": "8 16",
                     "action": {
                       "name": "node",
                       "args": {
@@ -140,7 +149,8 @@
               }
             }
           ],
-          "class": "chip-list"
+          "gap": 8,
+          "align": "center"
         },
         {
           "include": "skeleton_shelf",
@@ -161,7 +171,8 @@
           }
         }
       ],
-      "class": "shelf-page"
+      "gap": 20,
+      "padding": "0 24 24"
     },
     {
       "type": "fixed",

@@ -1,10 +1,11 @@
 {
   "type": "column",
-  "class": "screen screen-list",
+  "class": "screen",
+  "gap": 14,
   "children": [
     {
       "type": "spacer",
-      "class": "top-inset"
+      "height": 72
     },
     {
       "type": "page",
@@ -19,7 +20,7 @@
             },
             {
               "type": "spacer",
-              "class": "spring"
+              "grow": 1
             },
             {
               "type": "text",
@@ -63,7 +64,8 @@
               }
             }
           ],
-          "class": "inline-row fill-space"
+          "class": "fill-space",
+          "gap": 12
         },
         {
           "include": "section_tabs"
