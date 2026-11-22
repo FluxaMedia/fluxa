@@ -471,3 +471,22 @@ fn stack_children_stay_top_left_without_a_place() {
     let (_, targets) = render(&corner_tree("scene", "tile"));
     assert_eq!(targets[0].1.min, Pos2::ZERO);
 }
+
+#[test]
+fn column_children_stretch_across_unless_the_class_says_otherwise() {
+    crate::reload_styles_with(
+        ".stack-col { width: 300px; } .start-col { width: 300px; align-items: flex-start; }",
+    )
+    .unwrap();
+    let tile = |class: &str| {
+        skin_from(json!({
+            "type": "column",
+            "class": class,
+            "children": [{"type": "row", "height": 20, "action": {"name": "back"}, "children": []}]
+        }))
+    };
+    let (_, stretched) = render(&tile("stack-col"));
+    assert_eq!(stretched[0].1.width(), 300.0);
+    let (_, started) = render(&tile("start-col"));
+    assert_eq!(started[0].1.width(), 0.0);
+}
