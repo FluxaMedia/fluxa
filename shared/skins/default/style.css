@@ -129,6 +129,8 @@
   --ink-body: color-mix(in srgb, var(--color-text-primary) 82.353%, transparent);
   --ink-text: color-mix(in srgb, var(--color-text-primary) 92.157%, transparent);
   --ink-full: color-mix(in srgb, var(--color-text-primary) 100%, transparent);
+  --fade-bg: linear-gradient(to bottom, color-mix(in srgb, var(--color-background) 0%, transparent) 0%, color-mix(in srgb, var(--color-background) 0%, transparent) 40%, color-mix(in srgb, var(--color-background) 90%, transparent) 100%);
+  --fade-surface: linear-gradient(to bottom, color-mix(in srgb, var(--color-background) 0%, transparent) 0%, color-mix(in srgb, var(--color-background) 0%, transparent) 38%, color-mix(in srgb, var(--color-background) 55%, transparent) 72%, var(--color-surface) 100%);
   --shade-faint: 90;
   --shade-veil: 150;
   --shade-scrim: 180;
@@ -366,9 +368,9 @@ hero-synopsis-size { font-size: 16; }
   background: linear-gradient(to right, color-mix(in srgb, var(--color-background) 97%, transparent) 0%, color-mix(in srgb, var(--color-background) 97%, transparent) 31.5%, color-mix(in srgb, var(--color-background) 48.5%, transparent) 60.75%, color-mix(in srgb, var(--color-background) 0%, transparent) 90%);
 }
 
-.scrim-bottom {
-  background: linear-gradient(to bottom, color-mix(in srgb, var(--color-background) 0%, transparent) 0%, color-mix(in srgb, var(--color-background) 0%, transparent) 38%, color-mix(in srgb, var(--color-background) 55%, transparent) 72%, var(--color-surface) 100%);
-}
+.continue-scrim, .expanded-scrim, .mini-controls { background: var(--fade-bg); }
+.scrim-bottom, .modal-hero-scrim { background: var(--fade-surface); }
+.continue-scrim, .expanded-scrim { border-radius: var(--radius-md); }
 
 .progress-track { background: var(--color-surface-raised); border-radius: var(--radius-sm); }
 
@@ -426,11 +428,6 @@ hero-synopsis-size { font-size: 16; }
 .continue { width: continue-width; height: continue-height; }
 .continue-img { border-radius: var(--radius-md); background: var(--color-surface); }
 
-.continue-scrim {
-  border-radius: var(--radius-md);
-  background: linear-gradient(to bottom, color-mix(in srgb, var(--color-background) 0%, transparent) 0%, color-mix(in srgb, var(--color-background) 0%, transparent) 30%, color-mix(in srgb, var(--color-background) 70%, transparent) 65%, background 100%);
-}
-
 .rating-value { font-weight: 700; }
 
 .slider-buffered { background: var(--ink-soft); border-radius: var(--radius-sm); }
@@ -459,10 +456,6 @@ hero-synopsis-size { font-size: 16; }
 .next-thumb { height: 140px; }
 .menu-scrim { background: rgba(0, 0, 0, 0.35); }
 
-.modal-hero-scrim {
-  background: linear-gradient(to bottom, color-mix(in srgb, var(--color-background) 0%, transparent) 0%, color-mix(in srgb, var(--color-background) 15%, transparent) 35%, color-mix(in srgb, var(--color-background) 60%, transparent) 60%, color-mix(in srgb, var(--color-background) 90%, transparent) 85%, var(--color-surface) 100%);
-}
-
 .modal-scrim { background: rgba(0, 0, 0, 0.72); }
 
 .menu-sheet { width: 100vw; }
@@ -475,7 +468,6 @@ hero-synopsis-size { font-size: 16; }
 
 .mini-controls {
   opacity: 0;
-  background: linear-gradient(to bottom, color-mix(in srgb, var(--color-background) 0%, transparent) 0%, color-mix(in srgb, var(--color-background) 85%, transparent) 100%);
   transition: 0.2s;
   gap: var(--gap-snug);
   padding: var(--space-4) var(--space-2) var(--space-2) var(--space-2);
@@ -565,11 +557,6 @@ hero-synopsis-size { font-size: 16; }
 .editor { height: 32.5rem; }
 .logo { width: 3rem; height: 3rem; }
 .expanded-copy { gap: var(--gap-snug); padding: var(--space-4); align-items: flex-start; justify-content: flex-end; }
-.expanded-scrim {
-  background: linear-gradient(to bottom, color-mix(in srgb, var(--color-background) 0%, transparent) 0%, color-mix(in srgb, var(--color-background) 0%, transparent) 40%, color-mix(in srgb, var(--color-background) 90%, transparent) 100%);
-  border-radius: var(--radius-md);
-}
-
 .empty-title,
 .sources-episode { font-size: var(--text-lg); font-weight: 700; }
 

@@ -182,7 +182,13 @@ fn root_font_size() -> f32 {
 /// The font size an element inherits, or the root size outside any scope.
 fn inherited_font_size() -> f32 {
     SCOPES
-        .with(|stack| stack.borrow().iter().rev().find_map(|scope| scope.frame.font_size))
+        .with(|stack| {
+            stack
+                .borrow()
+                .iter()
+                .rev()
+                .find_map(|scope| scope.frame.font_size)
+        })
         .unwrap_or_else(root_font_size)
 }
 
@@ -267,11 +273,7 @@ fn relative(text: &str) -> Option<Length> {
     if let Some(number) = text.strip_suffix("rem") {
         return number.trim().parse().ok().map(Length::Rem);
     }
-    text.strip_suffix("em")?
-        .trim()
-        .parse()
-        .ok()
-        .map(Length::Em)
+    text.strip_suffix("em")?.trim().parse().ok().map(Length::Em)
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -616,7 +618,12 @@ fn inherit(style: &mut Style) {
 }
 
 fn in_scope(name: &str) -> bool {
-    SCOPES.with(|stack| stack.borrow().iter().any(|scope| *scope.frame.name == *name))
+    SCOPES.with(|stack| {
+        stack
+            .borrow()
+            .iter()
+            .any(|scope| *scope.frame.name == *name)
+    })
 }
 
 fn in_scope_with(name: &str, flag: u8) -> bool {
@@ -1350,9 +1357,9 @@ fn typed<'a>(sheet: &'a Sheet, modifiers: &[&str]) -> Vec<&'a Rule> {
 
 fn layers<'a>(sheet: &'a Sheet, name: &str, modifiers: &[&str]) -> Vec<&'a Layer> {
     let mut found = Vec::new();
-    let extra = modifiers
-        .iter()
-        .filter(|modifier| !modifier.starts_with('<') && sheet.rules.contains_key(canonical(modifier)));
+    let extra = modifiers.iter().filter(|modifier| {
+        !modifier.starts_with('<') && sheet.rules.contains_key(canonical(modifier))
+    });
     let rules = kinds(sheet, modifiers)
         .into_iter()
         .chain(chain(sheet, name))
@@ -1459,7 +1466,11 @@ fn resolve_in(
         for layer in &layers {
             apply(&mut base, &layer.disabled);
         }
-        if derive && layers.iter().all(|layer| layer.disabled == Patch::default()) {
+        if derive
+            && layers
+                .iter()
+                .all(|layer| layer.disabled == Patch::default())
+        {
             base.fill = ink(tone::soft());
             base.text = ink(tone::dim());
             base.text_declared = true;
@@ -1625,12 +1636,7 @@ mod tests {
     #[test]
     fn bundled_sheet_parses_every_rule() {
         let sheet = Sheet::parse(DEFAULT_SHEET).expect("parses");
-        for name in [
-            "btn-primary",
-            "btn-secondary",
-            "btn-selected",
-            "btn-danger",
-        ] {
+        for name in ["btn-primary", "btn-secondary", "btn-selected", "btn-danger"] {
             assert!(sheet.rules.contains_key(name), "{name}");
         }
     }
@@ -1744,7 +1750,9 @@ mod tests {
         };
         assert_eq!(padding(&[]), (4.0, 0.0));
         assert_eq!(padding(&["tight"]), (4.0, 1.0));
-        within(&[Frame::plain("settings".into(), 0)], || assert_eq!(padding(&[]), (10.0, 0.0)));
+        within(&[Frame::plain("settings".into(), 0)], || {
+            assert_eq!(padding(&[]), (10.0, 0.0))
+        });
         assert_eq!(padding(&[]), (4.0, 0.0));
     }
 
@@ -1834,7 +1842,7 @@ mod tests {
         enabled: true,
         selected: false,
         passive: false,
-};
+    };
 
     #[test]
     fn scoped_custom_properties_resolve_per_element() {
@@ -1864,8 +1872,12 @@ mod tests {
         let panel = on("panel", &sheet, LIVE, &[]);
         assert_ne!(panel.vars, 0);
         let outer = Frame::plain("panel".into(), 0).inheriting(&panel);
-        let inner = Frame::plain("inner".into(), 0)
-            .inheriting(&on("inner", &sheet, LIVE, std::slice::from_ref(&outer)));
+        let inner = Frame::plain("inner".into(), 0).inheriting(&on(
+            "inner",
+            &sheet,
+            LIVE,
+            std::slice::from_ref(&outer),
+        ));
         let leaf = |frames: &[Frame]| on("leaf", &sheet, LIVE, frames).fill;
         assert_eq!(leaf(&[outer.clone()]), Color32::from_rgb(255, 0, 0));
         assert_eq!(leaf(&[outer, inner]), Color32::from_rgb(0, 0, 255));
@@ -1929,9 +1941,8 @@ mod tests {
 
     #[test]
     fn derived_disabled_is_the_shared_disabled_look() {
-        let sheet =
-            Sheet::parse(".a { states: auto; background: #123456; color: #ffffff; }")
-                .expect("parses");
+        let sheet = Sheet::parse(".a { states: auto; background: #123456; color: #ffffff; }")
+            .expect("parses");
         let off = on("a", &sheet, State::default(), &[]);
         assert_eq!(off.fill, ink(tone::soft()));
         assert_eq!(off.text, ink(tone::dim()));
@@ -1962,7 +1973,29 @@ mod tests {
              var(--color-surface) 100%); }",
         )
         .expect("parses");
-        let gradient = sheet.rules["fade"].layer.base.gradient.as_ref().expect("gradient");
+        let gradient = sheet.rules["fade"]
+            .layer
+            .base
+            .gradient
+            .as_ref()
+            .expect("gradient");
+        assert_eq!(gradient.stops.len(), 2);
+    }
+
+    #[test]
+    fn gradient_held_in_a_token_applies_as_a_gradient() {
+        let sheet = Sheet::parse(
+            ":root { --fade: linear-gradient(to bottom, \
+             color-mix(in srgb, var(--color-background) 0%, transparent) 0%, \
+             var(--color-surface) 100%); } .fade { background: var(--fade); }",
+        )
+        .expect("parses");
+        let gradient = sheet.rules["fade"]
+            .layer
+            .base
+            .gradient
+            .as_ref()
+            .expect("gradient");
         assert_eq!(gradient.stops.len(), 2);
     }
 
@@ -1983,8 +2016,8 @@ mod tests {
 
     #[test]
     fn folded_one_off_classes_still_restyle_the_shared_class() {
-        let sheet = Sheet::parse(".slide { padding: 3; } .about-name { color: #ffffff; }")
-            .expect("parses");
+        let sheet =
+            Sheet::parse(".slide { padding: 3; } .about-name { color: #ffffff; }").expect("parses");
         assert!(sheet.rules.contains_key("grow"));
         assert!(sheet.rules.contains_key("page-title"));
         assert_eq!(canonical("modal-scroll"), "grow");
@@ -1999,10 +2032,9 @@ mod tests {
 
     #[test]
     fn kind_defaults_sit_under_the_class() {
-        let sheet = Sheet::parse(
-            "row { gap: 8; padding: 4; } .tight { gap: 2; } text { font-size: 15; }",
-        )
-        .expect("parses");
+        let sheet =
+            Sheet::parse("row { gap: 8; padding: 4; } .tight { gap: 2; } text { font-size: 15; }")
+                .expect("parses");
         let gap = |modifiers: &[&str]| {
             let mut style = Style::blank();
             for layer in layers(&sheet, "tight", modifiers) {
@@ -2127,10 +2159,16 @@ mod tests {
             Sheet::parse(".label { opacity: 0.2; }\n.bar:hover .label { opacity: 1; }").unwrap();
         let variants = stateful(&sheet, "label", &[]);
         assert!(variants.is_empty());
-        let variants = within(&[Frame::plain("bar".into(), 0)], || stateful(&sheet, "label", &[]));
+        let variants = within(&[Frame::plain("bar".into(), 0)], || {
+            stateful(&sheet, "label", &[])
+        });
         assert_eq!(variants.len(), 1);
-        let idle = within(&[Frame::plain("bar".into(), 0)], || ancestors_active(variants[0]));
-        let hot = within(&[Frame::plain("bar".into(), HOVERED)], || ancestors_active(variants[0]));
+        let idle = within(&[Frame::plain("bar".into(), 0)], || {
+            ancestors_active(variants[0])
+        });
+        let hot = within(&[Frame::plain("bar".into(), HOVERED)], || {
+            ancestors_active(variants[0])
+        });
         assert!(!idle);
         assert!(hot);
     }
@@ -2238,7 +2276,14 @@ mod tests {
         assert_ne!(on("a", &sheet, focused, &[]).fill, rest);
         assert_eq!(
             on("b", &sheet, hovered(), &[]).fill,
-            on("b", &Sheet::parse(".b { background: #336699; }\n.b:hover { background: #ffffff; }").unwrap(), hovered(), &[]).fill
+            on(
+                "b",
+                &Sheet::parse(".b { background: #336699; }\n.b:hover { background: #ffffff; }")
+                    .unwrap(),
+                hovered(),
+                &[]
+            )
+            .fill
         );
     }
 
@@ -2249,9 +2294,23 @@ mod tests {
         )
         .expect("parses");
         let context = crate::gfx::Context::default();
-        let look = resolve_in(&context, &sheet, "thumb", Id::new("t"), LIVE, &["surface", "raised", "pill"]);
+        let look = resolve_in(
+            &context,
+            &sheet,
+            "thumb",
+            Id::new("t"),
+            LIVE,
+            &["surface", "raised", "pill"],
+        );
         assert_eq!(look.fill, Color32::from_rgb(0x22, 0x22, 0x22));
-        let bare = resolve_in(&context, &sheet, "surface", Id::new("u"), LIVE, &["thumb", "raised"]);
+        let bare = resolve_in(
+            &context,
+            &sheet,
+            "surface",
+            Id::new("u"),
+            LIVE,
+            &["thumb", "raised"],
+        );
         assert_eq!(bare.fill, Color32::from_rgb(0x22, 0x22, 0x22));
     }
 }

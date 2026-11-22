@@ -351,12 +351,27 @@ fn properties(
             name.as_str(),
             "background" | "background-color" | "color" | "border-color"
         );
+        let raw = match raw
+            .trim()
+            .strip_prefix("var(--")
+            .and_then(|r| r.strip_suffix(')'))
+        {
+            Some(token)
+                if matches!(name.as_str(), "background" | "background-image")
+                    && vars
+                        .get(token)
+                        .is_some_and(|v| v.trim_start().starts_with("linear-gradient(")) =>
+            {
+                vars[token].clone()
+            }
+            _ => raw.clone(),
+        };
         let gradient = matches!(name.as_str(), "background" | "background-image")
             && raw.trim_start().starts_with("linear-gradient(");
         let value = if (colour || gradient) && raw.contains("var(--") {
             raw.trim().to_owned()
         } else {
-            calc(&substitute(raw, vars)?)?
+            calc(&substitute(&raw, vars)?)?
         };
         if name == "transition" {
             for word in split_words(&value.replace(',', " ")) {
