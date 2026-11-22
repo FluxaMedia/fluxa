@@ -626,6 +626,17 @@ fn atom(tokens: &[String], at: &mut usize) -> Option<f64> {
 }
 
 fn substitute(value: &str, vars: &HashMap<String, String>) -> Result<String, String> {
+    let mut resolved = substitute_once(value, vars)?;
+    for _ in 0..4 {
+        if !resolved.contains("var(--") {
+            break;
+        }
+        resolved = substitute_once(&resolved, vars)?;
+    }
+    Ok(resolved)
+}
+
+fn substitute_once(value: &str, vars: &HashMap<String, String>) -> Result<String, String> {
     let mut out = String::new();
     let mut rest = value;
     while let Some(start) = rest.find("var(--") {
