@@ -360,7 +360,7 @@ hero-synopsis-size { font-size: 16; }
   to { opacity: 1; }
 }
 
-.guide-now { background: var(--ink-full); width: 2px; height: 100vh; }
+.guide-now { background: var(--ink-full); width: 2px; height: 100%; }
 .icon-btn, .avatar-choice, .back { border-radius: var(--radius-pill); }
 .icon-btn { width: icon-button; height: icon-button; align-items: center; justify-content: center; }
 .icon-btn.small { width: 28px; height: 28px; }
@@ -432,7 +432,7 @@ hero-synopsis-size { font-size: 16; }
 
 .modal-scrim { background: rgba(0, 0, 0, 0.72); }
 
-.menu-sheet { width: 100vw; }
+.menu-sheet { width: 100%; }
 
 .select-row { height: 34px; gap: var(--gap-snug); }
 
@@ -458,7 +458,7 @@ hero-synopsis-size { font-size: 16; }
 .setting-hint, .setting-label, .grow, .rows li label, .split button, .or .divider, .profile-form header h1, .identity h4, .sharing label { flex-grow: 1; }
 .side-heading { color: var(--ink-dim); }
 
-.profile-form { max-width: 528px; gap: var(--gap-base); padding: 0 var(--space-5); width: 100vw; }
+.profile-form { max-width: 528px; gap: var(--gap-base); padding: 0 var(--space-5); width: 100%; }
 
 .chat-text:selected, .welcome-busy { color: var(--color-accent); }
 
@@ -543,8 +543,8 @@ hero-synopsis-size { font-size: 16; }
 .corner { align-items: flex-end; justify-content: flex-end; flex-fill: 1; }
 
 .nav-dock {
-  width: 100vw;
-  height: 100vh;
+  width: 100%;
+  height: 100%;
   padding: 0 0 var(--space-4) 0;
   align-items: center;
   justify-content: flex-end;
@@ -572,7 +572,7 @@ hero-synopsis-size { font-size: 16; }
 
 .sources-chips { gap: var(--gap-snug); flex-grow: 1; }
 
-.fullscreen, .player { height: 100vh; width: 100vw; }
+.fullscreen, .player { height: 100%; width: 100%; }
 
 @media (size: compact) {
   :root {
@@ -691,7 +691,7 @@ button:focus { scale: 1.04; }
 .rows main { max-width: 65rem; padding: var(--space-9) var(--space-8) var(--space-7); flex-grow: 1; }
 .rows nav { width: 17.5rem; padding: var(--space-9) var(--space-4); }
 .rows nav h2 { color: var(--ink-dim); }
-.settings-wide { height: 100vh; align-items: start; }
+.settings-wide { height: 100%; align-items: start; }
 .settings-compact { gap: var(--gap-base); padding: var(--space-7) var(--space-5) var(--space-9); display: none; }
 
 .rows li {
@@ -809,11 +809,11 @@ button:focus { scale: 1.04; }
 .reco-text { width: 35rem; gap: var(--gap-base); align-items: flex-start; }
 
 .dots .chip, .dots .chip-active { width: 10px; height: 10px; padding: 0; }
-.reco header { align-items: flex-start; justify-content: flex-end; width: 100vw; height: 4rem; padding: var(--space-5) var(--space-5) 0; }
+.reco header { align-items: flex-start; justify-content: flex-end; width: 100%; height: 4rem; padding: var(--space-5) var(--space-5) 0; }
 
 /* ==== Welcome =========================================================== */
 .login { width: 27.5rem; padding: var(--space-5) var(--space-5) var(--space-5); gap: var(--gap-loose); }
-.phone { width: 100vw; padding: var(--space-8) var(--space-5) var(--space-5); }
+.phone { width: 100%; padding: var(--space-8) var(--space-5) var(--space-5); }
 
 .pairing { gap: var(--gap-loose); padding: var(--space-7); }
 .code { width: 17.5rem; gap: var(--gap-base); align-items: center; }
@@ -847,7 +847,7 @@ button:focus { scale: 1.04; }
 .layer.bottom-center { place: bottom center; }
 .layer.bottom-right { place: bottom right; }
 .panel-layer, .skip-layer { padding-bottom: var(--space-9); }
-.window-strip { width: 100vw; }
+.window-strip { width: 100%; }
 .episode footer, .mini-tile footer, .sheet-layer { justify-content: flex-end; }
 .entry, .panel-list { gap: var(--gap-tight); padding: var(--space-4); }
 
@@ -855,7 +855,7 @@ button:focus { scale: 1.04; }
 
 .player-panel header { padding: var(--space-2); }
 .sheet-top { gap: var(--gap-snug); padding: 0 var(--space-5); }
-.chip-grid { width: 100vw; gap: var(--gap-snug); padding: 0 var(--space-5); }
+.chip-grid { width: 100%; gap: var(--gap-snug); padding: 0 var(--space-5); }
 .panel-note { padding: 0 var(--space-2) var(--space-2); }
 .look { padding: var(--space-4); justify-content: center; }
 .tip, .menu-panel .hero-meta, .look section { padding: var(--space-2) var(--space-4); }
