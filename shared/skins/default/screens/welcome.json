@@ -1,6 +1,6 @@
 {
   "type": "column",
-  "class": "screen w-100vw h-100vh items-center justify-center",
+  "class": "screen fullscreen-center",
   "children": [
     {
       "type": "column",
@@ -16,7 +16,7 @@
               }
             }
           ],
-          "class": "justify-center"
+          "class": "welcome-center"
         },
         {
           "type": "spacer",
@@ -31,7 +31,7 @@
               "i18n": "auth.welcome_back"
             }
           ],
-          "class": "justify-center"
+          "class": "welcome-center"
         },
         {
           "type": "spacer",
@@ -123,7 +123,7 @@
         },
         {
           "type": "row",
-          "class": "btn-primary pad-0-28 justify-center",
+          "class": "btn-primary action-wide",
           "when": "!welcome.busy",
           "action": {
             "name": "welcome",
@@ -141,7 +141,7 @@
         },
         {
           "type": "row",
-          "class": "btn-secondary gap-10 pad-0-28 justify-center",
+          "class": "btn-secondary welcome-busy-action",
           "when": "welcome.busy",
           "children": [
             {
@@ -167,7 +167,7 @@
           "children": [
             {
               "type": "row",
-              "class": "divider grow",
+              "class": "divider welcome-rule",
               "children": []
             },
             {
@@ -177,11 +177,11 @@
             },
             {
               "type": "row",
-              "class": "divider grow",
+              "class": "divider welcome-rule",
               "children": []
             }
           ],
-          "class": "gap-12 items-center"
+          "class": "inline-row"
         },
         {
           "type": "spacer",
@@ -189,7 +189,7 @@
         },
         {
           "type": "row",
-          "class": "btn-secondary pad-0-28 justify-center",
+          "class": "btn-secondary action-wide",
           "action": {
             "name": "welcome",
             "args": {
@@ -206,7 +206,7 @@
         }
       ],
       "when": "!welcome.pairing",
-      "class": "desktop-only w-440 gap-0 pad-36-36-32 items-stretch"
+      "class": "desktop-only welcome-card"
     },
     {
       "type": "row",
@@ -227,7 +227,7 @@
                   }
                 }
               ],
-              "class": "justify-center"
+              "class": "welcome-center"
             },
             {
               "type": "spacer",
@@ -242,7 +242,7 @@
                   "text": "{welcome.code}"
                 }
               ],
-              "class": "justify-center"
+              "class": "welcome-center"
             },
             {
               "type": "spacer",
@@ -257,10 +257,10 @@
                   "text": "{welcome.url}"
                 }
               ],
-              "class": "justify-center"
+              "class": "welcome-center"
             }
           ],
-          "class": "w-280 gap-0 items-stretch"
+          "class": "welcome-tv-qr"
         },
         {
           "type": "column",
@@ -347,7 +347,7 @@
             },
             {
               "type": "row",
-              "class": "btn-secondary pad-0-28 justify-center",
+              "class": "btn-secondary action-wide",
               "action": {
                 "name": "welcome",
                 "args": {
@@ -363,10 +363,10 @@
               ]
             }
           ],
-          "class": "w-440 gap-0 items-stretch"
+          "class": "welcome-tv-steps"
         }
       ],
-      "class": "tv-only gap-48 pad-40-48 items-center"
+      "class": "tv-only welcome-tv"
     },
     {
       "type": "scroll",
@@ -388,7 +388,7 @@
                   }
                 }
               ],
-              "class": "justify-center"
+              "class": "welcome-center"
             },
             {
               "type": "spacer",
@@ -403,7 +403,7 @@
                   "i18n": "auth.welcome_back"
                 }
               ],
-              "class": "justify-center"
+              "class": "welcome-center"
             },
             {
               "type": "spacer",
@@ -490,7 +490,7 @@
             },
             {
               "type": "row",
-              "class": "btn-primary pad-0-28 justify-center",
+              "class": "btn-primary action-wide",
               "when": "!welcome.busy",
               "action": {
                 "name": "welcome",
@@ -508,7 +508,7 @@
             },
             {
               "type": "row",
-              "class": "btn-secondary gap-10 pad-0-28 justify-center",
+              "class": "btn-secondary welcome-busy-action",
               "when": "welcome.busy",
               "children": [
                 {
@@ -534,7 +534,7 @@
               "children": [
                 {
                   "type": "row",
-                  "class": "divider grow",
+                  "class": "divider welcome-rule",
                   "children": []
                 },
                 {
@@ -544,11 +544,11 @@
                 },
                 {
                   "type": "row",
-                  "class": "divider grow",
+                  "class": "divider welcome-rule",
                   "children": []
                 }
               ],
-              "class": "gap-12 items-center"
+              "class": "inline-row"
             },
             {
               "type": "spacer",
@@ -556,7 +556,7 @@
             },
             {
               "type": "row",
-              "class": "btn-secondary pad-0-28 justify-center",
+              "class": "btn-secondary action-wide",
               "action": {
                 "name": "welcome",
                 "args": {
@@ -576,7 +576,7 @@
         }
       ],
       "when": "!welcome.pairing",
-      "class": "compact-only w-100vw h-100vh"
+      "class": "compact-only fullscreen"
     }
   ]
 }

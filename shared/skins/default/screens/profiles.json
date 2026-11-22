@@ -3,7 +3,7 @@
   "children": [
     {
       "type": "column",
-      "class": "screen wide-only w-100vw h-100vh gap-28 items-center justify-center",
+      "class": "screen wide-only profiles-select",
       "children": [
         {
           "type": "row",
@@ -32,7 +32,7 @@
               }
             }
           ],
-          "class": "gap-12 items-center justify-center"
+          "class": "profiles-heading"
         },
         {
           "type": "column",
@@ -58,7 +58,7 @@
                         "when": "profiles.manage"
                       }
                     ],
-                    "class": "items-center"
+                    "class": "profiles-cell"
                   }
                 },
                 {
@@ -69,7 +69,7 @@
               "width": "{profiles.gridWidth}"
             }
           ],
-          "class": "items-center"
+          "class": "profiles-grid"
         },
         {
           "type": "row",
@@ -77,7 +77,7 @@
           "children": [
             {
               "type": "row",
-              "class": "btn-secondary pad-0-28 justify-center",
+              "class": "btn-secondary action-wide",
               "children": [
                 {
                   "type": "text",
@@ -93,14 +93,14 @@
               }
             }
           ],
-          "class": "justify-center"
+          "class": "profiles-manage"
         }
       ],
       "when": "profiles.isSelect"
     },
     {
       "type": "column",
-      "class": "screen compact-only w-100vw h-100vh gap-28 pad-72-0-0-0 items-center",
+      "class": "screen compact-only profiles-select-compact",
       "children": [
         {
           "type": "row",
@@ -129,7 +129,7 @@
               }
             }
           ],
-          "class": "gap-12 items-center justify-center"
+          "class": "profiles-heading"
         },
         {
           "type": "column",
@@ -155,7 +155,7 @@
                         "when": "profiles.manage"
                       }
                     ],
-                    "class": "items-center"
+                    "class": "profiles-cell"
                   }
                 },
                 {
@@ -166,7 +166,7 @@
               "width": "{profiles.gridWidth}"
             }
           ],
-          "class": "items-center"
+          "class": "profiles-grid"
         },
         {
           "type": "row",
@@ -174,7 +174,7 @@
           "children": [
             {
               "type": "row",
-              "class": "btn-secondary pad-0-28 justify-center",
+              "class": "btn-secondary action-wide",
               "children": [
                 {
                   "type": "text",
@@ -190,7 +190,7 @@
               }
             }
           ],
-          "class": "justify-center"
+          "class": "profiles-manage"
         }
       ],
       "when": "profiles.isSelect"
@@ -198,7 +198,7 @@
     {
       "type": "column",
       "when": "profiles.isForm",
-      "class": "screen w-100vw h-100vh gap-14 pad-48-0-0-0 items-center",
+      "class": "screen profiles-form-page",
       "children": [
         {
           "type": "column",
@@ -229,10 +229,10 @@
                   "type": "text",
                   "text": "{profiles.form.title}",
                   "style": "title",
-                  "class": "grow"
+                  "class": "profiles-fill"
                 }
               ],
-              "class": "gap-12 items-center"
+              "class": "inline-row"
             },
             {
               "type": "row",
@@ -262,12 +262,12 @@
                   "type": "text",
                   "text": "{profiles.form.name}",
                   "style": "subtitle",
-                  "class": "grow wide-only"
+                  "class": "profiles-fill wide-only"
                 },
                 {
                   "type": "column",
                   "children": [],
-                  "class": "compact-only grow"
+                  "class": "compact-only profiles-fill"
                 },
                 {
                   "type": "text",
@@ -277,7 +277,7 @@
                 },
                 {
                   "type": "row",
-                  "class": "btn-secondary pad-0-24 justify-center",
+                  "class": "btn-secondary profiles-action",
                   "action": {
                     "name": "profiles",
                     "args": {
@@ -293,7 +293,7 @@
                   ]
                 }
               ],
-              "class": "gap-14 pad-8-0 items-center"
+              "class": "profiles-avatar-row"
             },
             {
               "type": "text",
@@ -390,11 +390,11 @@
                     {
                       "type": "text",
                       "i18n": "profiles.use_primary_addons",
-                      "class": "grow"
+                      "class": "profiles-fill"
                     },
                     {
                       "type": "row",
-                      "class": "switch w-46 h-28 pad-3-3-3-3 items-center",
+                      "class": "switch profiles-switch",
                       "props": {
                         "selected": "profiles.form.addons"
                       },
@@ -408,21 +408,21 @@
                         {
                           "type": "spacer",
                           "when": "profiles.form.addons",
-                          "class": "grow"
+                          "class": "profiles-fill"
                         },
                         {
                           "type": "column",
-                          "class": "knob w-22 h-22"
+                          "class": "knob profiles-knob"
                         },
                         {
                           "type": "spacer",
                           "when": "!profiles.form.addons",
-                          "class": "grow"
+                          "class": "profiles-fill"
                         }
                       ]
                     }
                   ],
-                  "class": "gap-12 pad-6-0 items-center"
+                  "class": "profiles-toggle"
                 },
                 {
                   "type": "row",
@@ -430,11 +430,11 @@
                     {
                       "type": "text",
                       "i18n": "profiles.use_primary_plugins",
-                      "class": "grow"
+                      "class": "profiles-fill"
                     },
                     {
                       "type": "row",
-                      "class": "switch w-46 h-28 pad-3-3-3-3 items-center",
+                      "class": "switch profiles-switch",
                       "props": {
                         "selected": "profiles.form.plugins"
                       },
@@ -448,31 +448,31 @@
                         {
                           "type": "spacer",
                           "when": "profiles.form.plugins",
-                          "class": "grow"
+                          "class": "profiles-fill"
                         },
                         {
                           "type": "column",
-                          "class": "knob w-22 h-22"
+                          "class": "knob profiles-knob"
                         },
                         {
                           "type": "spacer",
                           "when": "!profiles.form.plugins",
-                          "class": "grow"
+                          "class": "profiles-fill"
                         }
                       ]
                     }
                   ],
-                  "class": "gap-12 pad-6-0 items-center"
+                  "class": "profiles-toggle"
                 }
               ],
-              "class": "gap-4 items-stretch"
+              "class": "profiles-shared"
             },
             {
               "type": "row",
               "children": [
                 {
                   "type": "row",
-                  "class": "btn-secondary pad-0-24 justify-center grow",
+                  "class": "btn-secondary profiles-action-fill",
                   "action": {
                     "name": "profiles",
                     "args": {
@@ -489,7 +489,7 @@
                 },
                 {
                   "type": "row",
-                  "class": "btn-primary justify-center grow",
+                  "class": "btn-primary profiles-save",
                   "action": {
                     "name": "profiles",
                     "args": {
@@ -507,7 +507,7 @@
                 },
                 {
                   "type": "row",
-                  "class": "btn-secondary justify-center grow",
+                  "class": "btn-secondary profiles-save",
                   "when": "!profiles.form.canSave",
                   "children": [
                     {
@@ -519,7 +519,7 @@
                   ]
                 }
               ],
-              "class": "gap-8 pad-12-0-0-0"
+              "class": "profiles-actions"
             }
           ]
         }
@@ -528,7 +528,7 @@
     {
       "type": "column",
       "when": "profiles.isAvatars",
-      "class": "screen w-100vw h-100vh gap-14 pad-48-0-0-0 items-center",
+      "class": "screen profiles-form-page",
       "children": [
         {
           "type": "column",
@@ -559,10 +559,10 @@
                   "type": "text",
                   "i18n": "profiles.choose_icon",
                   "style": "title",
-                  "class": "grow"
+                  "class": "profiles-fill"
                 }
               ],
-              "class": "gap-12 items-center"
+              "class": "inline-row"
             },
             {
               "type": "text",
@@ -595,7 +595,7 @@
                         "style": "meta muted"
                       }
                     ],
-                    "class": "gap-8 items-center"
+                    "class": "profiles-group-head"
                   },
                   {
                     "type": "grid",
@@ -674,10 +674,10 @@
                         }
                       }
                     ],
-                    "class": "compact-only w-88vw"
+                    "class": "compact-only profiles-avatar-grid"
                   }
                 ],
-                "class": "gap-8 items-stretch"
+                "class": "profiles-avatar-group"
               }
             }
           ]
@@ -687,7 +687,7 @@
     {
       "type": "column",
       "when": "profiles.isSettings",
-      "class": "screen w-100vw h-100vh gap-14 pad-48-0-0-0 items-center",
+      "class": "screen profiles-form-page",
       "children": [
         {
           "type": "column",
@@ -718,10 +718,10 @@
                   "type": "text",
                   "i18n": "profiles.picker_settings",
                   "style": "title",
-                  "class": "grow"
+                  "class": "profiles-fill"
                 }
               ],
-              "class": "gap-12 items-center"
+              "class": "inline-row"
             },
             {
               "type": "text",
@@ -748,7 +748,7 @@
               "children": [
                 {
                   "type": "row",
-                  "class": "btn-secondary pad-0-24 justify-center grow",
+                  "class": "btn-secondary profiles-action-fill",
                   "action": {
                     "name": "profiles",
                     "args": {
@@ -765,7 +765,7 @@
                 },
                 {
                   "type": "row",
-                  "class": "btn-secondary pad-0-24 justify-center grow",
+                  "class": "btn-secondary profiles-action-fill",
                   "action": {
                     "name": "profiles",
                     "args": {
@@ -782,13 +782,13 @@
                   "when": "profiles.settings.hasBackground"
                 }
               ],
-              "class": "gap-8"
+              "class": "profiles-buttons"
             },
             {
               "type": "text",
               "i18n": "profiles.avatar_packs",
               "style": "subtitle",
-              "class": "pad-12-0-0-0"
+              "class": "profiles-subhead"
             },
             {
               "type": "text",
@@ -807,7 +807,7 @@
             },
             {
               "type": "row",
-              "class": "btn-primary pad-0-24 justify-center",
+              "class": "btn-primary profiles-action",
               "action": {
                 "name": "profiles",
                 "args": {
@@ -825,7 +825,7 @@
             },
             {
               "type": "row",
-              "class": "btn-secondary justify-center",
+              "class": "btn-secondary profiles-action-bare",
               "when": "!profiles.settings.canAdd",
               "children": [
                 {
@@ -862,11 +862,11 @@
                         "style": "meta muted"
                       }
                     ],
-                    "class": "grow"
+                    "class": "profiles-fill"
                   },
                   {
                     "type": "row",
-                    "class": "btn-secondary pad-0-24 justify-center",
+                    "class": "btn-secondary profiles-action",
                     "action": {
                       "name": "profiles",
                       "args": {
@@ -884,7 +884,7 @@
                   },
                   {
                     "type": "row",
-                    "class": "btn-secondary pad-0-24 justify-center",
+                    "class": "btn-secondary profiles-action",
                     "action": {
                       "name": "profiles",
                       "args": {
@@ -901,7 +901,7 @@
                     ]
                   }
                 ],
-                "class": "gap-8 items-center"
+                "class": "profiles-entry"
               }
             }
           ]
@@ -927,7 +927,7 @@
           "children": [
             {
               "type": "column",
-              "class": "menu-panel gap-12 pad-20 items-stretch",
+              "class": "menu-panel profiles-dialog",
               "width": "{const.dialogWidth}",
               "children": [
                 {
@@ -949,7 +949,7 @@
                       "style": "subtitle"
                     }
                   ],
-                  "class": "gap-12 items-center"
+                  "class": "inline-row"
                 },
                 {
                   "type": "text",
@@ -977,7 +977,7 @@
                   "children": [
                     {
                       "type": "row",
-                      "class": "btn-secondary pad-0-24 justify-center grow",
+                      "class": "btn-secondary profiles-action-fill",
                       "action": {
                         "name": "profiles",
                         "args": {
@@ -994,7 +994,7 @@
                     },
                     {
                       "type": "row",
-                      "class": "btn-primary pad-0-24 justify-center grow",
+                      "class": "btn-primary profiles-action-fill",
                       "action": {
                         "name": "profiles",
                         "args": {
@@ -1010,15 +1010,15 @@
                       ]
                     }
                   ],
-                  "class": "gap-8"
+                  "class": "profiles-buttons"
                 }
               ]
             }
           ],
-          "class": "w-100vw h-100vh items-center justify-center"
+          "class": "fullscreen-center"
         }
       ],
-      "class": "w-100vw h-100vh"
+      "class": "fullscreen"
     },
     {
       "type": "stack",
@@ -1039,7 +1039,7 @@
           "children": [
             {
               "type": "column",
-              "class": "menu-panel gap-12 pad-20 items-stretch",
+              "class": "menu-panel profiles-dialog",
               "width": "{const.dialogWidth}",
               "children": [
                 {
@@ -1057,7 +1057,7 @@
                   "children": [
                     {
                       "type": "row",
-                      "class": "btn-secondary pad-0-24 justify-center grow",
+                      "class": "btn-secondary profiles-action-fill",
                       "action": {
                         "name": "profiles",
                         "args": {
@@ -1074,7 +1074,7 @@
                     },
                     {
                       "type": "row",
-                      "class": "btn-primary pad-0-24 justify-center grow",
+                      "class": "btn-primary profiles-action-fill",
                       "action": {
                         "name": "profiles",
                         "args": {
@@ -1090,16 +1090,16 @@
                       ]
                     }
                   ],
-                  "class": "gap-8"
+                  "class": "profiles-buttons"
                 }
               ]
             }
           ],
-          "class": "w-100vw h-100vh items-center justify-center"
+          "class": "fullscreen-center"
         }
       ],
-      "class": "w-100vw h-100vh"
+      "class": "fullscreen"
     }
   ],
-  "class": "w-100vw h-100vh"
+  "class": "fullscreen"
 }
