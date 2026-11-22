@@ -560,22 +560,24 @@ impl Node {
                 let avail = (self.width.unwrap_or(0.0) - self.padding.width()).max(0.0);
                 Vec2::new(avail, self.wrapped_lines_height(avail))
             }
-            Kind::Flex(axis) => {
-                let sizes: Vec<Vec2> = self.children.iter().map(Node::outer_size).collect();
-                let gaps = self.gap * sizes.len().saturating_sub(1) as f32;
-                let main_total = sizes.iter().map(|size| main(*axis, *size)).sum::<f32>() + gaps;
-                let cross_max = sizes
-                    .iter()
-                    .map(|size| cross(*axis, *size))
-                    .fold(0.0, f32::max);
-                vec(*axis, main_total, cross_max)
-            }
+            Kind::Flex(axis) => self.pack(*axis, Node::outer_size),
             Kind::Stack(_) => self
                 .children
                 .iter()
                 .map(Node::outer_size)
                 .fold(Vec2::ZERO, |acc, size| acc.max(size)),
         }
+    }
+
+    fn pack(&self, axis: Axis, size_of: fn(&Node) -> Vec2) -> Vec2 {
+        let (mut main_total, mut cross_max) = (0.0, 0.0_f32);
+        for child in &self.children {
+            let size = size_of(child);
+            main_total += main(axis, size);
+            cross_max = cross_max.max(cross(axis, size));
+        }
+        let gaps = self.gap * self.children.len().saturating_sub(1) as f32;
+        vec(axis, main_total + gaps, cross_max)
     }
 
     fn wrapped_lines_height(&self, avail: f32) -> f32 {
@@ -625,19 +627,12 @@ impl Node {
         match &self.kind {
             Kind::Leaf(size) => *size,
             Kind::Text(measure) => (measure.0)(Some(0.0)),
-            Kind::Flex(axis) => {
-                let sizes: Vec<Vec2> = self.children.iter().map(Node::min_outer).collect();
-                if self.wrap {
-                    return sizes.iter().fold(Vec2::ZERO, |acc, size| acc.max(*size));
-                }
-                let gaps = self.gap * sizes.len().saturating_sub(1) as f32;
-                let main_total = sizes.iter().map(|size| main(*axis, *size)).sum::<f32>() + gaps;
-                let cross_max = sizes
-                    .iter()
-                    .map(|size| cross(*axis, *size))
-                    .fold(0.0, f32::max);
-                vec(*axis, main_total, cross_max)
-            }
+            Kind::Flex(_) if self.wrap => self
+                .children
+                .iter()
+                .map(Node::min_outer)
+                .fold(Vec2::ZERO, |acc, size| acc.max(size)),
+            Kind::Flex(axis) => self.pack(*axis, Node::min_outer),
             Kind::Stack(_) => self
                 .children
                 .iter()
