@@ -202,7 +202,7 @@ fn build(viewport: Viewport) -> Theme {
         input_border: color("color-input-border", border),
         input_border_focus: crate::vars::color("color-input-border-focus"),
         space: [2, 4, 6, 8, 10, 12, 14, 16, 20, 24, 32, 48]
-            .map(|step| crate::vars::px(&format!("space-{step}"))),
+            .map(|step| crate::vars::px(&format!("step-{step}"))),
         radius: [
             crate::vars::px("radius-md"),
             crate::vars::px("radius-sheet"),

@@ -27,12 +27,12 @@ pub(crate) enum Type {
 impl Type {
     pub(crate) fn size(self) -> f32 {
         match self {
-            Type::Headline => crate::vars::px("text-title") * 1.6,
-            Type::Title => crate::vars::px("text-title"),
-            Type::Subtitle => crate::vars::px("text-subtitle"),
-            Type::Body => crate::vars::px("text-body"),
-            Type::Meta => crate::vars::px("text-meta"),
-            Type::Label => crate::vars::px("text-label"),
+            Type::Headline => crate::vars::px("text-xl") * 1.6,
+            Type::Title => crate::vars::px("text-xl"),
+            Type::Subtitle => crate::vars::px("text-lg"),
+            Type::Body => crate::vars::px("text-md"),
+            Type::Meta => crate::vars::px("text-sm"),
+            Type::Label => crate::vars::px("text-xs"),
         }
     }
 

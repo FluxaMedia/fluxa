@@ -4,7 +4,7 @@ use crate::flex::{Align, Insets, Weight, column, fill, leaf, paint_text, row, te
 use crate::{IconSize, Radius, Space};
 
 pub(crate) fn chip(ui: &mut Ui, label: &str, selected: bool) -> Response {
-    let font = Weight::Medium.font(crate::vars::px("text-label"));
+    let font = Weight::Medium.font(crate::vars::px("text-xs"));
     let tree = row([text(ui.painter(), label, &font).id(0)])
         .align(Align::Center)
         .padding(Insets::xy(Space::S12.px(), Space::S6.px()))
@@ -36,7 +36,7 @@ pub(crate) fn chip(ui: &mut Ui, label: &str, selected: bool) -> Response {
 }
 
 pub(crate) fn segmented(ui: &mut Ui, id: Id, labels: &[&str], selected: usize) -> Option<usize> {
-    let font = Weight::Medium.font(crate::vars::px("text-label"));
+    let font = Weight::Medium.font(crate::vars::px("text-xs"));
     let height = crate::vars::px("screen-control-height");
     let width = ui
         .available_width()
@@ -105,7 +105,7 @@ pub(crate) fn stepper(
     can_decrease: bool,
     can_increase: bool,
 ) -> Option<i32> {
-    let font = Weight::Bold.font(crate::vars::px("text-body"));
+    let font = Weight::Bold.font(crate::vars::px("text-md"));
     let button = crate::vars::px("screen-control-height");
     let value_width = crate::flex::text_size(ui.painter(), value_label, &font)
         .x
@@ -188,9 +188,9 @@ pub(crate) struct ListRow<'a> {
 }
 
 pub(crate) fn list_row(ui: &mut Ui, row_data: ListRow) -> Response {
-    let title_font = Weight::Medium.font(crate::vars::px("text-body"));
-    let sub_font = Weight::Regular.font(crate::vars::px("text-label"));
-    let value_font = Weight::Regular.font(crate::vars::px("text-body"));
+    let title_font = Weight::Medium.font(crate::vars::px("text-md"));
+    let sub_font = Weight::Regular.font(crate::vars::px("text-xs"));
+    let value_font = Weight::Regular.font(crate::vars::px("text-md"));
     let icon = IconSize::Md.px();
     let trailing_size = match &row_data.trailing {
         Trailing::Value(value) => {
@@ -206,7 +206,7 @@ pub(crate) fn list_row(ui: &mut Ui, row_data: ListRow) -> Response {
     let mut lines = vec![
         leaf(Vec2::new(
             0.0,
-            crate::vars::px("text-body") * crate::vars::px("control-row-line-ratio"),
+            crate::vars::px("text-md") * crate::vars::px("control-row-line-ratio"),
         ))
         .id(1),
     ];
@@ -214,7 +214,7 @@ pub(crate) fn list_row(ui: &mut Ui, row_data: ListRow) -> Response {
         lines.push(
             leaf(Vec2::new(
                 0.0,
-                crate::vars::px("text-label") * crate::vars::px("control-row-line-ratio"),
+                crate::vars::px("text-xs") * crate::vars::px("control-row-line-ratio"),
             ))
             .id(2),
         );

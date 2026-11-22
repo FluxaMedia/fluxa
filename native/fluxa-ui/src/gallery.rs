@@ -46,7 +46,7 @@ const SWATCHES: [Color32; 6] = [
 ];
 
 fn heading<'a>(ui: &mut crate::gfx::Ui, text: &'a str) -> kit::Item<'a> {
-    let size = crate::vars::px("text-subtitle");
+    let size = crate::vars::px("text-lg");
     let color = crate::metrics::theme().text_muted;
     layout_items::column(vec![
         layout_items::gap(Space::S8.px()),

@@ -479,7 +479,7 @@ pub(crate) fn text_input(
         value,
         hint,
         Vec2::new(width, button_height()),
-        crate::vars::px("text-body"),
+        crate::vars::px("text-md"),
         kind,
         0.0,
     )
@@ -491,7 +491,7 @@ pub(crate) fn text_area(ui: &mut Ui, value: &mut String, hint: &str, size: Vec2)
         value,
         hint,
         size,
-        crate::vars::px("text-body"),
+        crate::vars::px("text-md"),
         InputKind::Multiline,
         0.0,
     )
@@ -542,13 +542,13 @@ pub(crate) fn code_input_styled(
         row_rect(
             ui,
             field,
-            crate::fonts::regular(crate::vars::px("text-body")),
+            crate::fonts::regular(crate::vars::px("text-md")),
         ),
         id,
         crate::gfx::TextEdit::singleline(value)
             .frame(crate::gfx::Frame::NONE)
             .char_limit(length)
-            .font(crate::fonts::regular(crate::vars::px("text-body")))
+            .font(crate::fonts::regular(crate::vars::px("text-md")))
             .text_color(Color32::TRANSPARENT)
             .margin(Vec2::ZERO),
     );

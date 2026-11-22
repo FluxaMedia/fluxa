@@ -20,7 +20,7 @@ pub(super) fn draw_seek_preview(
     let width = if thumbnail.is_some() { 240.0 } else { 160.0 };
     let x = pointer_x.clamp(track.left() + width * 0.5, track.right() - width * 0.5);
     let mut bottom = track.top() - 10.0;
-    let font = FontId::proportional(crate::vars::px("text-meta"));
+    let font = FontId::proportional(crate::vars::px("text-sm"));
     draw_text(
         &painter,
         Pos2::new(x, bottom),
