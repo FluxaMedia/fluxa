@@ -40,6 +40,7 @@ pub(super) fn text_rule(
                 focused: false,
                 enabled: true,
                 selected: false,
+                passive: true,
             },
             &modifiers,
         )

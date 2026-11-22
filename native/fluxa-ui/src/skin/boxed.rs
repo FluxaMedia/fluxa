@@ -129,6 +129,7 @@ pub(super) fn boxed<'a, A: HomeAssets>(
         } else {
             Sense::hover()
         };
+        let interactive = !drag.is_empty() || !indicator.is_empty() || !popover.is_empty() || target.is_some();
         let response = ui.interact(rect, Id::new(("skin-box", &key)), sense);
         if !drag.is_empty() && response.hovered() {
             ui.ctx()
@@ -217,6 +218,7 @@ pub(super) fn boxed<'a, A: HomeAssets>(
                         focused: has_focus,
                         enabled: !disabled,
                         selected,
+                        passive: !interactive,
                     },
                     &modifiers,
                 )

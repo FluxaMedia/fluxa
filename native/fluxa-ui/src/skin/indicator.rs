@@ -79,6 +79,7 @@ pub(super) fn paint_indicator(
             focused: false,
             enabled: true,
             selected: false,
+            passive: true,
         },
         &[],
     );

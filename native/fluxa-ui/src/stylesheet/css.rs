@@ -263,7 +263,7 @@ fn translate_selector(selector: &str) -> Result<(String, Option<&'static str>), 
         }
         None => base.to_owned(),
     };
-    if target.is_empty() || target == "*" {
+    if target.is_empty() {
         return Err(format!("{last}: a selector needs a class or rule name"));
     }
     let target = if modifiers.is_empty() {

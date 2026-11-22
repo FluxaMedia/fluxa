@@ -71,6 +71,7 @@ pub(crate) fn button_core(
             pressed: response.is_pointer_button_down_on(),
             focused: response.has_focus(),
             enabled,
+            passive: false,
         },
     );
     let (fill, text) = (style.fill, style.text);

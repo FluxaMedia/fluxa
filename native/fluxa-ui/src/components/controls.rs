@@ -23,6 +23,7 @@ pub(crate) fn chip(ui: &mut Ui, label: &str, selected: bool) -> Response {
             pressed: response.is_pointer_button_down_on(),
             focused: response.has_focus(),
             enabled: true,
+            passive: false,
         },
         if selected { &["selected"] } else { &[] },
     );

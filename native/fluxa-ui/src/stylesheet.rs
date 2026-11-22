@@ -300,6 +300,7 @@ pub(crate) struct State {
     pub focused: bool,
     pub selected: bool,
     pub enabled: bool,
+    pub passive: bool,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -1332,6 +1333,14 @@ fn chain<'a>(sheet: &'a Sheet, name: &str) -> Vec<&'a Rule> {
 }
 
 fn kinds<'a>(sheet: &'a Sheet, modifiers: &[&str]) -> Vec<&'a Rule> {
+    let universal = chain(sheet, "*");
+    universal
+        .into_iter()
+        .chain(typed(sheet, modifiers))
+        .collect()
+}
+
+fn typed<'a>(sheet: &'a Sheet, modifiers: &[&str]) -> Vec<&'a Rule> {
     modifiers
         .iter()
         .filter(|modifier| modifier.starts_with('<'))
@@ -1473,7 +1482,11 @@ fn resolve_in(
     ];
     for (key, on, patch) in stages {
         let undeclared = layers.iter().all(|layer| *patch(layer) == Patch::default());
-        let derived = derive && undeclared && key == "hover" && result.fill.a() > 0;
+        let derived = derive
+            && !state.passive
+            && undeclared
+            && matches!(key, "hover" | "focus")
+            && result.fill.a() > 0;
         if key != "select" && undeclared && !derived {
             continue;
         }
@@ -1820,7 +1833,8 @@ mod tests {
         focused: false,
         enabled: true,
         selected: false,
-    };
+        passive: false,
+};
 
     #[test]
     fn scoped_custom_properties_resolve_per_element() {
@@ -2209,5 +2223,22 @@ mod tests {
         assert_eq!(small.font_size, Some(0.75 * root));
         let loose = within(&frames, || base_in(&sheet, "small", &[]));
         assert_eq!(loose.font_size, None);
+    }
+
+    #[test]
+    fn universal_rule_derives_hover_and_focus_for_every_filled_element() {
+        let sheet = Sheet::parse("* { states: auto; }\n.a { background: #336699; }\n.b { background: #336699; }\n.b:hover { background: #ffffff; }")
+            .expect("parses");
+        let focused = State {
+            focused: true,
+            ..LIVE
+        };
+        let rest = on("a", &sheet, LIVE, &[]).fill;
+        assert_ne!(on("a", &sheet, hovered(), &[]).fill, rest);
+        assert_ne!(on("a", &sheet, focused, &[]).fill, rest);
+        assert_eq!(
+            on("b", &sheet, hovered(), &[]).fill,
+            on("b", &Sheet::parse(".b { background: #336699; }\n.b:hover { background: #ffffff; }").unwrap(), hovered(), &[]).fill
+        );
     }
 }
