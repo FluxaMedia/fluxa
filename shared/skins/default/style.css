@@ -1601,7 +1601,6 @@ hero-synopsis-size {
   border-width: 1px;
   border-radius: var(--radius-lg);
   box-shadow: 0 10px 28px rgba(0, 0, 0, 0.5);
-  align-items: stretch;
 }
 
 .panel-heading {
@@ -1757,34 +1756,27 @@ hero-synopsis-size {
   width: 280px;
   gap: var(--space-12);
   padding: 96px var(--space-16);
-  align-items: stretch;
 }
 
 .settings-page {
   max-width: 1040px;
   padding: 96px 56px var(--page-end) 56px;
-  align-items: stretch;
   flex-grow: 1;
 }
 
 .settings-wide {
   height: 100vh;
-  gap: 0px;
-  align-items: stretch;
-  justify-content: flex-start;
 }
 
 .settings-compact {
   gap: var(--space-16);
   padding: var(--space-48) var(--page-padding) var(--page-end) var(--page-padding);
-  align-items: stretch;
 }
 
 .profile-form {
   max-width: 528px;
   gap: 12px;
   padding: 0px 24px;
-  align-items: stretch;
   width: 100vw;
 }
 
@@ -1794,13 +1786,11 @@ hero-synopsis-size {
   border-width: 1px;
   border-radius: var(--radius-lg);
   padding: var(--space-6) 0px;
-  align-items: stretch;
 }
 
 .info-row {
   gap: var(--space-4);
   padding: var(--space-12) var(--space-16);
-  align-items: stretch;
 }
 
 .watch-member {
@@ -1822,7 +1812,6 @@ hero-synopsis-size {
   border-radius: var(--radius-md);
   gap: 6px;
   padding: 10px;
-  align-items: stretch;
 }
 
 .chat-text:selected {
@@ -1948,9 +1937,6 @@ hero-synopsis-size {
   height: 100vh;
 }
 
-.guide-channel {
-}
-
 .profile-name {
   font-size: var(--text-subtitle);
   font-weight: 600;
@@ -1979,7 +1965,6 @@ hero-synopsis-size {
 
 .about-text {
   gap: var(--space-10);
-  align-items: stretch;
   flex-grow: 1;
 }
 
@@ -1994,7 +1979,6 @@ hero-synopsis-size {
   border-radius: var(--radius-md);
   gap: var(--space-10);
   padding: var(--space-14) var(--space-16);
-  align-items: stretch;
 }
 
 .addon-card {
@@ -2002,7 +1986,6 @@ hero-synopsis-size {
   border-radius: var(--radius-md);
   gap: 12px;
   padding: 16px;
-  align-items: stretch;
 }
 
 .addon-logo {
@@ -2191,9 +2174,7 @@ hero-synopsis-size {
 }
 
 .welcome-mobile {
-  gap: 0px;
   padding: 64px 24px 32px;
-  align-items: stretch;
   width: 100vw;
 }
 
@@ -2304,18 +2285,12 @@ hero-synopsis-size {
 
 .grow { flex-grow: 1; }
 
-.rows {
-  align-items: stretch;
-}
-
 .page {
   gap: var(--space-24);
-  align-items: stretch;
 }
 
 .section {
   gap: var(--space-10);
-  align-items: stretch;
 }
 
 @media (size: compact) {
@@ -2327,7 +2302,6 @@ hero-synopsis-size {
 
 .row-text {
   gap: var(--space-2);
-  align-items: stretch;
   flex-grow: 1;
 }
 
@@ -2505,7 +2479,6 @@ hero-synopsis-size {
 
 .profiles-shared {
   gap: var(--space-4);
-  align-items: stretch;
 }
 
 .profiles-toggle {
@@ -2526,7 +2499,6 @@ hero-synopsis-size {
 .list,
 .profiles-avatar-group {
   gap: var(--space-8);
-  align-items: stretch;
 }
 
 .profiles-avatar-grid {
@@ -2536,14 +2508,11 @@ hero-synopsis-size {
 .profiles-dialog {
   gap: var(--space-12);
   padding: var(--space-20);
-  align-items: stretch;
 }
 
 .welcome-card {
   width: 440px;
-  gap: 0px;
   padding: 36px 36px var(--space-32);
-  align-items: stretch;
 }
 
 .welcome-busy-action {
@@ -2560,14 +2529,10 @@ hero-synopsis-size {
 
 .welcome-tv-qr {
   width: 280px;
-  gap: 0px;
-  align-items: stretch;
 }
 
 .welcome-tv-steps {
   width: 440px;
-  gap: 0px;
-  align-items: stretch;
 }
 
 .navbar {
@@ -2662,12 +2627,10 @@ hero-synopsis-size {
 .episode-corner {
   padding: var(--space-8);
   align-items: end;
-  justify-content: start;
   flex-fill: 1;
 }
 
 .episode-info {
-  align-items: stretch;
   justify-content: end;
   flex-fill: 1;
 }
@@ -2716,14 +2679,12 @@ hero-synopsis-size {
 .detail-top-compact {
   padding: 84px var(--space-24) 0px var(--space-24);
   align-items: start;
-  justify-content: start;
   flex-fill: 1;
 }
 
 .detail-top-wide {
   padding: 0px var(--space-24) 0px var(--space-24);
   align-items: start;
-  justify-content: start;
   flex-fill: 1;
 }
 
@@ -2753,7 +2714,6 @@ hero-synopsis-size {
 .continue-info {
   gap: var(--space-4);
   padding: var(--space-12);
-  align-items: stretch;
   justify-content: end;
   flex-fill: 1;
 }
@@ -2761,13 +2721,11 @@ hero-synopsis-size {
 .side-group,
 .menu-list {
   gap: var(--space-2);
-  align-items: stretch;
 }
 
 .page-head,
 .watch-toggles {
   gap: var(--space-6);
-  align-items: stretch;
 }
 
 .profiles-switch,
@@ -2812,7 +2770,6 @@ hero-synopsis-size {
 .sources-info {
   gap: var(--space-6);
   padding: 60px 0px var(--space-20) 0px;
-  align-items: stretch;
   justify-content: end;
 }
 
@@ -2824,7 +2781,6 @@ hero-synopsis-size {
 
 .sources-text {
   padding: 0px var(--space-20);
-  align-items: stretch;
 }
 
 .sources-top {
@@ -2850,7 +2806,6 @@ hero-synopsis-size {
 .sources-rows {
   gap: var(--space-12);
   padding: 0px var(--space-16) var(--space-24) var(--space-16);
-  align-items: stretch;
 }
 
 .source-text {
@@ -3131,18 +3086,15 @@ hero-synopsis-size {
 .watch-form,
 .screen-list {
   gap: var(--space-14);
-  align-items: stretch;
 }
 
 .sources,
 .screen-browse {
   gap: var(--space-16);
-  align-items: stretch;
 }
 
 .screen-detail {
   gap: var(--space-20);
-  align-items: stretch;
 }
 
 .page-dense {
