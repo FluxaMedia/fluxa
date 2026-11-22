@@ -390,7 +390,7 @@ hero-synopsis-size { font-size: 16; }
 .poster.landscape { width: wide-width; }
 .poster.square { width: square-size; }
 
-.poster-art { aspect-ratio: 2 / 3; }
+.poster-art, .mini-poster-art { aspect-ratio: 2 / 3; }
 
 .poster-art.wide,
 .poster-art.landscape { aspect-ratio: 210 / 119; }
@@ -439,6 +439,7 @@ hero-synopsis-size { font-size: 16; }
 .toast { padding: var(--space-4); border-radius: var(--radius-pill); box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45); }
 
 .mini-tile { aspect-ratio: 16 / 9; max-width: 400px; width: 22vw; }
+.episode-thumb, .episode-art, .trailer-thumb, .modal-art, .panel-thumb { aspect-ratio: 16 / 9; }
 
 .mini-controls {
   opacity: 0;
@@ -449,7 +450,7 @@ hero-synopsis-size { font-size: 16; }
 
 .mini-tile:hover .mini-controls { opacity: 1; }
 
-.panel-thumb { width: 96px; height: 54px; }
+.panel-thumb { width: 96px; }
 .panel-label { font-weight: 500; }
 
 .hero-skeleton { background: var(--ink-faint); animation: skeleton-pulse 1.2s infinite alternate; }
@@ -564,7 +565,7 @@ hero-synopsis-size { font-size: 16; }
 
 .day-number { width: 24px; height: 24px; justify-content: center; }
 
-.episode-thumb, .episode-art { width: 276px; height: 155px; }
+.episode-thumb, .episode-art { width: 276px; }
 .detail-hero { height: 68vh; }
 
 .progress { width: 200px; height: 4px; }
@@ -761,7 +762,7 @@ button:focus { scale: 1.04; }
 .episode-text { width: 17.5rem; gap: var(--gap-tight); padding: 0 var(--space-1) var(--space-1); }
 .cast { width: 7.5rem; gap: var(--gap-snug); align-items: center; }
 .trailer { width: 18.5rem; gap: var(--gap-snug); }
-.trailer-thumb { width: 296px; height: 166px; }
+.trailer-thumb { width: 296px; }
 .info li { gap: var(--gap-loose); padding: var(--space-2) 0; }
 .info small { width: 11.25rem; }
 
@@ -802,9 +803,9 @@ button:focus { scale: 1.04; }
 .modal-stack header { height: 18.75rem; }
 .modal-stack footer { align-items: flex-start; justify-content: flex-end; padding: var(--space-5); }
 .details { gap: var(--gap-base); padding: 0 var(--space-5) var(--space-5); }
-.modal-art { width: 160px; height: 90px; }
+.modal-art { width: 160px; }
 .mini-poster { width: 8.75rem; gap: var(--gap-snug); }
-.mini-poster-art { width: 140px; height: 210px; }
+.mini-poster-art { width: 140px; }
 .reco-text { width: 35rem; gap: var(--gap-base); align-items: flex-start; }
 
 .dots .chip, .dots .chip-active { width: 10px; height: 10px; padding: 0; }
