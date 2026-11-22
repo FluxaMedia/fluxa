@@ -958,7 +958,7 @@ hero-synopsis-size { font-size: 16; }
 
 @media (size: compact) { :root { font-size: 15px; } }
 
-h1 { font-size: 1.625rem; font-weight: 700; }
+h1 { font-size: var(--text-title); font-weight: 700; }
 h2 { font-size: .8125rem; font-weight: 600; }
 h3 { font-size: 1.125rem; font-weight: 600; }
 p { font-size: .875rem; }
@@ -1061,6 +1061,7 @@ button:focus { background: color-mix(in srgb, var(--color-text-primary) 18.039%,
 
 /* ==== Library, discover ================================================= */
 .library { gap: .875rem; }
+.discover { gap: 1rem; }
 .lead { height: 4.5rem; }
 .tail { height: 6rem; }
 .listing header { justify-content: space-between; gap: .75rem; }
