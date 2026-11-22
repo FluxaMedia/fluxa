@@ -331,12 +331,16 @@ hero-synopsis-size { font-size: 16; }
   backdrop-filter: blur(16px);
   border: 1px solid var(--ink-raised);
   border-radius: var(--radius-pill);
+  gap: var(--space-4);
+  padding: var(--space-6);
 }
 
 .navbar-item {
   color: var(--ink-subtle);
   border-radius: var(--radius-pill);
   transition: 0.15s;
+  gap: var(--space-8);
+  padding: var(--space-4) var(--space-10);
 }
 .navbar-item:focus { background: var(--ink-strong); }
 .navbar-item-active { color: #ffffff; border-radius: var(--radius-pill); }
@@ -386,6 +390,9 @@ hero-synopsis-size { font-size: 16; }
   background: var(--ink-faint);
   border: 1px solid var(--ink-soft);
   border-radius: var(--radius-lg);
+  width: 296px;
+  gap: var(--space-10);
+  padding: var(--space-10);
 }
 
 .episode:hover { background: var(--ink-raised); scale: 1.02; }
@@ -425,7 +432,6 @@ hero-synopsis-size { font-size: 16; }
   border-radius: var(--radius-pill);
 }
 
-.episode-title { font-size: var(--text-body); font-weight: 600; }
 
 .profile-tile {
   border-radius: var(--radius-lg);
@@ -491,10 +497,12 @@ hero-synopsis-size { font-size: 16; }
 
 .btn-primary:hover { background: color-mix(in srgb, var(--color-text-primary) 88.235%, transparent); }
 
-.btn-primary:focus, .guide-now { background: var(--ink-full); }
-.btn-secondary:focus { background: color-mix(in srgb, var(--color-text-primary) 18.039%, transparent); }
-.btn-primary:focus,
-.btn-secondary:focus { scale: 1.04; }
+.btn-primary:focus { background: var(--ink-full); scale: 1.04; }
+.guide-now { background: var(--ink-full); }
+.btn-secondary:focus {
+  background: color-mix(in srgb, var(--color-text-primary) 18.039%, transparent);
+  scale: 1.04;
+}
 
 /* An (empty) rule opts the label into the color and size it inherits. */
 .btn-label {}
@@ -533,7 +541,6 @@ hero-synopsis-size { font-size: 16; }
 .synopsis { font-size: synopsis-size; color: var(--color-text-primary); }
 .episode-title { font-size: var(--text-body); font-weight: 700; }
 
-.episode-overview,
 .episode-overview { font-size: var(--text-label); color: var(--ink-subtle); }
 
 .avatar-img {
@@ -981,31 +988,15 @@ hero-synopsis-size { font-size: 16; }
 
 .rating { gap: var(--space-4); }
 
-.navbar {
-  gap: var(--space-4);
-  padding: var(--space-6);
-}
-
 .nav-slot {
   gap: var(--space-8);
   padding: var(--space-10) var(--space-14);
-}
-
-.navbar-item {
-  gap: var(--space-8);
-  padding: var(--space-4) var(--space-10);
 }
 .hero .synopsis { width: 560px; }
 .detail-hero .synopsis { width: 620px; }
 .day-cell { height: 88px; }
 
 .day-number { width: 24px; height: 24px; justify-content: center; }
-
-.episode {
-  width: 296px;
-  gap: var(--space-10);
-  padding: var(--space-10);
-}
 
 .episode-thumb { width: 276px; height: 155px; }
 .detail-hero { height: 68vh; }
