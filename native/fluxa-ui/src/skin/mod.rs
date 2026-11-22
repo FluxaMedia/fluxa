@@ -78,6 +78,7 @@ struct Env<'a, A: HomeAssets> {
     ancestors: &'a RefCell<Vec<std::rc::Rc<Ancestor>>>,
     positions: &'a Positions,
     inner: &'a RefCell<Vec<Option<f32>>>,
+    styles: &'a RefCell<HashMap<u64, Option<crate::stylesheet::Style>, crate::fast::Build>>,
 }
 
 impl<A: HomeAssets> Env<'_, A> {
@@ -254,6 +255,7 @@ fn draw_tree(
     let claimed = RefCell::new(HashMap::default());
     let ancestors = RefCell::new(Vec::new());
     let inner = RefCell::new(Vec::new());
+    let styles = RefCell::new(HashMap::default());
     let positions = positions_of(tree);
     let env = Env {
         view: Cell::new(Vec2::new(viewport.width, viewport.height)),
@@ -267,6 +269,7 @@ fn draw_tree(
         ancestors: &ancestors,
         positions: &positions,
         inner: &inner,
+        styles: &styles,
     };
     prefetch(&env, tree);
     let body = |ui: &mut Ui| {
@@ -693,11 +696,16 @@ fn sheet_style<'a, A: HomeAssets>(
 ) -> Option<crate::stylesheet::Style> {
     let timer = crate::stats::start();
     crate::stats::count(&crate::stats::STYLE_CALLS);
-    let (rule, modifiers) = class_parts(node, env.positions.get(&node.key).copied())?;
-    let chain = plain_frames(&env.ancestors.borrow());
-    let style = Some(crate::stylesheet::within(&chain, || {
-        crate::stylesheet::base_with(&rule, &modifiers)
-    }));
+    let depth = env.ancestors.borrow().len();
+    let memo = crate::fast::hash((&node.key, &node.class, &node.kind, depth));
+    if let Some(found) = env.styles.borrow().get(&memo) {
+        return *found;
+    }
+    let style = class_parts(node, env.positions.get(&node.key).copied()).map(|(rule, modifiers)| {
+        let chain = plain_frames(&env.ancestors.borrow());
+        crate::stylesheet::within(&chain, || crate::stylesheet::base_with(rule, modifiers))
+    });
+    env.styles.borrow_mut().insert(memo, style);
     timer.add(&crate::stats::STYLE_NS);
     style
 }
