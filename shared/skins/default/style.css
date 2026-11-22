@@ -473,7 +473,7 @@ hero-synopsis-size { font-size: 16; }
   to { opacity: 1; }
 }
 
-.guide-now { background: var(--ink-full); }
+.guide-now { background: var(--ink-full); width: 2px; height: 100vh; }
 .icon-btn {
   width: icon-button;
   height: icon-button;
@@ -961,8 +961,9 @@ hero-synopsis-size { font-size: 16; }
 h1 { font-size: var(--text-title); font-weight: 700; }
 h2 { font-size: .8125rem; font-weight: 600; }
 h3 { font-size: 1.125rem; font-weight: 600; }
+h4 { font-size: var(--text-subtitle); }
 p { font-size: .875rem; }
-small { font-size: .8125rem; }
+small { font-size: var(--text-meta); }
 label { font-size: 1rem; font-weight: 500; }
 h2, p, small { color: var(--ink-subtle); }
 .danger { color: var(--color-error); }
@@ -1061,6 +1062,13 @@ button:focus { background: color-mix(in srgb, var(--color-text-primary) 18.039%,
 
 /* ==== Library, discover ================================================= */
 .library { gap: .875rem; }
+.guide { padding: 0 0 0 3rem; }
+.channels { gap: .375rem; }
+.channels li { gap: .25rem; }
+.channel-logo { width: 2.5rem; height: 2.5rem; }
+.slot { height: 4rem; }
+.program { height: 4rem; gap: .125rem; padding: .625rem; }
+.day-cell section { gap: .25rem; padding: .5rem; }
 .discover { gap: 1rem; }
 .lead { height: 4.5rem; }
 .tail { height: 6rem; }

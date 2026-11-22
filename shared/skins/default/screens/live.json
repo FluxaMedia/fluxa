@@ -1,43 +1,46 @@
 {
   "type": "column",
-  "class": "screen",
-  "gap": 14,
+  "class": "screen library",
   "children": [
     {
       "type": "spacer",
-      "height": 72
+      "class": "lead"
     },
     {
       "type": "page",
       "children": [
         {
           "type": "text",
-          "text": "{guide.title}",
-          "style": "title"
+          "tag": "h1",
+          "text": "{guide.title}"
         },
         {
           "type": "text",
+          "tag": "small",
           "i18n": "guide.loading",
-          "style": "meta muted",
           "when": "guide.loading"
         },
         {
           "type": "text",
+          "tag": "small",
           "i18n": "guide.empty",
-          "style": "meta muted",
           "when": "guide.empty"
         }
       ],
-      "class": "page-dense"
+      "class": "page-dense listing"
     },
     {
       "type": "scroll",
       "children": [
         {
           "type": "stack",
+          "tag": "section",
+          "class": "guide",
           "children": [
             {
               "type": "column",
+              "tag": "section",
+              "class": "channels",
               "children": [
                 {
                   "type": "row",
@@ -51,8 +54,8 @@
                       "as": "hour",
                       "template": {
                         "type": "text",
+                        "tag": "small",
                         "text": "{hour.label}",
-                        "style": "meta muted",
                         "width": "{hour.width}"
                       }
                     }
@@ -63,16 +66,17 @@
                   "as": "channel",
                   "template": {
                     "type": "row",
+                    "tag": "li",
                     "children": [
                       {
                         "type": "text",
+                        "tag": "h4",
+                        "class": "guide-channel",
                         "text": "{channel.name}",
-                        "style": "subtitle",
                         "width": "{guide.labelWidth}",
                         "props": {
                           "lines": 1
-                        },
-                        "class": "guide-channel"
+                        }
                       },
                       {
                         "type": "image",
@@ -81,8 +85,7 @@
                         "props": {
                           "fit": "contain"
                         },
-                        "width": 40,
-                        "height": 40
+                        "class": "channel-logo"
                       },
                       {
                         "each": "channel.cells",
@@ -93,7 +96,7 @@
                           "children": [
                             {
                               "type": "column",
-                              "class": "{cell.class} h-64 gap-2 pad-10 fill-space",
+                              "class": "{cell.class} fill-space program",
                               "when": "!cell.blank",
                               "action": {
                                 "name": "guide",
@@ -104,26 +107,24 @@
                               "children": [
                                 {
                                   "type": "text",
-                                  "text": "{cell.title}",
-                                  "style": "subtitle"
+                                  "tag": "h4",
+                                  "text": "{cell.title}"
                                 },
                                 {
                                   "type": "text",
-                                  "text": "{cell.time}",
-                                  "style": "meta muted"
+                                  "tag": "small",
+                                  "text": "{cell.time}"
                                 }
                               ]
                             }
                           ],
-                          "height": 64
+                          "class": "slot"
                         }
                       }
-                    ],
-                    "gap": 4
+                    ]
                   }
                 }
-              ],
-              "gap": 6
+              ]
             },
             {
               "type": "row",
@@ -135,14 +136,11 @@
                 },
                 {
                   "type": "column",
-                  "class": "guide-now",
-                  "width": 2,
-                  "height": "100vh"
+                  "class": "guide-now"
                 }
               ]
             }
-          ],
-          "padding": "0 0 0 48"
+          ]
         }
       ]
     },

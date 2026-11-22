@@ -660,6 +660,7 @@
       },
       {
         "type": "column",
+        "tag": "section",
         "children": [
           {
             "type": "row",
@@ -675,16 +676,14 @@
           },
           {
             "type": "text",
+            "tag": "small",
             "text": "{cell.show}",
-            "style": "meta muted",
             "props": {
               "lines": 1
             },
             "when": "cell.count > 0"
           }
-        ],
-        "gap": 4,
-        "padding": 8
+        ]
       }
     ]
   },

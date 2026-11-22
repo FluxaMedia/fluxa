@@ -1,35 +1,36 @@
 {
   "type": "column",
-  "class": "screen",
-  "gap": 14,
+  "class": "screen library",
   "children": [
     {
       "type": "spacer",
-      "height": 72
+      "class": "lead"
     },
     {
       "type": "page",
       "children": [
         {
           "type": "row",
+          "tag": "header",
+          "class": "fill-space",
           "children": [
             {
               "type": "text",
-              "i18n": "nav.library",
-              "style": "title"
+              "tag": "h1",
+              "i18n": "nav.library"
             },
             {
               "type": "spacer",
-              "grow": 1
+              "class": "grow"
             },
             {
               "type": "text",
-              "text": "{calendar.title}",
-              "style": "subtitle"
+              "tag": "h4",
+              "text": "{calendar.title}"
             },
             {
               "type": "row",
-              "class": "centered icon-btn",
+              "class": "icon-btn",
               "children": [
                 {
                   "type": "icon",
@@ -47,7 +48,7 @@
             },
             {
               "type": "row",
-              "class": "centered icon-btn",
+              "class": "icon-btn",
               "children": [
                 {
                   "type": "icon",
@@ -63,21 +64,19 @@
                 }
               }
             }
-          ],
-          "class": "fill-space",
-          "gap": 12
+          ]
         },
         {
           "include": "section_tabs"
         },
         {
           "type": "text",
+          "tag": "small",
           "i18n": "calendar.empty",
-          "style": "meta muted",
           "when": "!calendar.valid"
         }
       ],
-      "class": "page-dense"
+      "class": "page-dense listing"
     },
     {
       "type": "grid",
@@ -91,8 +90,8 @@
           "as": "day",
           "template": {
             "type": "text",
-            "text": "{day.label}",
-            "style": "meta muted"
+            "tag": "small",
+            "text": "{day.label}"
           }
         }
       ],
@@ -121,8 +120,8 @@
       "children": [
         {
           "type": "text",
-          "i18n": "calendar.releases",
-          "style": "subtitle"
+          "tag": "h4",
+          "i18n": "calendar.releases"
         }
       ],
       "class": "page-snug"
