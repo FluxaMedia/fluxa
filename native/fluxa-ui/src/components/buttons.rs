@@ -36,10 +36,10 @@ pub(crate) fn placed_front<R>(
 impl ButtonKind {
     fn rule(self) -> &'static str {
         match self {
-            ButtonKind::Primary => "button.primary",
-            ButtonKind::Secondary => "button.secondary",
-            ButtonKind::Selected => "button.selected",
-            ButtonKind::Danger => "button.danger",
+            ButtonKind::Primary => "btn-primary",
+            ButtonKind::Secondary => "btn-secondary",
+            ButtonKind::Selected => "btn-selected",
+            ButtonKind::Danger => "btn-danger",
         }
     }
 }

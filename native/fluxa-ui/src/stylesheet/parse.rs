@@ -73,8 +73,15 @@ impl Selector {
             ),
             None => (last, Vec::new()),
         };
+        let (name, modifiers) = match name {
+            "chip.selected" => ("chip", vec!["selected".to_owned()]),
+            other => (super::canonical(other), modifiers),
+        };
         Ok(Self {
-            ancestors: parts.into_iter().map(ToOwned::to_owned).collect(),
+            ancestors: parts
+                .into_iter()
+                .map(|part| super::canonical(part).to_owned())
+                .collect(),
             name: name.to_owned(),
             modifiers,
         })

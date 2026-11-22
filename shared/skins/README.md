@@ -234,7 +234,7 @@ The stylesheet named by `theme` in the manifest is appended to the default one, 
 }
 
 .btn-primary:hover {
-  background: ink/225;
+  background: color-mix(in srgb, var(--color-text-primary) 88.235%, transparent);
 }
 
 .card.selected .card-title {
@@ -246,11 +246,13 @@ States: `:hover`, `:pressed`, `:focused` (or `:focus`), `:selected`, `:disabled`
 
 Properties in use: `background`, `color`, `font-size`, `font-weight`, `border`, `border-width`, `border-radius`, `padding`, `width`, `height`, `max-width`, `aspect-ratio`, `opacity`, `scale`, `box-shadow`, `backdrop-filter`, `transition`, `animation`, with `@keyframes` for animations.
 
-Colors: `#rrggbb`, `rgba(r, g, b, a)`, or a theme name such as `background`, `theme.surface`, `accent`, `ink/225`. A theme name can be scaled with `*`: `background*0.5` is the background at half alpha.
+Colors: `#rrggbb`, `rgba(r, g, b, a)`, `var(--color-accent)` (any color token, including the `--ink-*` text alphas) and `color-mix(in srgb, var(--color-background) 50%, transparent)` for a token at partial alpha. The default skin writes only these forms. The older spellings still parse for existing skins: theme names (`background`, `theme.surface`, `accent`, `text.primary`), `ink/225` and `ink/soft`, `background*0.5`, and a bare `pill` radius.
 
-Gradients: `linear-gradient(to bottom, background*0 0%, background*0.9 100%)`, with 2 to 16 color stops.
+Gradients: `linear-gradient(to bottom, color-mix(in srgb, var(--color-background) 0%, transparent) 0%, var(--color-background) 100%)`, with 2 to 16 color stops.
 
-Media rules switch values by size: `@media (size: compact)`, `(min-width: 900px)`, `(max-height: 479px)`, the TV flag `(tv)` and the last input used `(input: touch | pointer | focus)`. Separate queries with commas for "or": `@media (size: compact), (max-height: 479px) { ... }`.
+Media rules switch values by size: `@media (size: compact)`, `(min-width: 900px)`, `(max-height: 479px)`, the platform `(platform: tv | mobile | desktop)` and the last input used `(input: touch | pointer | focus)`. Separate queries with commas for "or": `@media (size: compact), (max-height: 479px) { ... }`. The shorthands `@mobile`, `@tv`, `@medium`, `@expanded`, `(tv)` and `(window: ...)` keep working but the default skin does not use them (`npm run check:structure` enforces that).
+
+Component classes: buttons are `.btn-primary`, `.btn-secondary`, `.btn-selected` and `.btn-danger` for layout nodes and for the buttons the engine draws itself; `.chip` (with `.chip.selected`) likewise. A button sets `color` and `font-size` once and its `.btn-label` inherits them (keep an empty `.btn-label {}` rule: a class needs some rule to take part in inheritance). `action-primary`, `action-secondary`, `button.primary`, `button.secondary`, `button.selected`, `button.danger` and `chip.selected` are accepted as aliases of the names above, so older skins keep working.
 
 Colors, spacing, radii, icon sizes and motion durations are `:root` custom properties (`--color-surface`, `--color-accent`, `--space-16`, `--radius-md`, and so on; the full list is in `shared/skins/default/style.css`). Your skin overrides them in its own `:root` block, and `@media (theme: id)` switches rules for one built-in theme. Layout and component metrics (row heights, hero ratios, poster size clamps, player sizes and similar) are not in the stylesheet: the engine carries typed defaults for them in `native/fluxa-ui/src/stylesheet/defaults.rs`. A skin that wants a different value declares the same `--name` in `:root` (or inside `@media (size: compact|medium|tv)`), and that wins over the engine default. A user theme file can override numeric values under `vars`, colors under `colors` and durations under `motion`.
 

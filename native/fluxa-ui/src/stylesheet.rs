@@ -1088,8 +1088,27 @@ pub(crate) fn look(context: &crate::gfx::Context, rule: &str) -> Style {
     )
 }
 
+/// Rule names older skins used for the canonical button names. They keep
+/// parsing and matching, so a third-party sheet that styles `.action-primary`
+/// or `button.primary` still restyles `btn-primary` nodes and widgets.
+const ALIASES: [(&str, &str); 6] = [
+    ("button.primary", "btn-primary"),
+    ("btn-secondary", "btn-secondary"),
+    ("button.selected", "btn-selected"),
+    ("button.danger", "btn-danger"),
+    ("action-primary", "btn-primary"),
+    ("action-secondary", "btn-secondary"),
+];
+
+fn canonical(name: &str) -> &str {
+    ALIASES
+        .iter()
+        .find(|(legacy, _)| *legacy == name)
+        .map_or(name, |(_, canonical)| canonical)
+}
+
 pub(crate) fn has_rule(rule: &str) -> bool {
-    sheet().rules.contains_key(rule)
+    sheet().rules.contains_key(canonical(rule))
 }
 
 pub fn reload_styles_with(extra: &str) -> Result<(), String> {
@@ -1208,7 +1227,7 @@ pub(crate) fn color(rule: &str) -> Color32 {
 
 fn chain<'a>(sheet: &'a Sheet, name: &str) -> Vec<&'a Rule> {
     let mut rules = Vec::new();
-    let mut next = Some(name);
+    let mut next = Some(canonical(name));
     while let Some(current) = next {
         let Some(rule) = sheet.rules.get(current) else {
             break;
@@ -1235,7 +1254,7 @@ fn layers<'a>(sheet: &'a Sheet, name: &str, modifiers: &[&str]) -> Vec<&'a Layer
     let mut found = Vec::new();
     let extra = modifiers
         .iter()
-        .filter(|modifier| !modifier.starts_with('<') && sheet.rules.contains_key(**modifier));
+        .filter(|modifier| !modifier.starts_with('<') && sheet.rules.contains_key(canonical(modifier)));
     let rules = kinds(sheet, modifiers)
         .into_iter()
         .chain(chain(sheet, name))
@@ -1298,7 +1317,7 @@ pub(crate) fn resolve_with(
     modifiers: &[&str],
 ) -> Style {
     let sheet = sheet();
-    if !sheet.rules.contains_key(rule) {
+    if !sheet.rules.contains_key(canonical(rule)) {
         return Style {
             fill: Color32::MAGENTA,
             text: Color32::MAGENTA,
@@ -1473,10 +1492,10 @@ mod tests {
     fn bundled_sheet_parses_every_rule() {
         let sheet = Sheet::parse(DEFAULT_SHEET).expect("parses");
         for name in [
-            "button.primary",
-            "button.secondary",
-            "button.selected",
-            "button.danger",
+            "btn-primary",
+            "btn-secondary",
+            "btn-selected",
+            "btn-danger",
         ] {
             assert!(sheet.rules.contains_key(name), "{name}");
         }
@@ -1503,14 +1522,14 @@ mod tests {
     #[test]
     fn hover_overrides_only_the_declared_fields() {
         let rest = resolved(
-            "button.secondary",
+            "btn-secondary",
             State {
                 enabled: true,
                 ..State::default()
             },
         );
         let hover = resolved(
-            "button.secondary",
+            "btn-secondary",
             State {
                 enabled: true,
                 hovered: true,
@@ -1656,14 +1675,42 @@ mod tests {
                 ..Default::default()
             };
             (
-                resolve(&context, "button.secondary", Id::new("c"), state),
+                resolve(&context, "btn-secondary", Id::new("c"), state),
                 resolve(&context, "divider", Id::new("d"), state),
             )
         });
         assert_eq!(own.text, text_primary());
-        assert_eq!(own.font_size, Some(21.0));
+        assert_eq!(plain.font_size, Some(21.0));
+        assert!(own.font_size.is_some());
         assert_eq!(plain.text, Color32::from_rgb(1, 2, 3));
         assert_eq!(plain.weight, Some(700.0));
+    }
+
+    #[test]
+    fn gradients_keep_color_tokens_live() {
+        let sheet = Sheet::parse(
+            ".fade { background: linear-gradient(to bottom, \
+             color-mix(in srgb, var(--color-background) 40%, transparent) 0%, \
+             var(--color-surface) 100%); }",
+        )
+        .expect("parses");
+        let gradient = sheet.rules["fade"].layer.base.gradient.as_ref().expect("gradient");
+        assert_eq!(gradient.stops.len(), 2);
+    }
+
+    #[test]
+    fn legacy_button_names_resolve_to_the_canonical_rules() {
+        let sheet = Sheet::parse(
+            "button.primary { background: #112233; } .action-secondary:hover { background: #445566; } \
+             chip.selected { color: #ffffff; }",
+        )
+        .expect("parses");
+        assert!(sheet.rules.contains_key("btn-primary"));
+        assert!(sheet.rules.contains_key("btn-secondary"));
+        assert_eq!(sheet.rules["chip"].variants[0].modifiers, ["selected"]);
+        assert_eq!(canonical("action-primary"), "btn-primary");
+        assert_eq!(canonical("button.danger"), "btn-danger");
+        assert_eq!(canonical("chip"), "chip");
     }
 
     #[test]

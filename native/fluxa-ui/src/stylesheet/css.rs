@@ -332,7 +332,9 @@ fn properties(
             name.as_str(),
             "background" | "background-color" | "color" | "border-color"
         );
-        let value = if colour && raw.contains("var(--") {
+        let gradient = matches!(name.as_str(), "background" | "background-image")
+            && raw.trim_start().starts_with("linear-gradient(");
+        let value = if (colour || gradient) && raw.contains("var(--") {
             raw.trim().to_owned()
         } else {
             calc(&substitute(raw, vars)?)?

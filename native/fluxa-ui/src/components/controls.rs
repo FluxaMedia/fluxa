@@ -13,9 +13,9 @@ pub(crate) fn chip(ui: &mut Ui, label: &str, selected: bool) -> Response {
         );
     let (rect, response) = ui.allocate_exact_size(tree.outer_size(), Sense::click());
     let slot = tree.solve(rect).find(0).unwrap_or(rect);
-    let style = crate::stylesheet::resolve(
+    let style = crate::stylesheet::resolve_with(
         ui.ctx(),
-        if selected { "chip.selected" } else { "chip" },
+        "chip",
         response.id,
         crate::stylesheet::State {
             selected: false,
@@ -24,6 +24,7 @@ pub(crate) fn chip(ui: &mut Ui, label: &str, selected: bool) -> Response {
             focused: response.has_focus(),
             enabled: true,
         },
+        if selected { &["selected"] } else { &[] },
     );
     crate::motion::press_scale(ui.painter(), rect, || {
         let painter = ui.painter();

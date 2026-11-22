@@ -23,25 +23,11 @@
       "since": 2
     },
     {
-      "name": "action-primary",
-      "element": "row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
       "name": "action-row",
       "element": "row",
       "meaning": "",
       "stability": "internal",
       "since": 3
-    },
-    {
-      "name": "action-secondary",
-      "element": "row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
     },
     {
       "name": "action-wide",
@@ -3238,6 +3224,18 @@
       "since": 1,
       "removedIn": 3,
       "replacement": "side-item with the selected state"
+    },
+    {
+      "name": "action-primary",
+      "since": 2,
+      "removedIn": 3,
+      "replacement": "btn-primary"
+    },
+    {
+      "name": "action-secondary",
+      "since": 2,
+      "removedIn": 3,
+      "replacement": "btn-secondary"
     }
   ]
 }

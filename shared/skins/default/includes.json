@@ -2240,7 +2240,7 @@
                     },
                     {
                       "type": "row",
-                      "class": "action-primary",
+                      "class": "btn-primary",
                       "action": {
                         "name": "skins",
                         "args": {
@@ -2259,7 +2259,7 @@
                     },
                     {
                       "type": "row",
-                      "class": "action-secondary",
+                      "class": "btn-secondary",
                       "action": {
                         "name": "skins",
                         "args": {
@@ -2297,7 +2297,7 @@
               },
               {
                 "type": "row",
-                "class": "action-primary",
+                "class": "btn-primary",
                 "action": {
                   "name": "skins",
                   "args": {
@@ -2496,7 +2496,7 @@
               },
               {
                 "type": "row",
-                "class": "action-secondary",
+                "class": "btn-secondary",
                 "action": {
                   "name": "skins",
                   "args": {
@@ -2562,7 +2562,7 @@
           },
           {
             "type": "row",
-            "class": "action-secondary",
+            "class": "btn-secondary",
             "action": {
               "name": "save_field",
               "args": {
@@ -3208,7 +3208,7 @@
           },
           {
             "type": "row",
-            "class": "action-primary",
+            "class": "btn-primary",
             "action": {
               "name": "node",
               "args": {
@@ -3226,7 +3226,7 @@
           },
           {
             "type": "row",
-            "class": "action-secondary",
+            "class": "btn-secondary",
             "action": {
               "name": "node",
               "args": {
@@ -3270,7 +3270,7 @@
           },
           {
             "type": "row",
-            "class": "action-primary",
+            "class": "btn-primary",
             "action": {
               "name": "ext_tracker",
               "args": {
@@ -3289,7 +3289,7 @@
           },
           {
             "type": "row",
-            "class": "action-secondary",
+            "class": "btn-secondary",
             "action": {
               "name": "ext_tracker",
               "args": {
@@ -3371,7 +3371,7 @@
           },
           {
             "type": "row",
-            "class": "action-primary",
+            "class": "btn-primary",
             "action": {
               "name": "node",
               "args": {
@@ -3415,7 +3415,7 @@
               },
               {
                 "type": "row",
-                "class": "action-primary",
+                "class": "btn-primary",
                 "action": {
                   "name": "node",
                   "args": {
@@ -3759,7 +3759,7 @@
                 "as": "pill",
                 "template": {
                   "type": "row",
-                  "class": "action-secondary",
+                  "class": "btn-secondary",
                   "action": {
                     "name": "node",
                     "args": {
@@ -3863,7 +3863,7 @@
       },
       {
         "type": "row",
-        "class": "action-primary",
+        "class": "btn-primary",
         "action": {
           "name": "node",
           "args": {
@@ -3926,7 +3926,7 @@
           },
           {
             "type": "row",
-            "class": "action-secondary",
+            "class": "btn-secondary",
             "action": {
               "name": "node",
               "args": {

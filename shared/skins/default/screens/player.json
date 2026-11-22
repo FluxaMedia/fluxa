@@ -1544,7 +1544,7 @@
                 },
                 {
                   "type": "row",
-                  "class": "action-secondary",
+                  "class": "btn-secondary",
                   "when": "player.panel.sync.reset",
                   "action": {
                     "name": "player_row",
@@ -1887,7 +1887,7 @@
         {
           "type": "row",
           "when": "player.skip",
-          "class": "action-secondary player-skip",
+          "class": "btn-secondary player-skip",
           "action": {
             "name": "player",
             "args": {
@@ -1929,7 +1929,7 @@
               "children": [
                 {
                   "type": "row",
-                  "class": "action-primary player-next-play",
+                  "class": "btn-primary player-next-play",
                   "action": {
                     "name": "player",
                     "args": {
@@ -1946,7 +1946,7 @@
                 },
                 {
                   "type": "row",
-                  "class": "action-secondary player-next-dismiss",
+                  "class": "btn-secondary player-next-dismiss",
                   "action": {
                     "name": "player",
                     "args": {
