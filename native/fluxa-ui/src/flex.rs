@@ -149,6 +149,20 @@ enum Kind {
     Stack(Align2),
 }
 
+#[derive(Clone, Copy, Default, Debug)]
+struct Memo {
+    border: Option<Vec2>,
+    min: Option<Vec2>,
+}
+
+thread_local! {
+    static SOLVING: std::cell::Cell<u32> = const { std::cell::Cell::new(0) };
+}
+
+fn memoising() -> bool {
+    SOLVING.with(|depth| depth.get() > 0)
+}
+
 #[derive(Clone, Debug)]
 pub(crate) struct Node {
     id: Option<usize>,
@@ -176,6 +190,7 @@ pub(crate) struct Node {
     wrap: bool,
     pan: Option<u64>,
     children: Vec<Node>,
+    memo: std::cell::Cell<Memo>,
 }
 
 pub(crate) fn row(children: impl IntoIterator<Item = Node>) -> Node {
@@ -397,6 +412,14 @@ impl Node {
             wrap: false,
             pan: None,
             children: Vec::new(),
+            memo: std::cell::Cell::default(),
+        }
+    }
+
+    fn reset_memo(&self) {
+        self.memo.set(Memo::default());
+        for child in &self.children {
+            child.reset_memo();
         }
     }
 
@@ -624,6 +647,20 @@ impl Node {
     }
 
     fn min_outer(&self) -> Vec2 {
+        if !memoising() {
+            return self.compute_min_outer();
+        }
+        let mut memo = self.memo.get();
+        if let Some(size) = memo.min {
+            return size;
+        }
+        let size = self.compute_min_outer();
+        memo.min = Some(size);
+        self.memo.set(memo);
+        size
+    }
+
+    fn compute_min_outer(&self) -> Vec2 {
         let content = self.min_content();
         let padded = Vec2::new(
             content.x + self.padding.width(),
@@ -643,6 +680,20 @@ impl Node {
     }
 
     fn border_size(&self) -> Vec2 {
+        if !memoising() {
+            return self.compute_border_size();
+        }
+        let mut memo = self.memo.get();
+        if let Some(size) = memo.border {
+            return size;
+        }
+        let size = self.compute_border_size();
+        memo.border = Some(size);
+        self.memo.set(memo);
+        size
+    }
+
+    fn compute_border_size(&self) -> Vec2 {
         let content = self.content_size();
         let padded = Vec2::new(
             content.x + self.padding.width(),
@@ -705,7 +756,10 @@ impl Node {
     pub fn solve(&self, bounds: Rect) -> Placed {
         let timer = crate::stats::start();
         crate::stats::count(&crate::stats::SOLVES);
+        self.reset_memo();
+        SOLVING.with(|depth| depth.set(depth.get() + 1));
         let placed = self.place(bounds);
+        SOLVING.with(|depth| depth.set(depth.get() - 1));
         timer.add(&crate::stats::LAYOUT_NS);
         report(&placed);
         placed
@@ -804,9 +858,11 @@ impl Node {
         for child in &mut node.children {
             if let Some(share) = child.width_pct.take() {
                 child.width = Some((space.x * share - child.margin.width()).max(0.0));
+                child.memo.set(Memo::default());
             }
             if let Some(share) = child.height_pct.take() {
                 child.height = Some((space.y * share - child.margin.height()).max(0.0));
+                child.memo.set(Memo::default());
             }
         }
         node
@@ -1553,6 +1609,30 @@ mod tests {
             column(children)
         };
         node.gap(4.0).padding(Insets::all(2.0))
+    }
+
+    #[test]
+    fn nested_solve_measures_each_text_once() {
+        let calls = std::rc::Rc::new(std::cell::Cell::new(0));
+        let counter = calls.clone();
+        let probe = Node::new(Kind::Text(Measure(std::rc::Rc::new(move |width| {
+            if width.is_none() {
+                counter.set(counter.get() + 1);
+            }
+            Vec2::new(40.0, 12.0)
+        }))));
+        let mut tree = probe;
+        for depth in 0..8 {
+            tree = if depth % 2 == 0 {
+                row([tree, boxed(10.0, 10.0)])
+            } else {
+                column([tree, boxed(10.0, 10.0)])
+            }
+            .gap(4.0)
+            .padding(Insets::all(2.0));
+        }
+        tree.solve(bounds(1280.0, 800.0));
+        assert_eq!(calls.get(), 1);
     }
 
     fn count(node: &Node) -> usize {
