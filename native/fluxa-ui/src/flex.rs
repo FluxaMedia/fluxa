@@ -155,6 +155,8 @@ pub(crate) struct Node {
     kind: Kind,
     width: Option<f32>,
     height: Option<f32>,
+    width_pct: Option<f32>,
+    height_pct: Option<f32>,
     min_w: Option<f32>,
     min_h: Option<f32>,
     max_w: Option<f32>,
@@ -373,6 +375,8 @@ impl Node {
             kind,
             width: None,
             height: None,
+            width_pct: None,
+            height_pct: None,
             min_w: None,
             min_h: None,
             max_w: None,
@@ -417,6 +421,16 @@ impl Node {
 
     pub fn height(mut self, height: f32) -> Self {
         self.height = Some(height);
+        self
+    }
+
+    pub fn width_pct(mut self, share: f32) -> Self {
+        self.width_pct = Some(share.max(0.0));
+        self
+    }
+
+    pub fn height_pct(mut self, share: f32) -> Self {
+        self.height_pct = Some(share.max(0.0));
         self
     }
 
@@ -688,10 +702,17 @@ impl Node {
     fn place(&self, bounds: Rect) -> Placed {
         let bounds = self.margin.shrink(bounds);
         let inner = self.padding.shrink(bounds);
-        let children = match &self.kind {
+        let resolved;
+        let node = if self.children.iter().any(Node::relative) {
+            resolved = self.with_percent_sizes(inner.size());
+            &resolved
+        } else {
+            self
+        };
+        let children = match &node.kind {
             Kind::Leaf(_) | Kind::Text(_) => Vec::new(),
-            Kind::Flex(axis) => self.solve_flex(*axis, inner),
-            Kind::Stack(align) => self
+            Kind::Flex(axis) => node.solve_flex(*axis, inner),
+            Kind::Stack(align) => node
                 .children
                 .iter()
                 .map(|child| {
@@ -725,6 +746,23 @@ impl Node {
             layered: matches!(self.kind, Kind::Stack(_)),
             pan,
         }
+    }
+
+    fn relative(&self) -> bool {
+        self.width_pct.is_some() || self.height_pct.is_some()
+    }
+
+    fn with_percent_sizes(&self, space: Vec2) -> Node {
+        let mut node = self.clone();
+        for child in &mut node.children {
+            if let Some(share) = child.width_pct.take() {
+                child.width = Some((space.x * share - child.margin.width()).max(0.0));
+            }
+            if let Some(share) = child.height_pct.take() {
+                child.height = Some((space.y * share - child.margin.height()).max(0.0));
+            }
+        }
+        node
     }
 
     fn solve_flex(&self, axis: Axis, inner: Rect) -> Vec<Placed> {
@@ -1269,5 +1307,74 @@ mod tests {
             bounds(300.0, 400.0),
         );
         assert_eq!(out[0].size(), Vec2::new(100.0, 50.0));
+    }
+
+    #[test]
+    fn percent_width_fills_the_content_box_of_a_stack() {
+        let placed = stack(Align2::LEFT_TOP, [boxed(10.0, 10.0).width_pct(1.0).id(0)])
+            .padding(Insets::all(10.0))
+            .solve(bounds(200.0, 100.0));
+        let rect = placed.find(0).unwrap();
+        assert_eq!(rect.min, Pos2::new(10.0, 10.0));
+        assert_eq!(rect.width(), 180.0);
+        assert_eq!(rect.height(), 10.0);
+    }
+
+    #[test]
+    fn percent_height_fills_the_content_box_of_a_stack() {
+        let placed = stack(Align2::LEFT_TOP, [boxed(10.0, 10.0).height_pct(1.0).id(0)])
+            .padding(Insets::all(10.0))
+            .solve(bounds(200.0, 100.0));
+        assert_eq!(placed.find(0).unwrap().height(), 80.0);
+    }
+
+    #[test]
+    fn percent_width_in_a_column_beats_start_alignment() {
+        let out = rects(
+            column([boxed(10.0, 10.0).width_pct(0.5)]).align(Align::Start),
+            bounds(200.0, 100.0),
+        );
+        assert_eq!(out[0].width(), 100.0);
+    }
+
+    #[test]
+    fn percent_height_in_a_column_is_a_share_of_the_main_axis() {
+        let out = rects(
+            column([boxed(10.0, 10.0).height_pct(0.25), boxed(10.0, 10.0)]).gap(0.0),
+            bounds(100.0, 200.0),
+        );
+        assert_eq!(out[0].height(), 50.0);
+        assert_eq!(out[1].top(), 50.0);
+    }
+
+    #[test]
+    fn percent_width_in_a_row_is_a_share_of_the_main_axis() {
+        let out = rects(
+            row([boxed(10.0, 10.0).width_pct(1.0)]).padding(Insets::xy(20.0, 0.0)),
+            bounds(200.0, 10.0),
+        );
+        assert_eq!(out[0].left(), 20.0);
+        assert_eq!(out[0].width(), 160.0);
+    }
+
+    #[test]
+    fn percent_height_in_a_row_is_a_share_of_the_cross_axis() {
+        let out = rects(
+            row([boxed(10.0, 10.0).height_pct(1.0)]).align(Align::Start),
+            bounds(100.0, 60.0),
+        );
+        assert_eq!(out[0].height(), 60.0);
+    }
+
+    #[test]
+    fn percent_size_leaves_room_for_the_childs_margin() {
+        let out = rects(
+            column([boxed(10.0, 10.0)
+                .width_pct(1.0)
+                .margin(Insets::xy(5.0, 0.0))]),
+            bounds(100.0, 50.0),
+        );
+        assert_eq!(out[0].left(), 5.0);
+        assert_eq!(out[0].width(), 90.0);
     }
 }
