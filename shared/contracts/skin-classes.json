@@ -30,6 +30,13 @@
       "since": 2
     },
     {
+      "name": "action-row",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
       "name": "action-secondary",
       "element": "row",
       "meaning": "",
@@ -37,11 +44,11 @@
       "since": 2
     },
     {
-      "name": "active",
-      "element": "",
+      "name": "action-wide",
+      "element": "row",
       "meaning": "",
       "stability": "internal",
-      "since": 2
+      "since": 3
     },
     {
       "name": "addon-art",
@@ -121,6 +128,13 @@
       "since": 2
     },
     {
+      "name": "bottom-inset",
+      "element": "spacer",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
       "name": "btn-danger",
       "element": "",
       "meaning": "Destructive button variant, combined with a button class",
@@ -163,11 +177,39 @@
       "since": 2
     },
     {
+      "name": "button-fill",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
+      "name": "button-row",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
+      "name": "button-tall",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
       "name": "card-badge",
       "element": "row",
       "meaning": "Badge on a media card (quality, status)",
       "stability": "stable",
       "since": 1
+    },
+    {
+      "name": "card-badges",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
     },
     {
       "name": "card-head",
@@ -184,6 +226,13 @@
       "since": 1
     },
     {
+      "name": "card-strip",
+      "element": "scroll",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
       "name": "card-subtitle",
       "element": "text",
       "meaning": "Second line under a media card title",
@@ -196,6 +245,13 @@
       "meaning": "Title text of a media card",
       "stability": "stable",
       "since": 1
+    },
+    {
+      "name": "cast-card",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
     },
     {
       "name": "center",
@@ -240,6 +296,13 @@
       "since": 1
     },
     {
+      "name": "chip-filter",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
       "name": "chip-label",
       "element": "text",
       "meaning": "Text inside a chip",
@@ -252,6 +315,13 @@
       "meaning": "",
       "stability": "internal",
       "since": 2
+    },
+    {
+      "name": "chip-pad",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
     },
     {
       "name": "choice-chip",
@@ -296,6 +366,13 @@
       "since": 1
     },
     {
+      "name": "continue-info",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
       "name": "continue-scrim",
       "element": "column",
       "meaning": "Gradient over continue-watching artwork",
@@ -303,11 +380,25 @@
       "since": 1
     },
     {
+      "name": "control-row",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
       "name": "corner",
       "element": "column",
       "meaning": "",
       "stability": "internal",
       "since": 2
+    },
+    {
+      "name": "corner-badge",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
     },
     {
       "name": "current",
@@ -338,6 +429,34 @@
       "since": 1
     },
     {
+      "name": "day-body",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
+      "name": "day-cell",
+      "element": "stack",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
+      "name": "day-grid",
+      "element": "grid",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
+      "name": "day-number",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
       "name": "description",
       "element": "",
       "meaning": "",
@@ -352,6 +471,55 @@
       "since": 2
     },
     {
+      "name": "detail-hero",
+      "element": "stack",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
+      "name": "detail-line",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
+      "name": "detail-line-label",
+      "element": "text",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
+      "name": "detail-top-compact",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
+      "name": "detail-top-wide",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
+      "name": "dialog-card",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
+      "name": "dialog-field",
+      "element": "input",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
       "name": "divider",
       "element": "row",
       "meaning": "Thin separator line",
@@ -359,11 +527,39 @@
       "since": 1
     },
     {
+      "name": "dot",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
+      "name": "dot-row",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
       "name": "download-row",
       "element": "row",
       "meaning": "One row in the downloads list",
       "stability": "internal",
       "since": 1
+    },
+    {
+      "name": "download-text",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
+      "name": "empty-action",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
     },
     {
       "name": "empty-hint",
@@ -380,6 +576,20 @@
       "since": 1
     },
     {
+      "name": "empty-page",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
+      "name": "empty-state",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
       "name": "empty-title",
       "element": "text",
       "meaning": "Title of an empty state",
@@ -392,6 +602,13 @@
       "meaning": "One episode entry in a season list",
       "stability": "stable",
       "since": 1
+    },
+    {
+      "name": "episode-body",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
     },
     {
       "name": "episode-check",
@@ -413,6 +630,34 @@
       "meaning": "Text of an episode tag",
       "stability": "internal",
       "since": 1
+    },
+    {
+      "name": "episode-corner",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
+      "name": "episode-footer",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
+      "name": "episode-frame",
+      "element": "stack",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
+      "name": "episode-info",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
     },
     {
       "name": "episode-overview",
@@ -500,7 +745,7 @@
     },
     {
       "name": "fill-space",
-      "element": "column image input row stack",
+      "element": "column image input row",
       "meaning": "",
       "stability": "internal",
       "since": 2
@@ -513,6 +758,27 @@
       "since": 1
     },
     {
+      "name": "folder-logo",
+      "element": "image",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
+      "name": "folder-shelves",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
+      "name": "folder-tabs",
+      "element": "scroll",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
       "name": "form-card",
       "element": "column",
       "meaning": "Card that groups form fields",
@@ -520,120 +786,22 @@
       "since": 1
     },
     {
-      "name": "framed",
-      "element": "",
+      "name": "fullscreen",
+      "element": "scroll stack",
       "meaning": "",
       "stability": "internal",
-      "since": 2
+      "since": 3
     },
     {
-      "name": "gap-0",
-      "element": "column row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "gap-10",
-      "element": "column row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "gap-12",
-      "element": "column page row scroll",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "gap-14",
-      "element": "column page row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "gap-16",
-      "element": "column row scroll",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "gap-18",
+      "name": "fullscreen-center",
       "element": "column",
       "meaning": "",
       "stability": "internal",
-      "since": 2
+      "since": 3
     },
     {
       "name": "gap-2",
       "element": "column",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "gap-20",
-      "element": "column row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "gap-22",
-      "element": "column",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "gap-24",
-      "element": "page row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "gap-28",
-      "element": "column",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "gap-3",
-      "element": "column",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "gap-4",
-      "element": "column row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "gap-48",
-      "element": "row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "gap-6",
-      "element": "column row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "gap-8",
-      "element": "column grid row scroll",
       "meaning": "",
       "stability": "internal",
       "since": 2
@@ -644,6 +812,13 @@
       "meaning": "Filled part of a gauge",
       "stability": "internal",
       "since": 1
+    },
+    {
+      "name": "gauge-lane",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
     },
     {
       "name": "gauge-track",
@@ -668,10 +843,17 @@
     },
     {
       "name": "grow",
-      "element": "column input row scroll spacer text",
+      "element": "input text",
       "meaning": "",
       "stability": "internal",
       "since": 2
+    },
+    {
+      "name": "guide-body",
+      "element": "stack",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
     },
     {
       "name": "guide-cell",
@@ -688,11 +870,25 @@
       "since": 1
     },
     {
+      "name": "guide-cells",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
       "name": "guide-channel",
       "element": "text",
       "meaning": "Channel name in the live TV guide",
       "stability": "internal",
       "since": 1
+    },
+    {
+      "name": "guide-logo",
+      "element": "image",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
     },
     {
       "name": "guide-now",
@@ -702,211 +898,71 @@
       "since": 1
     },
     {
+      "name": "guide-row",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
+      "name": "guide-rows",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
       "name": "h-10",
-      "element": "row spacer",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "h-100vh",
-      "element": "column row scroll stack",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "h-112",
       "element": "spacer",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "h-155",
-      "element": "image stack",
       "meaning": "",
       "stability": "internal",
       "since": 2
     },
     {
       "name": "h-16",
-      "element": "column spacer",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "h-166",
-      "element": "image",
+      "element": "spacer",
       "meaning": "",
       "stability": "internal",
       "since": 2
     },
     {
       "name": "h-20",
-      "element": "column spacer",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "h-210",
-      "element": "image",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "h-22",
-      "element": "column",
+      "element": "spacer",
       "meaning": "",
       "stability": "internal",
       "since": 2
     },
     {
       "name": "h-24",
-      "element": "row spacer",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "h-240",
-      "element": "stack",
+      "element": "spacer",
       "meaning": "",
       "stability": "internal",
       "since": 2
     },
     {
       "name": "h-28",
-      "element": "row spacer",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "h-3",
-      "element": "column",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "h-300",
-      "element": "stack",
+      "element": "spacer",
       "meaning": "",
       "stability": "internal",
       "since": 2
     },
     {
       "name": "h-32",
-      "element": "column spacer",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "h-34",
-      "element": "row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "h-36",
-      "element": "row",
+      "element": "spacer",
       "meaning": "",
       "stability": "internal",
       "since": 2
     },
     {
       "name": "h-4",
-      "element": "spacer stack",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "h-40",
-      "element": "column image row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "h-42vh",
-      "element": "scroll",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "h-44",
-      "element": "row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "h-48",
-      "element": "image spacer",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "h-520",
-      "element": "input",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "h-54",
-      "element": "image",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "h-55vh",
-      "element": "scroll",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "h-56",
-      "element": "image",
+      "element": "spacer",
       "meaning": "",
       "stability": "internal",
       "since": 2
     },
     {
       "name": "h-64",
-      "element": "column image row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "h-68vh",
-      "element": "stack",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "h-70vh",
       "element": "column",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "h-72",
-      "element": "spacer",
       "meaning": "",
       "stability": "internal",
       "since": 2
@@ -914,41 +970,6 @@
     {
       "name": "h-8",
       "element": "spacer",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "h-84",
-      "element": "image",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "h-88",
-      "element": "stack",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "h-88vh",
-      "element": "column",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "h-90",
-      "element": "image",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "h-96",
-      "element": "image spacer",
       "meaning": "",
       "stability": "internal",
       "since": 2
@@ -973,6 +994,13 @@
       "meaning": "Meta line (year, rating, genres) inside the hero",
       "stability": "stable",
       "since": 1
+    },
+    {
+      "name": "hero-play",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
     },
     {
       "name": "hero-skeleton",
@@ -1038,76 +1066,6 @@
       "since": 2
     },
     {
-      "name": "interactive",
-      "element": "",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "items-center",
-      "element": "column row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "items-end",
-      "element": "column row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "items-start",
-      "element": "column row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "items-stretch",
-      "element": "column row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "justify-center",
-      "element": "column row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "justify-end",
-      "element": "column row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "justify-flex-end",
-      "element": "column",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "justify-space-between",
-      "element": "row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "justify-start",
-      "element": "column",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
       "name": "keycap",
       "element": "row",
       "meaning": "Keyboard key hint",
@@ -1150,11 +1108,32 @@
       "since": 2
     },
     {
+      "name": "logo-slot",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
       "name": "mark",
       "element": "",
       "meaning": "",
       "stability": "internal",
       "since": 2
+    },
+    {
+      "name": "menu-item",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
+      "name": "menu-list",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
     },
     {
       "name": "menu-panel",
@@ -1185,11 +1164,25 @@
       "since": 1
     },
     {
+      "name": "mini-body",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
       "name": "mini-controls",
       "element": "row",
       "meaning": "Control row of the mini player",
       "stability": "stable",
       "since": 1
+    },
+    {
+      "name": "mini-progress",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
     },
     {
       "name": "mini-tile",
@@ -1199,6 +1192,62 @@
       "since": 1
     },
     {
+      "name": "modal-banner",
+      "element": "stack",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
+      "name": "modal-banner-info",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
+      "name": "modal-body",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
+      "name": "modal-cast",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
+      "name": "modal-cast-photo",
+      "element": "image",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
+      "name": "modal-content",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
+      "name": "modal-episode",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
+      "name": "modal-episodes",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
       "name": "modal-hero-scrim",
       "element": "column",
       "meaning": "Gradient over the detail modal hero",
@@ -1206,11 +1255,32 @@
       "since": 1
     },
     {
+      "name": "modal-play",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
       "name": "modal-scrim",
       "element": "column",
       "meaning": "Dimmed backdrop behind a modal",
       "stability": "stable",
       "since": 1
+    },
+    {
+      "name": "modal-scroll",
+      "element": "scroll",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
+      "name": "modal-thumb",
+      "element": "image",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
     },
     {
       "name": "nav-dock",
@@ -1304,174 +1374,6 @@
       "since": 2
     },
     {
-      "name": "pad-0",
-      "element": "column",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "pad-0-0-0-48",
-      "element": "stack",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "pad-0-0-16-0",
-      "element": "column",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "pad-0-0-64-64",
-      "element": "column",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "pad-0-10",
-      "element": "row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "pad-0-12-0-18",
-      "element": "row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "pad-0-14",
-      "element": "row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "pad-0-16",
-      "element": "row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "pad-0-16-24-16",
-      "element": "column",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "pad-0-18",
-      "element": "row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "pad-0-20",
-      "element": "column row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "pad-0-20-20-20",
-      "element": "column",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "pad-0-24",
-      "element": "column row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "pad-0-24-0-24",
-      "element": "column row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "pad-0-24-20-24",
-      "element": "column",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "pad-0-24-24",
-      "element": "column",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "pad-0-24-28-24",
-      "element": "column",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "pad-0-24-96-24",
-      "element": "column",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "pad-0-28",
-      "element": "row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "pad-0-4-4-4",
-      "element": "column",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "pad-0-40",
-      "element": "row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "pad-0-64-56-64",
-      "element": "column",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "pad-0-8-10-8",
-      "element": "row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "pad-0-8-8-8",
-      "element": "text",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
       "name": "pad-10",
       "element": "column",
       "meaning": "",
@@ -1479,326 +1381,18 @@
       "since": 2
     },
     {
-      "name": "pad-10-12-4-12",
-      "element": "text",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "pad-10-12-6-12",
-      "element": "row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "pad-10-14",
-      "element": "row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "pad-10-16-10-16",
-      "element": "row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "pad-10-18",
-      "element": "row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "pad-12",
-      "element": "column row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "pad-12-0-0-0",
-      "element": "row text",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "pad-12-12-0-0",
-      "element": "row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "pad-12-18",
-      "element": "column row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "pad-12-8-2-8",
-      "element": "text",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "pad-14-16",
-      "element": "row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "pad-14-18",
-      "element": "column row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "pad-16",
-      "element": "column row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "pad-16-0-24-0",
-      "element": "column",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "pad-16-16-104-16",
-      "element": "row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "pad-2-8",
-      "element": "row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "pad-20",
-      "element": "column",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "pad-20-0-0-0",
-      "element": "column",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "pad-20-24",
-      "element": "column",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "pad-24",
-      "element": "column",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "pad-24-24-0-24",
-      "element": "row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "pad-3-3-3-3",
-      "element": "row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "pad-3-8",
-      "element": "row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "pad-36-36-32",
-      "element": "column",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "pad-4",
-      "element": "row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "pad-4-10",
-      "element": "row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "pad-40-16-96-16",
-      "element": "column",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "pad-40-48",
-      "element": "row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "pad-48-0-0-0",
-      "element": "column",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "pad-48-16-96-16",
-      "element": "column",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "pad-6",
-      "element": "row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "pad-6-0",
-      "element": "row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "pad-6-10-6-10",
-      "element": "row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "pad-6-12",
-      "element": "row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "pad-6-8-6-8",
-      "element": "row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "pad-60-0-20-0",
-      "element": "column",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "pad-72-0-0-0",
-      "element": "column",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "pad-72-24",
-      "element": "column",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "pad-72-24-0-0",
-      "element": "row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "pad-8",
-      "element": "column row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "pad-8-0",
-      "element": "row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "pad-8-14",
-      "element": "row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "pad-8-16",
-      "element": "row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "pad-8-4",
-      "element": "row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "pad-84-24-0-24",
-      "element": "column",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
       "name": "page",
-      "element": "column",
+      "element": "column page",
       "meaning": "",
       "stability": "internal",
       "since": 2
+    },
+    {
+      "name": "page-dense",
+      "element": "page",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
     },
     {
       "name": "page-head",
@@ -1815,11 +1409,39 @@
       "since": 1
     },
     {
+      "name": "page-snug",
+      "element": "page",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
       "name": "page-title",
       "element": "text",
       "meaning": "Title of a page",
       "stability": "stable",
       "since": 1
+    },
+    {
+      "name": "panel-chip",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
+      "name": "panel-chips",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
+      "name": "panel-columns",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
     },
     {
       "name": "panel-detail",
@@ -1829,11 +1451,32 @@
       "since": 1
     },
     {
+      "name": "panel-head",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
       "name": "panel-heading",
       "element": "text",
       "meaning": "Heading of a panel",
       "stability": "internal",
       "since": 1
+    },
+    {
+      "name": "panel-heading-inset",
+      "element": "text",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
+      "name": "panel-heading-row",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
     },
     {
       "name": "panel-label",
@@ -1850,6 +1493,41 @@
       "since": 1
     },
     {
+      "name": "panel-line-label",
+      "element": "text",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
+      "name": "panel-line-tight",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
+      "name": "panel-look",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
+      "name": "panel-look-sample",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
+      "name": "panel-message",
+      "element": "text",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
       "name": "panel-row",
       "element": "row",
       "meaning": "Row inside a panel",
@@ -1862,6 +1540,20 @@
       "meaning": "Thumbnail inside a panel",
       "stability": "internal",
       "since": 1
+    },
+    {
+      "name": "panel-title",
+      "element": "text",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
+      "name": "panel-value",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
     },
     {
       "name": "plain",
@@ -1885,11 +1577,67 @@
       "since": 1
     },
     {
+      "name": "player-bottom",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
       "name": "player-buffering-veil",
       "element": "column",
       "meaning": "Overlay shown while the player buffers",
       "stability": "internal",
       "since": 1
+    },
+    {
+      "name": "player-choice",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
+      "name": "player-choice-wrap",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
+      "name": "player-group",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
+      "name": "player-layer",
+      "element": "stack",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
+      "name": "player-load-bar",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
+      "name": "player-load-track",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
+      "name": "player-loading-body",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
     },
     {
       "name": "player-loading-mark",
@@ -1913,11 +1661,179 @@
       "since": 1
     },
     {
+      "name": "player-next-dismiss",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
+      "name": "player-next-play",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
+      "name": "player-option",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
       "name": "player-panel",
       "element": "column",
       "meaning": "Floating panel in the player (audio, subtitles, settings)",
       "stability": "stable",
       "since": 1
+    },
+    {
+      "name": "player-panel-card",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
+      "name": "player-panel-dock",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
+      "name": "player-panel-form",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
+      "name": "player-panel-menu",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
+      "name": "player-panel-sheet",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
+      "name": "player-pause-info",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
+      "name": "player-prompts",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
+      "name": "player-row",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
+      "name": "player-scroll",
+      "element": "scroll",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
+      "name": "player-sheet-dock",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
+      "name": "player-skip",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
+      "name": "player-spacer",
+      "element": "spacer",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
+      "name": "player-stats-dock",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
+      "name": "player-sync-dock",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
+      "name": "player-top",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
+      "name": "player-trailer-bar",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
+      "name": "player-trailer-bottom",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
+      "name": "player-trailer-top",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
+      "name": "player-veil",
+      "element": "column stack",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
+      "name": "player-warnings",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
+      "name": "player-watch-dock",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
     },
     {
       "name": "poster",
@@ -1948,6 +1864,13 @@
       "since": 1
     },
     {
+      "name": "preview-play",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
       "name": "primary",
       "element": "",
       "meaning": "",
@@ -1976,11 +1899,200 @@
       "since": 2
     },
     {
+      "name": "profile-stack",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
       "name": "profile-tile",
       "element": "column",
       "meaning": "Selectable profile on the profile picker",
       "stability": "stable",
       "since": 1
+    },
+    {
+      "name": "profiles-action",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
+      "name": "profiles-action-bare",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
+      "name": "profiles-action-fill",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
+      "name": "profiles-actions",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
+      "name": "profiles-avatar-grid",
+      "element": "grid",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
+      "name": "profiles-avatar-group",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
+      "name": "profiles-avatar-row",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
+      "name": "profiles-buttons",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
+      "name": "profiles-cell",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
+      "name": "profiles-dialog",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
+      "name": "profiles-entry",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
+      "name": "profiles-fill",
+      "element": "column spacer text",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
+      "name": "profiles-form-page",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
+      "name": "profiles-grid",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
+      "name": "profiles-group-head",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
+      "name": "profiles-heading",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
+      "name": "profiles-knob",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
+      "name": "profiles-manage",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
+      "name": "profiles-save",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
+      "name": "profiles-select",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
+      "name": "profiles-select-compact",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
+      "name": "profiles-shared",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
+      "name": "profiles-subhead",
+      "element": "text",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
+      "name": "profiles-switch",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
+      "name": "profiles-toggle",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
+      "name": "progress",
+      "element": "stack",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
     },
     {
       "name": "progress-bar",
@@ -1997,11 +2109,60 @@
       "since": 1
     },
     {
+      "name": "progress-wide",
+      "element": "stack",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
+      "name": "rating",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
       "name": "rating-value",
       "element": "text",
       "meaning": "Numeric rating text",
       "stability": "internal",
       "since": 1
+    },
+    {
+      "name": "reco-action",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
+      "name": "reco-card",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
+      "name": "reco-corner",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
+      "name": "reco-logo",
+      "element": "image",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
+      "name": "reco-top",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
     },
     {
       "name": "row-note",
@@ -2032,6 +2193,27 @@
       "since": 1
     },
     {
+      "name": "screen-browse",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
+      "name": "screen-detail",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
+      "name": "screen-list",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
       "name": "scrim-bottom",
       "element": "column",
       "meaning": "Gradient fading to the bottom edge of an image",
@@ -2044,6 +2226,20 @@
       "meaning": "Gradient fading to the side edge of an image",
       "stability": "stable",
       "since": 1
+    },
+    {
+      "name": "search-field",
+      "element": "input",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
+      "name": "search-fill",
+      "element": "input",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
     },
     {
       "name": "secondary",
@@ -2158,6 +2354,20 @@
       "since": 2
     },
     {
+      "name": "sheet-chips",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
+      "name": "sheet-head",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
       "name": "sheet-row",
       "element": "row",
       "meaning": "",
@@ -2165,11 +2375,53 @@
       "since": 2
     },
     {
+      "name": "sheet-scroll",
+      "element": "scroll",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
+      "name": "sheet-tall",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
+      "name": "sheet-wide",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
       "name": "shelf",
       "element": "column",
       "meaning": "Horizontal row of cards with a title",
       "stability": "stable",
       "since": 1
+    },
+    {
+      "name": "shelf-page",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
+      "name": "shelf-row",
+      "element": "row scroll",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
+      "name": "shelf-stack",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
     },
     {
       "name": "shelf-title",
@@ -2221,11 +2473,46 @@
       "since": 1
     },
     {
+      "name": "skeleton-block",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
       "name": "skeleton-card",
       "element": "column",
       "meaning": "Placeholder card while content loads",
       "stability": "stable",
       "since": 1
+    },
+    {
+      "name": "skeleton-heading",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
+      "name": "skeleton-line",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
+      "name": "skeleton-shelf",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
+      "name": "skeleton-title",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
     },
     {
       "name": "slide",
@@ -2263,6 +2550,20 @@
       "since": 1
     },
     {
+      "name": "slider-lane",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
+      "name": "slider-line",
+      "element": "stack",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
       "name": "slider-segment",
       "element": "column",
       "meaning": "Segment of a segmented slider",
@@ -2277,11 +2578,46 @@
       "since": 1
     },
     {
+      "name": "source-badge",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
+      "name": "source-badges",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
       "name": "source-row",
       "element": "row",
       "meaning": "One source entry in the sources list",
       "stability": "internal",
       "since": 1
+    },
+    {
+      "name": "source-text",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
+      "name": "sources",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
+      "name": "sources-chips",
+      "element": "scroll",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
     },
     {
       "name": "sources-episode",
@@ -2291,11 +2627,60 @@
       "since": 1
     },
     {
+      "name": "sources-filters",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
+      "name": "sources-hero",
+      "element": "stack",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
+      "name": "sources-info",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
+      "name": "sources-list",
+      "element": "scroll",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
+      "name": "sources-logo",
+      "element": "image",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
+      "name": "sources-rows",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
       "name": "sources-season",
       "element": "text",
       "meaning": "Season text in the sources list",
       "stability": "internal",
       "since": 1
+    },
+    {
+      "name": "sources-status",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
     },
     {
       "name": "sources-synopsis",
@@ -2305,11 +2690,46 @@
       "since": 1
     },
     {
+      "name": "sources-text",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
+      "name": "sources-title",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
+      "name": "sources-top",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
+      "name": "spring",
+      "element": "spacer",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
       "name": "square",
       "element": "",
       "meaning": "Square card shape modifier",
       "stability": "stable",
       "since": 1
+    },
+    {
+      "name": "stats-column",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
     },
     {
       "name": "stats-panel",
@@ -2324,6 +2744,13 @@
       "meaning": "Plus or minus button next to a value",
       "stability": "internal",
       "since": 1
+    },
+    {
+      "name": "strip-group",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
     },
     {
       "name": "subtle",
@@ -2347,6 +2774,20 @@
       "since": 1
     },
     {
+      "name": "sync-controls",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
+      "name": "sync-value",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
       "name": "synopsis",
       "element": "text",
       "meaning": "Plot summary text",
@@ -2368,6 +2809,41 @@
       "since": 2
     },
     {
+      "name": "tab-strip",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
+      "name": "tab-strip-item",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
+      "name": "thumb-strip",
+      "element": "scroll",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
+      "name": "tip-body",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
+      "name": "title-bar",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
       "name": "title-logo",
       "element": "image",
       "meaning": "Title logo image",
@@ -2375,11 +2851,53 @@
       "since": 1
     },
     {
+      "name": "title-pair",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
       "name": "toast",
       "element": "row",
       "meaning": "Transient notification",
       "stability": "stable",
       "since": 1
+    },
+    {
+      "name": "toast-body",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
+      "name": "toast-lane",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
+      "name": "top-inset",
+      "element": "spacer",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
+      "name": "trailer-art",
+      "element": "image",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
+      "name": "trailer-card",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
     },
     {
       "name": "tv-only",
@@ -2403,207 +2921,18 @@
       "since": 1
     },
     {
-      "name": "w-10",
-      "element": "row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "w-100vw",
-      "element": "column row scroll stack",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "w-120",
-      "element": "column",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "w-140",
-      "element": "column image",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "w-160",
-      "element": "image",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "w-180",
-      "element": "column text",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "w-200",
-      "element": "stack",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "w-22",
-      "element": "column",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "w-24",
-      "element": "row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "w-240",
-      "element": "column",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "w-260",
-      "element": "column",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "w-276",
-      "element": "column image stack",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "w-280",
-      "element": "column",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "w-296",
-      "element": "column image",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "w-320",
-      "element": "input",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "w-380",
-      "element": "input",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "w-40",
-      "element": "image",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "w-420",
-      "element": "column",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "w-440",
-      "element": "column",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "w-46",
-      "element": "row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "w-48",
-      "element": "image",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "w-520",
-      "element": "input",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "w-56",
-      "element": "image",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "w-560",
-      "element": "column text",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "w-620",
-      "element": "text",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "w-64",
-      "element": "row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "w-88vw",
-      "element": "grid",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
-      "name": "w-96",
-      "element": "image",
-      "meaning": "",
-      "stability": "internal",
-      "since": 2
-    },
-    {
       "name": "warning-box",
       "element": "column",
       "meaning": "Highlighted warning message",
       "stability": "internal",
       "since": 1
+    },
+    {
+      "name": "watch-action",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
     },
     {
       "name": "watch-chat",
@@ -2620,6 +2949,34 @@
       "since": 1
     },
     {
+      "name": "watch-copy",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
+      "name": "watch-form",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
+      "name": "watch-join",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
+      "name": "watch-knob",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
       "name": "watch-member",
       "element": "row",
       "meaning": "Watch-together participant row",
@@ -2627,11 +2984,25 @@
       "since": 1
     },
     {
+      "name": "watch-switch",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
       "name": "watch-toggle",
       "element": "row",
       "meaning": "Watch-together toggle row",
       "stability": "internal",
       "since": 1
+    },
+    {
+      "name": "watch-toggles",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
     },
     {
       "name": "watched",
@@ -2646,6 +3017,27 @@
       "meaning": "Busy text on the welcome screen",
       "stability": "internal",
       "since": 1
+    },
+    {
+      "name": "welcome-busy-action",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
+      "name": "welcome-card",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
+      "name": "welcome-center",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
     },
     {
       "name": "welcome-code",
@@ -2690,6 +3082,13 @@
       "since": 1
     },
     {
+      "name": "welcome-rule",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
       "name": "welcome-subtitle",
       "element": "text",
       "meaning": "Subtitle on the welcome screen",
@@ -2704,6 +3103,27 @@
       "since": 1
     },
     {
+      "name": "welcome-tv",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
+      "name": "welcome-tv-qr",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
+      "name": "welcome-tv-steps",
+      "element": "column",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
+    },
+    {
       "name": "wide",
       "element": "",
       "meaning": "Wide card shape modifier",
@@ -2716,6 +3136,13 @@
       "meaning": "",
       "stability": "internal",
       "since": 2
+    },
+    {
+      "name": "window-bar",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 3
     },
     {
       "name": "wrapped",
