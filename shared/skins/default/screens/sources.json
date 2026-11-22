@@ -16,8 +16,7 @@
       "children": [
         {
           "type": "column",
-          "class": "popover menu-panel",
-          "height": "88vh",
+          "class": "popover menu-panel sources-modal",
           "width": "{const.modalWidth}",
           "children": [
             {

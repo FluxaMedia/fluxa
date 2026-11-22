@@ -16,40 +16,37 @@
       "children": [
         {
           "type": "column",
-          "class": "popover menu-panel",
-          "gap": 12,
-          "padding": 20,
+          "class": "popover menu-panel panel-box",
           "width": "{const.dialogWidth}",
           "children": [
             {
               "type": "row",
+              "tag": "header",
               "children": [
                 {
                   "type": "text",
-                  "i18n": "update.popup_title",
-                  "style": "subtitle"
+                  "tag": "h4",
+                  "i18n": "update.popup_title"
                 },
                 {
                   "type": "text",
-                  "text": "v{update.version}",
-                  "style": "subtitle"
+                  "tag": "h4",
+                  "text": "v{update.version}"
                 }
-              ],
-              "gap": 6
+              ]
             },
             {
               "type": "text",
-              "i18n": "update.popup_body",
-              "style": "meta muted"
+              "tag": "small",
+              "i18n": "update.popup_body"
             },
             {
               "type": "row",
+              "tag": "footer",
               "children": [
                 {
                   "type": "row",
-                  "class": "btn-secondary",
-                  "justify": "center",
-                  "grow": 1,
+                  "tag": "button",
                   "action": {
                     "name": "update",
                     "args": {
@@ -59,16 +56,15 @@
                   "children": [
                     {
                       "type": "text",
-                      "i18n": "update.download_only",
-                      "class": "btn-label"
+                      "tag": "span",
+                      "i18n": "update.download_only"
                     }
                   ]
                 },
                 {
                   "type": "row",
-                  "class": "btn-primary",
-                  "justify": "center",
-                  "grow": 1,
+                  "tag": "button",
+                  "class": "primary",
                   "action": {
                     "name": "update",
                     "args": {
@@ -78,13 +74,13 @@
                   "children": [
                     {
                       "type": "text",
-                      "i18n": "update.download_install",
-                      "class": "btn-label"
+                      "tag": "span",
+                      "i18n": "update.download_install"
                     }
                   ]
                 }
               ],
-              "gap": 8
+              "class": "split"
             }
           ]
         }

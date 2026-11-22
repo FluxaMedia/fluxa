@@ -3,11 +3,12 @@
   "children": [
     {
       "type": "column",
+      "tag": "section",
+      "class": "fullscreen toast-top",
       "children": [
         {
           "type": "row",
           "class": "toast",
-          "padding": "10 16 10 16",
           "children": [
             {
               "type": "text",
@@ -20,13 +21,12 @@
           ]
         }
       ],
-      "when": "!toast.gauge",
-      "class": "fullscreen",
-      "padding": "48 0 0 0",
-      "align": "center"
+      "when": "!toast.gauge"
     },
     {
       "type": "row",
+      "tag": "section",
+      "class": "fullscreen toast-gauge",
       "when": "toast.gauge",
       "children": [
         {
@@ -44,14 +44,10 @@
         {
           "type": "column",
           "class": "gauge-track",
-          "width": 6,
-          "justify": "end",
-          "height": "34vh",
           "children": [
             {
               "type": "column",
               "class": "gauge-fill",
-              "width": 6,
               "height": "{toast.fill}"
             }
           ]
@@ -61,10 +57,7 @@
           "when": "toast.left",
           "class": "fill-space"
         }
-      ],
-      "class": "fullscreen",
-      "gap": 14,
-      "padding": "0 24 0 24"
+      ]
     }
   ],
   "class": "fullscreen"

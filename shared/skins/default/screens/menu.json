@@ -21,7 +21,6 @@
             {
               "type": "column",
               "class": "popover menu-panel",
-              "gap": 2,
               "width": "{const.menuWidth}",
               "padding": "{const.menuPadding}",
               "children": [
@@ -29,7 +28,6 @@
                   "type": "text",
                   "when": "menu.title",
                   "class": "hero-meta",
-                  "padding": "8 12",
                   "text": "{menu.title}",
                   "props": {
                     "lines": 1
@@ -41,7 +39,6 @@
                   "template": {
                     "type": "row",
                     "class": "select-row",
-                    "gap": 10,
                     "props": {
                       "selected": "{item.selected}"
                     },
@@ -86,7 +83,6 @@
             {
               "type": "column",
               "class": "popover menu-panel menu-sheet",
-              "gap": 2,
               "width": "100vw",
               "padding": "{const.menuPadding}",
               "children": [
@@ -94,7 +90,6 @@
                   "type": "text",
                   "when": "menu.title",
                   "class": "hero-meta",
-                  "padding": "8 12",
                   "text": "{menu.title}",
                   "props": {
                     "lines": 1
@@ -107,7 +102,6 @@
                 {
                   "type": "scroll",
                   "when": "menu.long",
-                  "height": "55vh",
                   "props": {
                     "axis": "y"
                   },
@@ -115,7 +109,8 @@
                     {
                       "include": "menu_sheet_items"
                     }
-                  ]
+                  ],
+                  "class": "sheet-list"
                 }
               ]
             }
@@ -128,7 +123,6 @@
             {
               "type": "column",
               "class": "popover menu-panel",
-              "gap": 2,
               "width": "{const.menuWidth}",
               "padding": "{const.menuPadding}",
               "children": [
@@ -136,7 +130,6 @@
                   "type": "text",
                   "when": "menu.title",
                   "class": "hero-meta",
-                  "padding": "8 12",
                   "text": "{menu.title}",
                   "props": {
                     "lines": 1
@@ -148,7 +141,6 @@
                   "template": {
                     "type": "row",
                     "class": "select-row",
-                    "gap": 10,
                     "props": {
                       "selected": "{item.selected}"
                     },

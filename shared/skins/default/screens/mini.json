@@ -25,14 +25,16 @@
         },
         {
           "type": "column",
+          "tag": "footer",
+          "class": "fill-space",
           "children": [
             {
               "type": "row",
-              "class": "centered mini-controls",
+              "class": "mini-controls",
               "children": [
                 {
                   "type": "row",
-                  "class": "centered icon-btn",
+                  "class": "icon-btn",
                   "action": {
                     "name": "player",
                     "args": {
@@ -50,7 +52,7 @@
                 },
                 {
                   "type": "row",
-                  "class": "centered icon-btn",
+                  "class": "icon-btn",
                   "action": {
                     "name": "player",
                     "args": {
@@ -68,7 +70,7 @@
                 },
                 {
                   "type": "row",
-                  "class": "centered icon-btn",
+                  "class": "icon-btn",
                   "action": {
                     "name": "player",
                     "args": {
@@ -89,21 +91,17 @@
             {
               "type": "column",
               "class": "progress-track",
-              "height": 3,
               "children": [
                 {
                   "type": "column",
                   "class": "progress-bar",
-                  "height": 3,
                   "props": {
                     "span": "{mini.ratio}"
                   }
                 }
               ]
             }
-          ],
-          "class": "fill-space",
-          "justify": "end"
+          ]
         }
       ]
     }

@@ -1097,4 +1097,45 @@ button:focus { background: color-mix(in srgb, var(--color-text-primary) 18.039%,
 .info li { gap: 1.5rem; padding: .5rem 0; }
 .info small { width: 11.25rem; }
 
+/* ==== Overlays: menu, toast, update, watch, sources, mini, window ======== */
+.topbar { gap: .875rem; }
+.folder-cover { width: 3.5rem; height: 3.5rem; }
+.shelves { gap: 1rem; }
+.mini-tile footer { justify-content: flex-end; }
+.mini-tile .progress-track, .mini-tile .progress-bar { height: 3px; }
+.mini-controls { justify-content: center; }
+.menu-panel { gap: .125rem; }
+.menu-panel .hero-meta { padding: .5rem .75rem; }
+.menu-panel .select-row { gap: .625rem; }
+.menu-items { gap: .125rem; }
+.menu-items .tall { height: 3rem; padding: 0 .75rem; gap: .625rem; }
+.sheet-list { height: 55vh; }
+.tip { padding: .375rem .625rem; }
+.toast { padding: .625rem 1rem; }
+.toast-top { padding: 3rem 0 0; align-items: center; }
+.toast-gauge { gap: .875rem; padding: 0 1.5rem; }
+.gauge-track { width: 6px; height: 34vh; justify-content: flex-end; }
+.gauge-fill { width: 6px; }
+.window-bar { width: 100vw; padding: .75rem .75rem 0 0; justify-content: flex-end; }
+.panel-box { gap: .75rem; padding: 1.25rem; }
+.panel-box header { gap: .375rem; }
+.panel-box footer { gap: .5rem; }
+.split button { flex-grow: 1; }
+.panel-box section { gap: .875rem; }
+.panel-box ul { gap: .375rem; }
+.panel-box li { gap: .75rem; padding: .375rem .25rem; }
+.code { gap: .625rem; padding: .75rem .875rem; }
+.chat { gap: .375rem; padding: .625rem; }
+.sources-modal { height: 88vh; }
+.sources-body header { height: 15rem; }
+.sources-body footer { gap: .375rem; padding: 3.75rem 0 1.25rem; justify-content: flex-end; }
+.sources-body footer section { gap: .375rem; padding: 0 1.25rem; align-items: flex-start; }
+.sources-body aside { padding: .75rem; align-items: flex-start; }
+.sources-body .filters, .sources-body .waiting { padding: 0 1rem; }
+.overview { padding: 0 1.25rem; }
+.results { gap: .75rem; padding: 0 1rem 1.5rem; }
+.source-row div { gap: .375rem; }
+.source-row ul { gap: .375rem; }
+.source-row .card-badge { padding: .1875rem .5rem; }
+
 /* ==== end of settings section ============================================ */

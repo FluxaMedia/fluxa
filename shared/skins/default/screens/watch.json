@@ -16,9 +16,7 @@
       "children": [
         {
           "type": "column",
-          "class": "popover menu-panel",
-          "gap": 12,
-          "padding": 20,
+          "class": "popover menu-panel panel-box",
           "width": "{const.watchWidth}",
           "children": [
             {

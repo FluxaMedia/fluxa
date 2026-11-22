@@ -1,21 +1,22 @@
 {
   "type": "column",
-  "class": "screen",
-  "gap": 16,
+  "class": "screen discover",
   "children": [
     {
       "type": "spacer",
-      "height": 72
+      "class": "lead"
     },
     {
       "type": "page",
       "children": [
         {
           "type": "row",
+          "tag": "section",
+          "class": "topbar",
           "children": [
             {
               "type": "row",
-              "class": "centered icon-btn",
+              "class": "icon-btn",
               "children": [
                 {
                   "type": "icon",
@@ -38,16 +39,14 @@
               "props": {
                 "fit": "cover"
               },
-              "width": 56,
-              "height": 56
+              "class": "folder-cover"
             },
             {
               "type": "text",
-              "text": "{folder.title}",
-              "style": "title"
+              "tag": "h1",
+              "text": "{folder.title}"
             }
-          ],
-          "gap": 14
+          ]
         },
         {
           "type": "scroll",
@@ -75,18 +74,18 @@
         },
         {
           "type": "text",
+          "tag": "small",
           "text": "{folder.error}",
-          "style": "meta muted",
           "when": "folder.error"
         },
         {
           "type": "text",
+          "tag": "small",
           "i18n": "discover.no_content",
-          "style": "meta muted",
           "when": "folder.empty"
         }
       ],
-      "class": "page-dense"
+      "class": "page-dense listing"
     },
     {
       "type": "grid",
@@ -104,6 +103,8 @@
     },
     {
       "type": "column",
+      "tag": "section",
+      "class": "shelves",
       "when": "!folder.grid",
       "children": [
         {
@@ -113,8 +114,7 @@
             "include": "shelf"
           }
         }
-      ],
-      "gap": 16
+      ]
     },
     {
       "type": "fixed",

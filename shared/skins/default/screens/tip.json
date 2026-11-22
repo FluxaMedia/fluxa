@@ -7,8 +7,7 @@
   "children": [
     {
       "type": "row",
-      "class": "toast",
-      "padding": "6 10 6 10",
+      "class": "toast tip",
       "children": [
         {
           "type": "text",
