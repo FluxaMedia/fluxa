@@ -834,7 +834,13 @@ impl Node {
                 .iter()
                 .map(|line| {
                     line.iter()
-                        .map(|&i| cross(axis, self.children[i].outer_size()))
+                        .map(|&i| {
+                            let child = &self.children[i];
+                            let wrapped = child
+                                .wrapped_outer_height(child.span(axis).0.min(main_avail))
+                                .filter(|_| axis == Axis::Row);
+                            wrapped.unwrap_or_else(|| cross(axis, child.outer_size()))
+                        })
                         .fold(0.0, f32::max)
                 })
                 .collect()
@@ -980,6 +986,9 @@ impl Node {
                 let inner = length - child.margin.width() - child.padding.width();
                 if let Some(size) = child.measured(Some(inner.max(0.0))) {
                     wanted = size.y + child.padding.height() + child.margin.height();
+                }
+                if let Some(height) = child.wrapped_outer_height(length) {
+                    wanted = height;
                 }
             }
             if let Some(ratio) = child.aspect.filter(|_| child.fixed_cross(axis).is_none()) {
@@ -1476,5 +1485,55 @@ mod tests {
         let rect = placed.find(0).unwrap();
         assert_eq!(rect.left(), 0.0);
         assert_eq!(rect.bottom(), 50.0);
+    }
+
+    #[test]
+    fn wrapping_row_squeezed_inside_a_row_grows_as_tall_as_its_lines() {
+        let chips = (0..5).map(|i| boxed(40.0, 20.0).id(i));
+        let placed = row([row(chips).wrap().gap(10.0).grow(1.0).id(9)])
+            .align(Align::Start)
+            .solve(bounds(140.0, 200.0));
+        let inner = placed.find(9).unwrap();
+        assert_eq!(inner.width(), 140.0);
+        assert_eq!(inner.height(), 50.0);
+    }
+
+    #[test]
+    fn wrapping_row_inside_a_wrapping_row_pushes_the_next_line_down() {
+        let chips = (0..5).map(|i| boxed(40.0, 20.0).id(i));
+        let outer = row([row(chips).wrap().gap(10.0).id(9), boxed(40.0, 20.0).id(10)])
+            .wrap()
+            .gap(10.0)
+            .align(Align::Start);
+        let placed = outer.solve(bounds(140.0, 300.0));
+        let inner = placed.find(9).unwrap();
+        let after = placed.find(10).unwrap();
+        assert!(after.top() >= inner.bottom());
+    }
+
+    #[test]
+    fn grow_leftover_after_a_max_width_still_honours_justify() {
+        let out = rects(
+            row([
+                fill().max_width(50.0),
+                boxed(20.0, 10.0).grow(1.0).max_width(30.0),
+            ])
+            .justify(Justify::End),
+            bounds(200.0, 10.0),
+        );
+        assert_eq!(out[1].right(), 200.0);
+    }
+
+    #[test]
+    fn items_shrink_in_proportion_to_their_size_and_stop_at_their_minimum() {
+        let out = rects(
+            row([
+                boxed(300.0, 10.0).min_width(250.0),
+                boxed(100.0, 10.0).min_width(0.0),
+            ]),
+            bounds(300.0, 10.0),
+        );
+        assert_eq!(out[0].width(), 250.0);
+        assert_eq!(out[1].width(), 50.0);
     }
 }
