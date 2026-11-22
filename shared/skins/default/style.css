@@ -623,25 +623,12 @@ text.subtle { background: var(--ink-subtle); }
 raised { background: var(--ink-raised); }
 strong { background: var(--ink-strong); }
 dim { background: var(--ink-dim); }
-text { background: var(--ink-text); }
 
 panel {
   background: var(--color-surface-raised);
   border-radius: var(--card-radius);
   padding: var(--space-16);
   gap: var(--space-8);
-}
-
-skeleton {
-  background: var(--ink-faint);
-  border-radius: var(--card-radius);
-  animation: pulse 1.2s infinite alternate;
-}
-
-@keyframes pulse {
-  from { opacity: 0.55; }
-  to { opacity: 1; }
-
 }
 
 @mobile {
@@ -654,7 +641,6 @@ skeleton {
 
 }
 
-stack { padding: var(--space-16); gap: var(--space-8); }
 
 dialog {
   background: var(--color-surface);
@@ -674,56 +660,14 @@ player-top {
   padding: var(--space-16);
 }
 
-player-trailer {
-  flex-direction: row;
-  gap: var(--space-12);
-  padding: var(--space-32);
-}
 
-player-header { gap: var(--space-12); }
 player-bottom { gap: var(--space-8); }
-player-controls { gap: var(--space-4); }
-player-center { gap: var(--space-24); }
-player-side { gap: var(--space-16); align-items: end; }
-player-lock { padding: var(--space-24); }
 
-profiles-notice {
-  align-items: center;
-  gap: var(--space-8);
-  padding: var(--space-16);
-  max-width: 320px;
-  background: var(--color-surface-raised);
-  border-color: color-mix(in srgb, var(--color-text-primary) 14.118%, transparent);
-  border-width: hairline;
-  border-radius: var(--card-radius);
-}
 
-profiles-confirm-actions { gap: var(--space-8); }
-library-controls { gap: var(--space-12); align-items: center; }
-screen-header { gap: var(--space-16); align-items: center; }
-library-tabs { gap: var(--space-8); align-items: center; }
-discover-filters { gap: var(--space-12); }
-home-actions { flex-direction: row; gap: var(--space-12); }
 detail-hero { flex-direction: column; align-items: center; }
-detail-actions { flex-direction: row; gap: var(--space-12); }
-brand-step { gap: var(--space-16); align-items: center; }
 
-avatar-pack {
-  background: var(--ink-faint);
-  border-radius: var(--card-radius);
-}
 
-control-chip { align-items: center; }
-control-stepper { align-items: center; }
-control-list-row { align-items: center; }
-overlay-labeled { align-items: center; }
-overlay-handle { align-items: center; }
-menu-row { align-items: center; }
 
-media-calendar-release {
-  background: var(--color-surface-raised);
-  border-radius: var(--card-radius);
-}
 
 hero-sizes {
   width: 980;
