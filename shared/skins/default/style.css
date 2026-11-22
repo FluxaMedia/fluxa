@@ -399,6 +399,7 @@ hero-synopsis-size { font-size: 16; }
 .guide-now { background: var(--ink-full); width: 2px; height: 100vh; }
 .icon-btn, .avatar-choice, .back { border-radius: var(--radius-pill); }
 .icon-btn { width: icon-button; height: icon-button; align-items: center; justify-content: center; }
+.icon-btn.small { width: 28px; height: 28px; }
 .icon-btn:focus { background: var(--ink-soft); scale: 1.08; }
 
 .play-progress, .progress-bar, .slider-fill { background: var(--color-accent); border-radius: var(--radius-sm); }
@@ -523,13 +524,6 @@ hero-synopsis-size { font-size: 16; }
 .chat-text:selected, .welcome-busy { color: var(--color-accent); }
 
 .avatar-choice { padding: var(--space-1); }
-
-.step-btn {
-  width: 28px;
-  height: 28px;
-  align-items: center;
-  justify-content: center;
-}
 
 .source-row:hover { background: var(--ink-soft); }
 

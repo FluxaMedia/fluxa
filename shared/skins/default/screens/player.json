@@ -844,7 +844,7 @@
                                 },
                                 {
                                   "type": "row",
-                                  "class": "step-btn surface pill",
+                                  "class": "icon-btn small",
                                   "action": {
                                     "name": "player_row",
                                     "args": {
@@ -873,7 +873,7 @@
                                 },
                                 {
                                   "type": "row",
-                                  "class": "step-btn surface pill",
+                                  "class": "icon-btn small",
                                   "action": {
                                     "name": "player_row",
                                     "args": {
@@ -1102,7 +1102,7 @@
                                     },
                                     {
                                       "type": "row",
-                                      "class": "step-btn surface pill",
+                                      "class": "icon-btn small",
                                       "action": {
                                         "name": "player_row",
                                         "args": {
@@ -1131,7 +1131,7 @@
                                     },
                                     {
                                       "type": "row",
-                                      "class": "step-btn surface pill",
+                                      "class": "icon-btn small",
                                       "action": {
                                         "name": "player_row",
                                         "args": {
@@ -1377,7 +1377,7 @@
                                 },
                                 {
                                   "type": "row",
-                                  "class": "step-btn surface pill",
+                                  "class": "icon-btn small",
                                   "action": {
                                     "name": "player_row",
                                     "args": {
@@ -1406,7 +1406,7 @@
                                 },
                                 {
                                   "type": "row",
-                                  "class": "step-btn surface pill",
+                                  "class": "icon-btn small",
                                   "action": {
                                     "name": "player_row",
                                     "args": {

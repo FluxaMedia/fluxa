@@ -1773,6 +1773,13 @@
       "since": 6
     },
     {
+      "name": "small",
+      "element": "row",
+      "meaning": "",
+      "stability": "internal",
+      "since": 6
+    },
+    {
       "name": "soft",
       "element": "row",
       "meaning": "",
@@ -1860,13 +1867,6 @@
       "name": "stats-panel",
       "element": "row",
       "meaning": "Playback statistics panel",
-      "stability": "internal",
-      "since": 1
-    },
-    {
-      "name": "step-btn",
-      "element": "row",
-      "meaning": "Plus or minus button next to a value",
       "stability": "internal",
       "since": 1
     },
