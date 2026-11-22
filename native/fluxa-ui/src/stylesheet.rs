@@ -3,6 +3,7 @@ use serde_json::Value;
 use std::sync::{Arc, Mutex, RwLock};
 
 mod css;
+mod defaults;
 mod parse;
 pub(crate) mod vars;
 

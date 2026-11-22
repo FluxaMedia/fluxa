@@ -28,6 +28,13 @@ static RESOLVED: Mutex<Option<Resolved>> = Mutex::new(None);
 
 fn build(texts: &[&str]) -> Result<Table, String> {
     let mut table = Table::default();
+    for (key, vars) in super::defaults::layers() {
+        let queries = match key {
+            Some(key) => vec![Query::parse(&format!("@{key}"))?],
+            None => Vec::new(),
+        };
+        table.layers.push(Layer { queries, vars });
+    }
     for text in texts {
         for (keys, vars) in css::root_layers(text)? {
             let queries = keys
@@ -207,7 +214,7 @@ fn sum(expression: &str, basis: f32) -> f32 {
 
 #[cfg(test)]
 mod tests {
-    use super::clamp;
+    use super::{build, clamp};
 
     #[test]
     fn clamp_follows_basis_between_bounds() {
@@ -215,5 +222,21 @@ mod tests {
         assert_eq!(clamp("clamp(14px, 13%, 28px)", 150.0), 19.5);
         assert_eq!(clamp("clamp(14px, 13%, 28px)", 900.0), 28.0);
         assert_eq!(clamp("clamp(0px, 50% + 20px, 500px)", 100.0), 70.0);
+    }
+
+    #[test]
+    fn skin_declarations_override_engine_defaults() {
+        let table = build(&[":root { --button-border: 30px; }"]).expect("table");
+        let last = |name: &str| {
+            table
+                .layers
+                .iter()
+                .flat_map(|layer| layer.vars.iter())
+                .filter(|(key, _)| key == name)
+                .last()
+                .map(|(_, value)| value.clone())
+        };
+        assert_eq!(last("button-border").as_deref(), Some("30px"));
+        assert_eq!(last("pill-ratio").as_deref(), Some("0.5"));
     }
 }
