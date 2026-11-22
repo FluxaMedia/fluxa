@@ -182,17 +182,10 @@ input { background: var(--color-input-background); border-color: var(--color-inp
 
 input:focused { border-color: var(--color-input-border-focus); border-width: theme.input.focus; }
 
-toggle {
-  background: #32323232;
-  border-color: var(--ink-dim);
-  border-width: hairline;
-  transition: normal token;
-  border-radius: var(--radius-pill);
-}
-
-toggle:selected { background: var(--color-accent); border-color: #00000000; }
-toggle.knob { background: #aaaaaaaa; transition: normal token; }
-toggle.knob:selected { background: theme.toggle.knob.on; }
+toggle, .switch { background: var(--ink-soft); border-radius: var(--radius-pill); transition: normal token; }
+toggle:selected, .switch:selected { background: var(--color-accent); }
+toggle.knob, .knob { background: var(--ink-full); transition: normal token; }
+toggle.knob:selected, .switch:selected .knob { background: theme.toggle.knob.on; }
 
 scrim.backdrop { background: color-mix(in srgb, var(--color-background) 82%, transparent); }
 
@@ -405,17 +398,10 @@ hero-synopsis-size { font-size: 16; }
 .play-progress, .progress-bar, .slider-fill { background: var(--color-accent); border-radius: var(--radius-sm); }
 .play-progress { height: 3px; align-items: flex-start; }
 
-.switch {
-  background: var(--ink-soft);
-  border-radius: var(--radius-pill);
-  width: 46px;
-  height: 28px;
-  padding: var(--space-1);
-}
+.switch { width: 46px; height: 28px; padding: var(--space-1); }
 
-.switch:selected { background: var(--color-accent); }
-
-.knob, .num-today { background: var(--ink-full); border-radius: var(--radius-pill); }
+.knob, .num-today { border-radius: var(--radius-pill); }
+.num-today { background: var(--ink-full); }
 .knob, .episode-check { height: 20px; width: 20px; }
 
 .synopsis { font-size: synopsis-size; color: var(--color-text-primary); }
@@ -516,8 +502,6 @@ hero-synopsis-size { font-size: 16; }
 .side-heading { color: var(--ink-dim); }
 
 .setting-label { font-size: var(--text-md); font-weight: 500; }
-
-.switch:selected .knob { background: #0b0b0d; }
 
 .profile-form { max-width: 528px; gap: var(--gap-base); padding: 0 var(--space-5); width: 100vw; }
 
