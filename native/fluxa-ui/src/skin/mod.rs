@@ -451,6 +451,7 @@ fn build_node<'a, A: HomeAssets>(
                 .collect(),
             key: node.key.clone(),
             state_id: Id::new(("skin-state", &node.key)),
+            inherited: sheet_style.unwrap_or_else(crate::stylesheet::Style::blank),
         }));
     }
     let outer = expanding.map(|state| EXPAND.replace(Some(state)));
@@ -548,15 +549,19 @@ fn icon<'a, A: HomeAssets>(node: &Resolved, env: &'a Env<'a, A>) -> kit::Item<'a
         .map_or(crate::vars::px("icon-button-size") * 0.5, |size| {
             size as f32
         });
-    let chain: Vec<(std::sync::Arc<str>, u8)> = env
+    let chain: Vec<crate::stylesheet::Frame> = env
         .ancestors
         .borrow()
         .iter()
         .flat_map(|ancestor| {
-            ancestor
-                .classes
-                .iter()
-                .map(|class| (std::sync::Arc::clone(class), 0))
+            ancestor.classes.iter().enumerate().map(|(at, class)| {
+                let frame = crate::stylesheet::Frame::plain(std::sync::Arc::clone(class), 0);
+                if at == 0 {
+                    frame.inheriting(&ancestor.inherited)
+                } else {
+                    frame
+                }
+            })
         })
         .collect();
     let tint = class_parts(node, None)

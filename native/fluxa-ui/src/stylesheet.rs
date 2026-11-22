@@ -93,7 +93,7 @@ pub(crate) enum Justify {
 }
 
 impl Style {
-    fn blank() -> Self {
+    pub(crate) fn blank() -> Self {
         Self {
             fill: Color32::TRANSPARENT,
             text: text_primary(),
@@ -486,36 +486,50 @@ impl Sheet {
     }
 }
 
+#[derive(Clone, Debug)]
+pub(crate) struct Frame {
+    pub name: std::sync::Arc<str>,
+    pub states: u8,
+    pub text: Option<Color32>,
+    pub font_size: Option<f32>,
+    pub weight: Option<f32>,
+}
+
+impl Frame {
+    pub(crate) fn plain(name: std::sync::Arc<str>, states: u8) -> Self {
+        Self {
+            name,
+            states,
+            text: None,
+            font_size: None,
+            weight: None,
+        }
+    }
+
+    pub(crate) fn inheriting(mut self, style: &Style) -> Self {
+        self.text = style.text_declared.then_some(style.text);
+        self.font_size = style.font_size;
+        self.weight = style.weight;
+        self
+    }
+}
+
 struct Scope {
-    name: std::sync::Arc<str>,
-    text: Option<Color32>,
-    font_size: Option<f32>,
-    states: u8,
+    frame: Frame,
     signature: u64,
 }
 
 impl Scope {
-    fn new(
-        parent: u64,
-        name: std::sync::Arc<str>,
-        text: Option<Color32>,
-        font_size: Option<f32>,
-        states: u8,
-    ) -> Self {
+    fn new(parent: u64, frame: Frame) -> Self {
         let signature = crate::fast::hash((
             parent,
-            &name,
-            text.map(|color| color.to_array()),
-            font_size.map(f32::to_bits),
-            states,
+            &frame.name,
+            frame.text.map(|color| color.to_array()),
+            frame.font_size.map(f32::to_bits),
+            frame.weight.map(f32::to_bits),
+            frame.states,
         ));
-        Self {
-            name,
-            text,
-            font_size,
-            states,
-            signature,
-        }
+        Self { frame, signature }
     }
 }
 
@@ -532,37 +546,26 @@ thread_local! {
     static SCOPES: std::cell::RefCell<Vec<Scope>> = const { std::cell::RefCell::new(Vec::new()) };
 }
 
-pub(crate) fn scoped<R>(name: &str, inherit: Option<&Style>, body: impl FnOnce() -> R) -> R {
-    SCOPES.with(|stack| {
-        let mut stack = stack.borrow_mut();
-        let parent = stack.last().map_or(0, |scope| scope.signature);
-        stack.push(Scope::new(
-            parent,
-            std::sync::Arc::from(name.split('[').next().unwrap_or(name)),
-            inherit
-                .filter(|style| style.text_declared)
-                .map(|style| style.text),
-            inherit.and_then(|style| style.font_size),
-            0,
-        ))
-    });
-    let result = body();
-    SCOPES.with(|stack| stack.borrow_mut().pop());
-    result
-}
-
-fn inherited() -> (Option<Color32>, Option<f32>) {
+fn inherit(style: &mut Style) {
     SCOPES.with(|stack| {
         let stack = stack.borrow();
-        (
-            stack.iter().rev().find_map(|scope| scope.text),
-            stack.iter().rev().find_map(|scope| scope.font_size),
-        )
-    })
+        if !style.text_declared
+            && let Some(text) = stack.iter().rev().find_map(|scope| scope.frame.text)
+        {
+            style.text = text;
+            style.text_declared = true;
+        }
+        if style.font_size.is_none() {
+            style.font_size = stack.iter().rev().find_map(|scope| scope.frame.font_size);
+        }
+        if style.weight.is_none() {
+            style.weight = stack.iter().rev().find_map(|scope| scope.frame.weight);
+        }
+    });
 }
 
 fn in_scope(name: &str) -> bool {
-    SCOPES.with(|stack| stack.borrow().iter().any(|scope| *scope.name == *name))
+    SCOPES.with(|stack| stack.borrow().iter().any(|scope| *scope.frame.name == *name))
 }
 
 fn in_scope_with(name: &str, flag: u8) -> bool {
@@ -570,22 +573,22 @@ fn in_scope_with(name: &str, flag: u8) -> bool {
         stack
             .borrow()
             .iter()
-            .any(|scope| *scope.name == *name && scope.states & flag != 0)
+            .any(|scope| *scope.frame.name == *name && scope.frame.states & flag != 0)
     })
 }
 
-pub(crate) fn within<R>(ancestors: &[(std::sync::Arc<str>, u8)], body: impl FnOnce() -> R) -> R {
+pub(crate) fn within<R>(frames: &[Frame], body: impl FnOnce() -> R) -> R {
     SCOPES.with(|stack| {
         let mut stack = stack.borrow_mut();
-        for (name, states) in ancestors {
+        for frame in frames {
             let parent = stack.last().map_or(0, |scope| scope.signature);
-            stack.push(Scope::new(parent, name.clone(), None, None, *states));
+            stack.push(Scope::new(parent, frame.clone()));
         }
     });
     let result = body();
     SCOPES.with(|stack| {
         let mut stack = stack.borrow_mut();
-        let keep = stack.len().saturating_sub(ancestors.len());
+        let keep = stack.len().saturating_sub(frames.len());
         stack.truncate(keep);
     });
     result
@@ -1174,6 +1177,7 @@ pub(crate) fn base_with(rule: &str, modifiers: &[&str]) -> Style {
     for layer in layers(&sheet, rule, modifiers) {
         apply(&mut style, &layer.base);
     }
+    inherit(&mut style);
     MEMO.with(|memo| {
         memo.borrow_mut()
             .entries
@@ -1218,13 +1222,22 @@ fn chain<'a>(sheet: &'a Sheet, name: &str) -> Vec<&'a Rule> {
     rules
 }
 
+fn kinds<'a>(sheet: &'a Sheet, modifiers: &[&str]) -> Vec<&'a Rule> {
+    modifiers
+        .iter()
+        .filter(|modifier| modifier.starts_with('<'))
+        .flat_map(|modifier| chain(sheet, modifier))
+        .collect()
+}
+
 fn layers<'a>(sheet: &'a Sheet, name: &str, modifiers: &[&str]) -> Vec<&'a Layer> {
     let mut found = Vec::new();
     let extra = modifiers
         .iter()
-        .filter(|modifier| sheet.rules.contains_key(**modifier));
-    let rules = chain(sheet, name)
+        .filter(|modifier| !modifier.starts_with('<') && sheet.rules.contains_key(**modifier));
+    let rules = kinds(sheet, modifiers)
         .into_iter()
+        .chain(chain(sheet, name))
         .chain(extra.flat_map(|modifier| chain(sheet, modifier)));
     for rule in rules {
         found.push(&rule.layer);
@@ -1251,8 +1264,9 @@ fn layers<'a>(sheet: &'a Sheet, name: &str, modifiers: &[&str]) -> Vec<&'a Layer
 }
 
 fn stateful<'a>(sheet: &'a Sheet, name: &str, modifiers: &[&str]) -> Vec<&'a Variant> {
-    chain(sheet, name)
+    kinds(sheet, modifiers)
         .into_iter()
+        .chain(chain(sheet, name))
         .flat_map(|rule| rule.variants.iter())
         .filter(|variant| {
             ancestors_match(variant, true)
@@ -1291,17 +1305,16 @@ pub(crate) fn resolve_with(
         };
     }
     let layers = layers(&sheet, rule, modifiers);
-    let rules = chain(&sheet, rule);
+    let rules: Vec<&Rule> = kinds(&sheet, modifiers)
+        .into_iter()
+        .chain(chain(&sheet, rule))
+        .collect();
     let pick = |field: fn(&Rule) -> Option<&str>| rules.iter().rev().find_map(|r| field(r));
     let mut base = Style::blank();
-    let (text, font_size) = inherited();
-    if let Some(text) = text {
-        base.text = text;
-    }
-    base.font_size = font_size;
     for layer in &layers {
         apply(&mut base, &layer.base);
     }
+    inherit(&mut base);
     if !state.enabled {
         for layer in &layers {
             apply(&mut base, &layer.disabled);
@@ -1577,7 +1590,7 @@ mod tests {
         };
         assert_eq!(padding(&[]), (4.0, 0.0));
         assert_eq!(padding(&["tight"]), (4.0, 1.0));
-        scoped("settings", None, || assert_eq!(padding(&[]), (10.0, 0.0)));
+        within(&[Frame::plain("settings".into(), 0)], || assert_eq!(padding(&[]), (10.0, 0.0)));
         assert_eq!(padding(&[]), (4.0, 0.0));
     }
 
@@ -1626,27 +1639,47 @@ mod tests {
     }
 
     #[test]
-    fn descendants_inherit_declared_text_color() {
+    fn descendants_inherit_text_size_and_weight() {
         let context = crate::gfx::Context::default();
         let parent = Style {
             text: Color32::from_rgb(1, 2, 3),
             text_declared: true,
+            font_size: Some(21.0),
+            weight: Some(700.0),
             ..Style::blank()
         };
-        let child = scoped("panel", Some(&parent), || {
-            resolve(
-                &context,
-                "button.secondary",
-                Id::new("c"),
-                State {
-                    enabled: true,
-                    ..Default::default()
-                },
+        let frames = [Frame::plain("panel".into(), 0).inheriting(&parent)];
+        let (own, plain) = within(&frames, || {
+            let state = State {
+                enabled: true,
+                ..Default::default()
+            };
+            (
+                resolve(&context, "button.secondary", Id::new("c"), state),
+                resolve(&context, "divider", Id::new("d"), state),
             )
         });
-        assert_eq!(child.text, text_primary());
-        let plain = scoped("panel", Some(&parent), inherited);
-        assert_eq!(plain.0, Some(Color32::from_rgb(1, 2, 3)));
+        assert_eq!(own.text, text_primary());
+        assert_eq!(own.font_size, Some(21.0));
+        assert_eq!(plain.text, Color32::from_rgb(1, 2, 3));
+        assert_eq!(plain.weight, Some(700.0));
+    }
+
+    #[test]
+    fn kind_defaults_sit_under_the_class() {
+        let sheet = Sheet::parse(
+            "row { gap: 8; padding: 4; } .tight { gap: 2; } text { font-size: 15; }",
+        )
+        .expect("parses");
+        let gap = |modifiers: &[&str]| {
+            let mut style = Style::blank();
+            for layer in layers(&sheet, "tight", modifiers) {
+                apply(&mut style, &layer.base);
+            }
+            (style.gap, style.padding)
+        };
+        assert_eq!(gap(&["<row>"]), (2.0, 4.0));
+        assert_eq!(gap(&["<text>"]).1, 0.0);
     }
 
     #[test]
@@ -1762,10 +1795,10 @@ mod tests {
             Sheet::parse(".label { opacity: 0.2; }\n.bar:hover .label { opacity: 1; }").unwrap();
         let variants = stateful(&sheet, "label", &[]);
         assert!(variants.is_empty());
-        let variants = within(&[("bar".into(), 0)], || stateful(&sheet, "label", &[]));
+        let variants = within(&[Frame::plain("bar".into(), 0)], || stateful(&sheet, "label", &[]));
         assert_eq!(variants.len(), 1);
-        let idle = within(&[("bar".into(), 0)], || ancestors_active(variants[0]));
-        let hot = within(&[("bar".into(), HOVERED)], || ancestors_active(variants[0]));
+        let idle = within(&[Frame::plain("bar".into(), 0)], || ancestors_active(variants[0]));
+        let hot = within(&[Frame::plain("bar".into(), HOVERED)], || ancestors_active(variants[0]));
         assert!(!idle);
         assert!(hot);
     }

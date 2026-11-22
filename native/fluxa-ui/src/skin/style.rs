@@ -4,6 +4,7 @@ pub(super) struct Ancestor {
     pub(super) classes: Vec<std::sync::Arc<str>>,
     pub(super) key: String,
     pub(super) state_id: Id,
+    pub(super) inherited: crate::stylesheet::Style,
 }
 
 pub(super) fn class_name(class: &str) -> std::sync::Arc<str> {
@@ -57,6 +58,7 @@ pub(super) type ClassParts = (&'static str, &'static [&'static str]);
 pub(super) fn class_parts(node: &Resolved, position: Option<(usize, usize)>) -> Option<ClassParts> {
     struct Entry {
         class: Box<str>,
+        kind: Box<str>,
         position: Option<(usize, usize)>,
         parts: Option<ClassParts>,
     }
@@ -70,7 +72,7 @@ pub(super) fn class_parts(node: &Resolved, position: Option<(usize, usize)>) -> 
     }
     let class = node.class.as_deref()?;
     let generation = crate::stylesheet::generation();
-    let key = crate::fast::hash((class, position));
+    let key = crate::fast::hash((class, &node.kind, position));
     CACHE.with(|cache| {
         let mut cache = cache.borrow_mut();
         if cache.generation != generation {
@@ -80,13 +82,16 @@ pub(super) fn class_parts(node: &Resolved, position: Option<(usize, usize)>) -> 
         let bucket = cache.entries.entry(key).or_default();
         if let Some(found) = bucket
             .iter()
-            .find(|entry| *entry.class == *class && entry.position == position)
+            .find(|entry| {
+                *entry.class == *class && *entry.kind == *node.kind && entry.position == position
+            })
         {
             return found.parts;
         }
-        let parts = compute_class_parts(class, position);
+        let parts = compute_class_parts(class, &node.kind, position);
         bucket.push(Entry {
             class: class.into(),
+            kind: node.kind.as_str().into(),
             position,
             parts,
         });
@@ -96,6 +101,7 @@ pub(super) fn class_parts(node: &Resolved, position: Option<(usize, usize)>) -> 
 
 pub(super) fn compute_class_parts(
     class: &str,
+    kind: &str,
     position: Option<(usize, usize)>,
 ) -> Option<ClassParts> {
     let classes: Vec<&str> = class.split_whitespace().collect();
@@ -108,6 +114,10 @@ pub(super) fn compute_class_parts(
         .filter(|(at, _)| *at != index)
         .map(|(_, class)| (*class).to_owned())
         .collect();
+    let default = format!("<{kind}>");
+    if crate::stylesheet::has_rule(&default) {
+        modifiers.push(default);
+    }
     if let Some((at, count)) = position {
         if at == 0 {
             modifiers.push("first-child".to_owned());
@@ -137,7 +147,7 @@ pub(super) fn compute_class_parts(
 pub(super) fn ancestor_states(
     context: &crate::gfx::Context,
     chain: &[std::rc::Rc<Ancestor>],
-) -> Vec<(std::sync::Arc<str>, u8)> {
+) -> Vec<crate::stylesheet::Frame> {
     let pointer = hover_pos(context);
     let mut found = Vec::new();
     for ancestor in chain {
@@ -148,8 +158,13 @@ pub(super) fn ancestor_states(
         {
             states |= crate::stylesheet::HOVERED;
         }
-        for class in &ancestor.classes {
-            found.push((std::sync::Arc::clone(class), states));
+        for (at, class) in ancestor.classes.iter().enumerate() {
+            let frame = crate::stylesheet::Frame::plain(std::sync::Arc::clone(class), states);
+            found.push(if at == 0 {
+                frame.inheriting(&ancestor.inherited)
+            } else {
+                frame
+            });
         }
     }
     found

@@ -1,6 +1,10 @@
 use serde_json::{Map, Value};
 use std::collections::HashMap;
 
+pub(super) const KINDS: [&str; 9] = [
+    "row", "column", "stack", "grid", "text", "icon", "image", "scroll", "spacer",
+];
+
 const STATES: [&str; 8] = [
     "hover", "pressed", "focused", "selected", "disabled", "focus", "active", "checked",
 ];
@@ -233,6 +237,7 @@ fn translate_selector(selector: &str) -> Result<(String, Option<&'static str>), 
         }
     }
     let target = match base.strip_prefix('.') {
+        None if KINDS.contains(&base) => format!("<{base}>"),
         Some(rest) => {
             let mut names = rest.split('.');
             let name = names.next().unwrap_or_default().to_owned();
