@@ -1,22 +1,23 @@
 {
   "type": "column",
-  "class": "screen",
-  "gap": 14,
+  "class": "screen library",
   "children": [
     {
       "type": "spacer",
-      "height": 72
+      "class": "lead"
     },
     {
       "type": "page",
       "children": [
         {
           "type": "row",
+          "tag": "header",
+          "class": "fill-space",
           "children": [
             {
               "type": "text",
-              "i18n": "auto.my_library",
-              "style": "title"
+              "tag": "h1",
+              "i18n": "auto.my_library"
             },
             {
               "type": "input",
@@ -26,8 +27,7 @@
                 "value": "{fields.librarySearch}",
                 "kind": "search"
               },
-              "class": "wide-only",
-              "width": 320
+              "class": "wide-only search"
             },
             {
               "type": "input",
@@ -37,19 +37,17 @@
                 "value": "{fields.librarySearch}",
                 "kind": "search"
               },
-              "class": "compact-only",
-              "grow": 1
+              "class": "compact-only grow"
             }
-          ],
-          "class": "fill-space",
-          "justify": "space_between",
-          "gap": 12
+          ]
         },
         {
           "include": "section_tabs"
         },
         {
           "type": "row",
+          "tag": "section",
+          "class": "filters",
           "children": [
             {
               "include": "dropdown_filter",
@@ -80,8 +78,7 @@
               }
             }
           ],
-          "when": "!library.downloadsOpen",
-          "gap": 10
+          "when": "!library.downloadsOpen"
         },
         {
           "type": "row",
@@ -99,11 +96,13 @@
         },
         {
           "type": "row",
+          "tag": "section",
+          "class": "toolbar",
           "when": "library.downloads.open",
           "children": [
             {
               "type": "row",
-              "class": "centered icon-btn",
+              "class": "icon-btn",
               "children": [
                 {
                   "type": "icon",
@@ -122,14 +121,15 @@
             },
             {
               "type": "text",
-              "text": "{library.downloads.openTitle}",
-              "style": "title"
+              "tag": "h1",
+              "text": "{library.downloads.openTitle}"
             }
-          ],
-          "gap": 12
+          ]
         },
         {
           "type": "row",
+          "tag": "section",
+          "class": "toolbar",
           "when": "library.downloadsOpen",
           "children": [
             {
@@ -146,7 +146,6 @@
             {
               "type": "row",
               "class": "chip",
-              "padding": "8 16",
               "action": {
                 "name": "downloads",
                 "args": {
@@ -163,8 +162,7 @@
                 }
               ]
             }
-          ],
-          "gap": 12
+          ]
         },
         {
           "type": "column",
@@ -205,11 +203,10 @@
         },
         {
           "type": "spacer",
-          "class": "compact-only",
-          "height": 96
+          "class": "compact-only tail"
         }
       ],
-      "class": "page-dense"
+      "class": "page-dense listing"
     },
     {
       "type": "grid",

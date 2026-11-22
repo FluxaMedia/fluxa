@@ -478,6 +478,8 @@ hero-synopsis-size { font-size: 16; }
   width: icon-button;
   height: icon-button;
   border-radius: var(--radius-pill);
+  align-items: center;
+  justify-content: center;
 }
 .icon-btn:focus { background: var(--ink-soft); scale: 1.08; }
 
@@ -1056,5 +1058,17 @@ button:focus { background: color-mix(in srgb, var(--color-text-primary) 18.039%,
 .badges .card-badge { padding: .25rem; }
 .caption { gap: .25rem; padding: .75rem; justify-content: flex-end; }
 .bar { height: 4px; }
+
+/* ==== Library, discover ================================================= */
+.library { gap: .875rem; }
+.lead { height: 4.5rem; }
+.tail { height: 6rem; }
+.listing header { justify-content: space-between; gap: .75rem; }
+.search { width: 20rem; }
+.filters { gap: .625rem; }
+.toolbar { gap: .75rem; }
+.tabs { gap: 1.25rem; }
+.tabs li { padding: .5rem .25rem; }
+.download-row div { gap: .25rem; }
 
 /* ==== end of settings section ============================================ */

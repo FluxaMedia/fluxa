@@ -596,6 +596,8 @@
   },
   "section_tabs": {
     "type": "row",
+    "tag": "ul",
+    "class": "tabs",
     "children": [
       {
         "each": "sections",
@@ -605,6 +607,7 @@
           "children": [
             {
               "type": "row",
+              "tag": "li",
               "when": "chip.selected",
               "children": [
                 {
@@ -612,11 +615,11 @@
                   "text": "{chip.label}",
                   "style": "subtitle"
                 }
-              ],
-              "padding": "8 4"
+              ]
             },
             {
               "type": "row",
+              "tag": "li",
               "when": "!chip.selected",
               "action": {
                 "name": "choose",
@@ -631,14 +634,12 @@
                   "text": "{chip.label}",
                   "style": "subtitle muted"
                 }
-              ],
-              "padding": "8 4"
+              ]
             }
           ]
         }
       }
-    ],
-    "gap": 20
+    ]
   },
   "day_cell": {
     "type": "stack",
@@ -693,6 +694,7 @@
     "children": [
       {
         "type": "column",
+        "tag": "div",
         "children": [
           {
             "type": "text",
@@ -715,13 +717,11 @@
               "value": "row.percent"
             }
           }
-        ],
-        "gap": 4,
-        "grow": 1
+        ]
       },
       {
         "type": "row",
-        "class": "centered icon-btn",
+        "class": "icon-btn",
         "children": [
           {
             "type": "icon",
@@ -740,7 +740,7 @@
       },
       {
         "type": "row",
-        "class": "centered icon-btn",
+        "class": "icon-btn",
         "children": [
           {
             "type": "icon",
@@ -772,6 +772,7 @@
     "children": [
       {
         "type": "column",
+        "tag": "div",
         "children": [
           {
             "type": "text",
@@ -790,9 +791,7 @@
             },
             "when": "group.active"
           }
-        ],
-        "gap": 4,
-        "grow": 1
+        ]
       }
     ]
   },
@@ -1639,7 +1638,6 @@
   "folder_tab": {
     "type": "row",
     "class": "chip",
-    "padding": "8 16",
     "action": {
       "name": "folder",
       "args": {
@@ -1658,7 +1656,6 @@
   "folder_tab_active": {
     "type": "row",
     "class": "chip-active",
-    "padding": "8 16",
     "action": {
       "name": "folder",
       "args": {
