@@ -1234,13 +1234,6 @@
       "since": 6
     },
     {
-      "name": "panel-row",
-      "element": "row",
-      "meaning": "Row inside a panel",
-      "stability": "internal",
-      "since": 1
-    },
-    {
       "name": "panel-scroll",
       "element": "scroll",
       "meaning": "",

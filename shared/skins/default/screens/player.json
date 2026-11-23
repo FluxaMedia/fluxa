@@ -720,7 +720,7 @@
                           "children": [
                             {
                               "type": "row",
-                              "class": "panel-row",
+                              "class": "select-row",
                               "props": {
                                 "selected": "{row.selected}"
                               },
@@ -891,7 +891,7 @@
                                   ]
                                 }
                               ],
-                              "class": "option"
+                              "class": "select-row"
                             },
                             {
                               "type": "row",
@@ -921,7 +921,7 @@
                                   }
                                 }
                               ],
-                              "class": "option"
+                              "class": "select-row"
                             },
                             {
                               "type": "row",
@@ -957,7 +957,7 @@
                                   }
                                 }
                               ],
-                              "class": "option chip-row"
+                              "class": "select-row chip-row"
                             }
                           ]
                         },
@@ -978,7 +978,7 @@
                               "children": [
                                 {
                                   "type": "row",
-                                  "class": "panel-row",
+                                  "class": "select-row",
                                   "props": {
                                     "selected": "{row.selected}"
                                   },
@@ -1149,7 +1149,7 @@
                                       ]
                                     }
                                   ],
-                                  "class": "option"
+                                  "class": "select-row"
                                 },
                                 {
                                   "type": "row",
@@ -1179,7 +1179,7 @@
                                       }
                                     }
                                   ],
-                                  "class": "option"
+                                  "class": "select-row"
                                 },
                                 {
                                   "type": "row",
@@ -1215,7 +1215,7 @@
                                       }
                                     }
                                   ],
-                                  "class": "option chip-row"
+                                  "class": "select-row chip-row"
                                 }
                               ]
                             }
@@ -1253,7 +1253,7 @@
                           "children": [
                             {
                               "type": "row",
-                              "class": "panel-row",
+                              "class": "select-row",
                               "props": {
                                 "selected": "{row.selected}"
                               },
@@ -1424,7 +1424,7 @@
                                   ]
                                 }
                               ],
-                              "class": "option"
+                              "class": "select-row"
                             },
                             {
                               "type": "row",
@@ -1454,7 +1454,7 @@
                                   }
                                 }
                               ],
-                              "class": "option"
+                              "class": "select-row"
                             },
                             {
                               "type": "row",
@@ -1490,7 +1490,7 @@
                                   }
                                 }
                               ],
-                              "class": "option chip-row"
+                              "class": "select-row chip-row"
                             }
                           ]
                         }
@@ -1650,7 +1650,7 @@
             {
               "type": "row",
               "when": "player.panel.sync.auto",
-              "class": "panel-row",
+              "class": "select-row",
               "action": {
                 "name": "player_row",
                 "args": {
@@ -1687,7 +1687,7 @@
                   "as": "item",
                   "template": {
                     "type": "row",
-                    "class": "panel-row",
+                    "class": "select-row",
                     "props": {
                       "selected": "{item.selected}"
                     },
@@ -1736,7 +1736,7 @@
                   "as": "item",
                   "template": {
                     "type": "row",
-                    "class": "panel-row",
+                    "class": "select-row",
                     "props": {
                       "selected": "{item.selected}"
                     },

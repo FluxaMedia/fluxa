@@ -190,7 +190,7 @@
                                       "template": {
                                         "type": "row",
                                         "tag": "li",
-                                        "class": "panel-row",
+                                        "class": "select-row",
                                         "action": {
                                           "name": "modal",
                                           "args": {
