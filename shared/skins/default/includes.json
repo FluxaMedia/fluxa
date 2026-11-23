@@ -1734,10 +1734,20 @@
         "type": "image",
         "when": "logo",
         "src": "{logo}",
-        "class": "title-logo",
+        "class": "title-logo logo-start",
         "props": {
           "fit": "contain",
           "position": "start",
+          "reveal": "{reveal}"
+        }
+      },
+      {
+        "type": "image",
+        "when": "logo",
+        "src": "{logo}",
+        "class": "title-logo logo-center",
+        "props": {
+          "fit": "contain",
           "reveal": "{reveal}"
         }
       },

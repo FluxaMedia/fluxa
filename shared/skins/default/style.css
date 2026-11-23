@@ -383,6 +383,7 @@ hero-synopsis-size { font-size: 16; }
 .avatar-badge { background: var(--color-accent); border-radius: var(--radius-pill); width: 16px; height: 16px; }
 
 .title-logo { width: 320px; height: 112px; }
+.logo-center { display: none; }
 
 .poster { width: poster-width; }
 
@@ -720,6 +721,8 @@ button:focus { scale: 1.04; }
 
 @media (size: compact), (max-height: 479px) {
   .hero-content { align-items: center; }
+  .hero-content .logo-start { display: none; }
+  .hero-content .logo-center { display: flex; }
   .hero-content .ratings, .hero-content .actions { justify-content: center; }
 }
 
