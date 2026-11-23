@@ -446,6 +446,9 @@ fn grip_pointer(state: &mut RendererState, phase: PointerPhase, position: [f32; 
 }
 
 pub(super) fn pointer_event(state: &mut RendererState, phase: PointerPhase, position: [f32; 2]) {
+    if phase == PointerPhase::Down {
+        state.pointer_down_at = position;
+    }
     if grip_pointer(state, phase, position) {
         return;
     }

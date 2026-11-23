@@ -37,14 +37,17 @@ pub(crate) fn activate(state: &mut RendererState, node: u64) {
             }
             command(state, VideoCommand::TogglePause);
         }
-        fluxa_ui::NODE_PLAYER_CONTROLS => {
-            if let Some(player) = state.player.as_mut() {
-                player.touch();
+        fluxa_ui::NODE_PLAYER_CONTROLS | fluxa_ui::NODE_PLAYER_HIDE_CONTROLS => {
+            let shown = node == fluxa_ui::NODE_PLAYER_HIDE_CONTROLS;
+            if double_tap_seek(state, shown) {
+                return;
             }
-        }
-        fluxa_ui::NODE_PLAYER_HIDE_CONTROLS => {
             if let Some(player) = state.player.as_mut() {
-                player.hide();
+                if shown {
+                    player.hide();
+                } else {
+                    player.touch();
+                }
             }
         }
         fluxa_ui::NODE_PLAYER_SKIP => {
@@ -150,6 +153,32 @@ pub(crate) fn activate(state: &mut RendererState, node: u64) {
         }
         _ => {}
     }
+}
+
+const DOUBLE_TAP: Duration = Duration::from_millis(300);
+
+fn double_tap_seek(state: &mut RendererState, was_shown: bool) -> bool {
+    let right = state.pointer_down_at[0] > state.size[0] as f32 / state.scale() / 2.0;
+    let Some((at, side, before)) = state.player_tap.replace((Instant::now(), right, was_shown))
+    else {
+        return false;
+    };
+    if side != right
+        || at.elapsed() > DOUBLE_TAP
+        || !state.settings.bool_value("playerDoubleTapSeek")
+    {
+        return false;
+    }
+    state.player_tap = None;
+    seek(state, if right { 1.0 } else { -1.0 });
+    if let Some(player) = state.player.as_mut() {
+        if before {
+            player.touch();
+        } else {
+            player.hide();
+        }
+    }
+    true
 }
 
 pub(crate) fn gesture(state: &mut RendererState, gesture: fluxa_ui::PlayerGesture) {
