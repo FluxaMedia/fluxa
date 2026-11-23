@@ -1257,287 +1257,295 @@
               "class": "wide-only panel-cols"
             },
             {
-              "type": "column",
+              "type": "scroll",
+              "class": "compact-only sheet-scroll",
+              "props": {
+                "axis": "y"
+              },
               "children": [
                 {
-                  "each": "player.panel.columns",
-                  "as": "column",
-                  "template": {
-                    "type": "column",
-                    "children": [
-                      {
-                        "type": "text",
-                        "text": "{column.heading}",
-                        "when": "column.heading",
-                        "class": "label-strong panel-heading",
-                        "style": "meta"
-                      },
-                      {
-                        "each": "column.rows",
-                        "as": "row",
-                        "template": {
-                          "type": "column",
-                          "children": [
-                            {
-                              "type": "row",
-                              "class": "select-row",
-                              "props": {
-                                "selected": "{row.selected}"
-                              },
-                              "action": {
-                                "name": "player_row",
-                                "args": {
-                                  "index": "{row.index}"
-                                }
-                              },
-                              "when": "row.plain",
+                  "type": "column",
+                  "children": [
+                    {
+                      "each": "player.panel.columns",
+                      "as": "column",
+                      "template": {
+                        "type": "column",
+                        "children": [
+                          {
+                            "type": "text",
+                            "text": "{column.heading}",
+                            "when": "column.heading",
+                            "class": "label-strong panel-heading",
+                            "style": "meta"
+                          },
+                          {
+                            "each": "column.rows",
+                            "as": "row",
+                            "template": {
+                              "type": "column",
                               "children": [
                                 {
-                                  "type": "image",
-                                  "when": "row.thumb",
-                                  "src": "{row.thumb}",
-                                  "class": "thumb small",
+                                  "type": "row",
+                                  "class": "select-row",
                                   "props": {
-                                    "fit": "cover"
-                                  }
+                                    "selected": "{row.selected}"
+                                  },
+                                  "action": {
+                                    "name": "player_row",
+                                    "args": {
+                                      "index": "{row.index}"
+                                    }
+                                  },
+                                  "when": "row.plain",
+                                  "children": [
+                                    {
+                                      "type": "image",
+                                      "when": "row.thumb",
+                                      "src": "{row.thumb}",
+                                      "class": "thumb small",
+                                      "props": {
+                                        "fit": "cover"
+                                      }
+                                    },
+                                    {
+                                      "type": "icon",
+                                      "when": "row.icon",
+                                      "props": {
+                                        "name": "{row.icon}",
+                                        "size": 18,
+                                        "fill": "true"
+                                      }
+                                    },
+                                    {
+                                      "type": "column",
+                                      "tag": "div",
+                                      "children": [
+                                        {
+                                          "type": "text",
+                                          "text": "{row.label}",
+                                          "props": {
+                                            "lines": 2
+                                          },
+                                          "class": "panel-label"
+                                        },
+                                        {
+                                          "type": "text",
+                                          "text": "{row.detail}",
+                                          "when": "row.detail",
+                                          "props": {
+                                            "lines": 2
+                                          },
+                                          "class": "panel-detail"
+                                        },
+                                        {
+                                          "type": "row",
+                                          "tag": "ul",
+                                          "when": "row.chips",
+                                          "props": {
+                                            "wrap": true
+                                          },
+                                          "children": [
+                                            {
+                                              "each": "row.chips",
+                                              "as": "chip",
+                                              "template": {
+                                                "type": "row",
+                                                "class": "chip",
+                                                "children": [
+                                                  {
+                                                    "type": "text",
+                                                    "text": "{chip}",
+                                                    "style": "meta"
+                                                  }
+                                                ]
+                                              }
+                                            }
+                                          ]
+                                        }
+                                      ]
+                                    },
+                                    {
+                                      "type": "text",
+                                      "tag": "small",
+                                      "text": "{row.value}",
+                                      "when": "row.value",
+                                      "props": {
+                                        "lines": 1
+                                      }
+                                    },
+                                    {
+                                      "type": "text",
+                                      "tag": "small",
+                                      "text": "{row.badge}",
+                                      "when": "row.badge"
+                                    },
+                                    {
+                                      "type": "icon",
+                                      "when": "row.selected",
+                                      "props": {
+                                        "name": "Check",
+                                        "size": 18,
+                                        "fill": "true"
+                                      }
+                                    },
+                                    {
+                                      "type": "icon",
+                                      "when": "row.chevron",
+                                      "props": {
+                                        "name": "ChevronRight",
+                                        "size": 16,
+                                        "fill": "true"
+                                      }
+                                    }
+                                  ]
                                 },
                                 {
-                                  "type": "icon",
-                                  "when": "row.icon",
-                                  "props": {
-                                    "name": "{row.icon}",
-                                    "size": 18,
-                                    "fill": "true"
-                                  }
-                                },
-                                {
-                                  "type": "column",
-                                  "tag": "div",
+                                  "type": "row",
+                                  "when": "row.value_kind",
                                   "children": [
                                     {
                                       "type": "text",
                                       "text": "{row.label}",
                                       "props": {
-                                        "lines": 2
+                                        "lines": 1
                                       },
-                                      "class": "panel-label"
-                                    },
-                                    {
-                                      "type": "text",
-                                      "text": "{row.detail}",
-                                      "when": "row.detail",
-                                      "props": {
-                                        "lines": 2
-                                      },
-                                      "class": "panel-detail"
+                                      "class": "grow"
                                     },
                                     {
                                       "type": "row",
-                                      "tag": "ul",
-                                      "when": "row.chips",
-                                      "props": {
-                                        "wrap": true
+                                      "class": "icon-btn small",
+                                      "action": {
+                                        "name": "player_row",
+                                        "args": {
+                                          "index": "{row.minus}"
+                                        }
                                       },
                                       "children": [
                                         {
-                                          "each": "row.chips",
-                                          "as": "chip",
-                                          "template": {
-                                            "type": "row",
-                                            "class": "chip",
-                                            "children": [
-                                              {
-                                                "type": "text",
-                                                "text": "{chip}",
-                                                "style": "meta"
-                                              }
-                                            ]
+                                          "type": "icon",
+                                          "props": {
+                                            "name": "Minus",
+                                            "size": 14,
+                                            "fill": "true"
+                                          }
+                                        }
+                                      ]
+                                    },
+                                    {
+                                      "type": "row",
+                                      "children": [
+                                        {
+                                          "type": "text",
+                                          "text": "{row.value}"
+                                        }
+                                      ],
+                                      "class": "readout"
+                                    },
+                                    {
+                                      "type": "row",
+                                      "class": "icon-btn small",
+                                      "action": {
+                                        "name": "player_row",
+                                        "args": {
+                                          "index": "{row.plus}"
+                                        }
+                                      },
+                                      "children": [
+                                        {
+                                          "type": "icon",
+                                          "props": {
+                                            "name": "Plus",
+                                            "size": 14,
+                                            "fill": "true"
                                           }
                                         }
                                       ]
                                     }
-                                  ]
-                                },
-                                {
-                                  "type": "text",
-                                  "tag": "small",
-                                  "text": "{row.value}",
-                                  "when": "row.value",
-                                  "props": {
-                                    "lines": 1
-                                  }
-                                },
-                                {
-                                  "type": "text",
-                                  "tag": "small",
-                                  "text": "{row.badge}",
-                                  "when": "row.badge"
-                                },
-                                {
-                                  "type": "icon",
-                                  "when": "row.selected",
-                                  "props": {
-                                    "name": "Check",
-                                    "size": 18,
-                                    "fill": "true"
-                                  }
-                                },
-                                {
-                                  "type": "icon",
-                                  "when": "row.chevron",
-                                  "props": {
-                                    "name": "ChevronRight",
-                                    "size": 16,
-                                    "fill": "true"
-                                  }
-                                }
-                              ]
-                            },
-                            {
-                              "type": "row",
-                              "when": "row.value_kind",
-                              "children": [
-                                {
-                                  "type": "text",
-                                  "text": "{row.label}",
-                                  "props": {
-                                    "lines": 1
-                                  },
-                                  "class": "grow"
+                                  ],
+                                  "class": "select-row"
                                 },
                                 {
                                   "type": "row",
-                                  "class": "icon-btn small",
-                                  "action": {
-                                    "name": "player_row",
-                                    "args": {
-                                      "index": "{row.minus}"
-                                    }
-                                  },
-                                  "children": [
-                                    {
-                                      "type": "icon",
-                                      "props": {
-                                        "name": "Minus",
-                                        "size": 14,
-                                        "fill": "true"
-                                      }
-                                    }
-                                  ]
-                                },
-                                {
-                                  "type": "row",
+                                  "when": "row.swatches",
                                   "children": [
                                     {
                                       "type": "text",
-                                      "text": "{row.value}"
+                                      "text": "{row.label}",
+                                      "class": "grow"
+                                    },
+                                    {
+                                      "each": "row.trail",
+                                      "as": "part",
+                                      "template": {
+                                        "type": "column",
+                                        "class": "swatch",
+                                        "props": {
+                                          "selected": "{part.selected}",
+                                          "tint": "{part.color}"
+                                        },
+                                        "action": {
+                                          "name": "player_row",
+                                          "args": {
+                                            "index": "{part.index}"
+                                          }
+                                        }
+                                      }
                                     }
                                   ],
-                                  "class": "readout"
+                                  "class": "select-row"
                                 },
                                 {
                                   "type": "row",
-                                  "class": "icon-btn small",
-                                  "action": {
-                                    "name": "player_row",
-                                    "args": {
-                                      "index": "{row.plus}"
-                                    }
-                                  },
+                                  "when": "row.choices",
                                   "children": [
                                     {
-                                      "type": "icon",
-                                      "props": {
-                                        "name": "Plus",
-                                        "size": 14,
-                                        "fill": "true"
+                                      "type": "text",
+                                      "text": "{row.label}",
+                                      "class": "grow"
+                                    },
+                                    {
+                                      "each": "row.trail",
+                                      "as": "part",
+                                      "template": {
+                                        "type": "row",
+                                        "class": "chip",
+                                        "props": {
+                                          "selected": "{part.selected}"
+                                        },
+                                        "action": {
+                                          "name": "player_row",
+                                          "args": {
+                                            "index": "{part.index}"
+                                          }
+                                        },
+                                        "children": [
+                                          {
+                                            "type": "text",
+                                            "text": "{part.label}",
+                                            "style": "meta"
+                                          }
+                                        ]
                                       }
                                     }
-                                  ]
+                                  ],
+                                  "class": "select-row chip-row"
                                 }
-                              ],
-                              "class": "select-row"
-                            },
-                            {
-                              "type": "row",
-                              "when": "row.swatches",
-                              "children": [
-                                {
-                                  "type": "text",
-                                  "text": "{row.label}",
-                                  "class": "grow"
-                                },
-                                {
-                                  "each": "row.trail",
-                                  "as": "part",
-                                  "template": {
-                                    "type": "column",
-                                    "class": "swatch",
-                                    "props": {
-                                      "selected": "{part.selected}",
-                                      "tint": "{part.color}"
-                                    },
-                                    "action": {
-                                      "name": "player_row",
-                                      "args": {
-                                        "index": "{part.index}"
-                                      }
-                                    }
-                                  }
-                                }
-                              ],
-                              "class": "select-row"
-                            },
-                            {
-                              "type": "row",
-                              "when": "row.choices",
-                              "children": [
-                                {
-                                  "type": "text",
-                                  "text": "{row.label}",
-                                  "class": "grow"
-                                },
-                                {
-                                  "each": "row.trail",
-                                  "as": "part",
-                                  "template": {
-                                    "type": "row",
-                                    "class": "chip",
-                                    "props": {
-                                      "selected": "{part.selected}"
-                                    },
-                                    "action": {
-                                      "name": "player_row",
-                                      "args": {
-                                        "index": "{part.index}"
-                                      }
-                                    },
-                                    "children": [
-                                      {
-                                        "type": "text",
-                                        "text": "{part.label}",
-                                        "style": "meta"
-                                      }
-                                    ]
-                                  }
-                                }
-                              ],
-                              "class": "select-row chip-row"
+                              ]
                             }
-                          ]
-                        }
+                          }
+                        ],
+                        "class": "method-list"
                       }
-                    ],
-                    "class": "method-list"
-                  }
+                    }
+                  ]
                 }
-              ],
-              "class": "compact-only"
+              ]
             }
           ]
         }
       ],
-      "class": "fullscreen layer bottom-right panel-layer"
+      "class": "fullscreen layer bottom-right panel-layer sheet-on-mobile"
     },
     {
       "type": "row",
@@ -1545,8 +1553,7 @@
       "children": [
         {
           "type": "column",
-          "class": "popover player-panel panel-form",
-          "width": "{const.panelWidth}",
+          "class": "popover player-panel panel-form sync-panel",
           "children": [
             {
               "type": "row",
@@ -1824,7 +1831,7 @@
           ]
         }
       ],
-      "class": "fullscreen layer top-right"
+      "class": "fullscreen layer top-right sheet-on-mobile"
     },
     {
       "type": "column",

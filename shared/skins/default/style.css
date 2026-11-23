@@ -836,6 +836,13 @@ button:focus { scale: 1.04; }
 .tip, .menu-panel .hero-meta, .look section { padding: var(--space-2) var(--space-4); }
 .panel-cols { gap: var(--gap-loose); align-items: flex-start; }
 .panel-scroll { height: 40vh; }
+.sheet-scroll { height: 55vh; }
+.sync-panel { width: 340px; }
+
+@media (form: mobile) {
+  .layer.sheet-on-mobile { place: bottom; padding: 0; }
+  .sheet-on-mobile .player-panel, .sync-panel { width: 100vw; }
+}
 
 .readout { width: 4rem; justify-content: center; }
 .stepper-row { gap: var(--gap-base); justify-content: center; align-items: center; }
