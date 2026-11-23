@@ -4333,48 +4333,8 @@
                     {
                       "type": "text",
                       "text": "{s.addon}",
-                      "class": "setting-hint",
+                      "class": "source-addon",
                       "when": "s.addon"
-                    },
-                    {
-                      "type": "row",
-                      "class": "icon-btn",
-                      "action": {
-                        "name": "node",
-                        "args": {
-                          "id": "{s.copy}"
-                        }
-                      },
-                      "children": [
-                        {
-                          "type": "icon",
-                          "props": {
-                            "name": "Copy",
-                            "size": 18
-                          }
-                        }
-                      ],
-                      "when": "s.actions"
-                    },
-                    {
-                      "type": "row",
-                      "class": "icon-btn",
-                      "action": {
-                        "name": "node",
-                        "args": {
-                          "id": "{s.download}"
-                        }
-                      },
-                      "children": [
-                        {
-                          "type": "icon",
-                          "props": {
-                            "name": "Downloads",
-                            "size": 18
-                          }
-                        }
-                      ],
-                      "when": "s.actions"
                     }
                   ]
                 }

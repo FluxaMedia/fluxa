@@ -567,7 +567,6 @@ fn sample_sources() -> Vec<fluxa_ui::PlayerSource> {
             detail: detail.to_owned(),
             badges,
             badges_top: false,
-            actions: true,
         }
     };
     vec![

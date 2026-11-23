@@ -377,7 +377,7 @@ hero-synopsis-size { font-size: 16; }
 .synopsis { font-size: synopsis-size; color: var(--color-text-primary); }
 .episode-title { font-size: var(--text-md); font-weight: 700; }
 
-.episode-overview, .setting-hint, .panel-detail { color: var(--ink-subtle); font-size: var(--text-xs); }
+.episode-overview, .setting-hint, .source-addon, .panel-detail { color: var(--ink-subtle); font-size: var(--text-xs); }
 
 .avatar-badge { background: var(--color-accent); border-radius: var(--radius-pill); width: 16px; height: 16px; }
 
@@ -773,7 +773,7 @@ button:focus { scale: 1.04; }
 .inset, .sources-body .filters, .sources-body .waiting { padding: 0 var(--space-4); }
 .overview { padding: 0 var(--space-5); }
 .results { gap: var(--gap-base); padding: 0 var(--space-4) var(--space-5); }
-.source-row div { gap: var(--gap-snug); }
+.source-row div { gap: var(--gap-snug); flex-grow: 1; }
 .source-row .card-badge, .select-row .chip { padding: var(--space-1) var(--space-2); }
 
 /* ==== Dialogs, detail modal, recommendations ============================ */

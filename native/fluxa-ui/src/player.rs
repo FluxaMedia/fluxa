@@ -148,7 +148,6 @@ pub struct PlayerSource {
     pub detail: String,
     pub badges: Vec<SourceBadge>,
     pub badges_top: bool,
-    pub actions: bool,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -589,9 +588,6 @@ pub fn sources_data(player: &PlayerModel) -> serde_json::Value {
                 "badges": badges,
                 "badgesTop": source.badges_top,
                 "badgesBottom": !source.badges_top,
-                "actions": source.actions,
-                "copy": (NODE_PLAYER_SOURCE_COPY_BASE + index as u64).to_string(),
-                "download": (NODE_PLAYER_SOURCE_DOWNLOAD_BASE + index as u64).to_string(),
             })
         })
         .collect();

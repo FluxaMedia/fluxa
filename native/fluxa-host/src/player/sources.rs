@@ -85,7 +85,6 @@ pub(super) fn source_row(stream: &Value) -> fluxa_ui::PlayerSource {
         detail: crate::stream_badges::format_text(&detail),
         badges,
         badges_top,
-        actions: !crate::stream_menu::entries(stream).is_empty(),
     }
 }
 
