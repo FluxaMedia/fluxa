@@ -273,6 +273,24 @@ fn pan_enabled(state: &RendererState, at: [f32; 2]) -> bool {
     }
 }
 
+fn swipe_pager(state: &RendererState, end: [f32; 2]) -> bool {
+    let Some(start) = state.touch_start else {
+        return false;
+    };
+    let (dx, dy) = (end[0] - start[0], end[1] - start[1]);
+    if dx.abs() < 60.0 || dx.abs() < dy.abs() * 1.15 {
+        return false;
+    }
+    if !matches!(state.active_scroll, Some(ScrollKey::Screen(_))) {
+        return false;
+    }
+    let Some(gpu) = state.gpu.as_ref() else {
+        return false;
+    };
+    let context = fluxa_ui::gfx::Context::from_backend(&gpu.egui_context);
+    fluxa_ui::pager_swipe(&context, Pos2::new(start[0], start[1]), dx < 0.0)
+}
+
 pub(super) fn pan(state: &mut RendererState, phase: PointerPhase, position: [f32; 2]) -> bool {
     let origin = state.touch_start.unwrap_or(position);
     if phase != PointerPhase::Up && !pan_enabled(state, origin) {
@@ -323,7 +341,9 @@ pub(super) fn pan(state: &mut RendererState, phase: PointerPhase, position: [f32
         }
         PointerPhase::Up => {
             let was_scroll = state.touch_scrolled;
-            if was_scroll {
+            if was_scroll && swipe_pager(state, position) {
+                state.active_scroll = None;
+            } else if was_scroll {
                 scroll_release(state, position);
             }
             state.touch_start = None;

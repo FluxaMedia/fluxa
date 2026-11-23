@@ -34,6 +34,7 @@ use self::flow::*;
 pub use self::flow::{grid_windows, row_strip};
 use self::grid::*;
 use self::indicator::*;
+pub use self::media::pager_swipe;
 use self::media::*;
 pub use self::media::{
     PlayingVideo, VideoRequest, set_player_video, set_playing_video, take_video_request,

@@ -334,6 +334,27 @@ pub(super) fn pager_step(state: PagerState, count: usize, delta: isize, now: f64
     (next, now, Some(index), now)
 }
 
+const ACTIVE_PAGER: &str = "skin-pager-active";
+
+pub fn pager_swipe(context: &crate::gfx::Context, at: crate::gfx::Pos2, forward: bool) -> bool {
+    let Some((rect, id, count)) =
+        context.data(|data| data.get_temp::<(crate::gfx::Rect, Id, usize)>(Id::new(ACTIVE_PAGER)))
+    else {
+        return false;
+    };
+    if !rect.contains(at) {
+        return false;
+    }
+    let now = context.input(|input| input.time());
+    let current = context
+        .data(|data| data.get_temp::<PagerState>(id))
+        .unwrap_or((0, now, None, f64::NEG_INFINITY));
+    let delta = if forward { 1 } else { -1 };
+    context.data_mut(|data| data.insert_temp(id, pager_step(current, count, delta, now)));
+    context.request_repaint();
+    true
+}
+
 pub(super) fn faded<'a>(item: kit::Item<'a>, alpha: f32, height: Option<f32>) -> kit::Item<'a> {
     let wrapper = kit::item(Vec2::ZERO, move |ui, rect| {
         ui.set_opacity(alpha);
@@ -419,6 +440,7 @@ pub(super) fn pager<'a, A: HomeAssets>(
         layers.push(
             kit::item(Vec2::ZERO, move |ui, rect| {
                 let context = ui.ctx().clone();
+                context.data_mut(|data| data.insert_temp(Id::new(ACTIVE_PAGER), (rect, id, count)));
                 let pointer = context.input(|input| input.pointer().interact_pos());
                 if context.input(|input| input.pointer().primary_pressed())
                     && let Some(position) = pointer.filter(|position| rect.contains(*position))

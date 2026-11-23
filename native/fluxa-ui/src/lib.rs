@@ -81,8 +81,8 @@ pub use sidebar::{set_nav_focus, set_nav_live, set_nav_search, set_nav_sidebar, 
 pub use skin::{
     BUILT_NODES, CARD_HITS, CARD_MISSES, PlayingVideo, SkinFrame, SkinTarget, VideoRequest,
     draw_skin, draw_skin_faded, draw_skin_overlay, draw_skin_pinned, draw_skin_transient,
-    grid_windows, row_strip, set_player_video, set_playing_video, skin_group_rect, take_skips,
-    take_video_request,
+    grid_windows, pager_swipe, row_strip, set_player_video, set_playing_video, skin_group_rect,
+    take_skips, take_video_request,
 };
 use style::*;
 pub(crate) use stylesheet::vars;
