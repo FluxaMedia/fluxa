@@ -840,8 +840,8 @@ button:focus { scale: 1.04; }
 .sync-panel { width: 340px; }
 
 @media (form: mobile) {
-  .layer.sheet-on-mobile { place: bottom; padding: 0; }
-  .sheet-on-mobile .player-panel, .sync-panel { width: 100vw; }
+  .layer.sheet-on-mobile { place: bottom center; padding: 0; }
+  .sheet-on-mobile .player-panel, .sync-panel { width: min(100vw, 480px); }
 }
 
 .readout { width: 4rem; justify-content: center; }
