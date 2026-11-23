@@ -221,8 +221,27 @@
                 {
                   "type": "icon",
                   "props": {
-                    "name": "Cast",
+                    "name": "Swap",
                     "fill": "true"
+                  }
+                }
+              ],
+              "when": "player.changeSource",
+              "action": {
+                "name": "player",
+                "args": {
+                  "op": "change_source"
+                }
+              }
+            },
+            {
+              "type": "row",
+              "class": "icon-btn",
+              "children": [
+                {
+                  "type": "icon",
+                  "props": {
+                    "name": "Cast"
                   }
                 }
               ],
@@ -615,6 +634,17 @@
       ],
       "when": "player.trailer && player.visible && player.hasVideo",
       "class": "fullscreen layer bottom-center"
+    },
+    {
+      "type": "column",
+      "class": "fullscreen fill-space",
+      "when": "player.panel",
+      "action": {
+        "name": "player",
+        "args": {
+          "op": "panel_close"
+        }
+      }
     },
     {
       "type": "row",

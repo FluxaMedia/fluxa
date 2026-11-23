@@ -487,6 +487,7 @@ pub fn player_data_for(player: &PlayerModel, mobile: bool) -> serde_json::Value 
         "volume": player.options.volume,
         "fullscreen": player.options.fullscreen,
         "cast": player.options.cast,
+        "changeSource": player.can_change_source,
         "info": !player.title.is_empty(),
         "panel": player.panel.as_ref().map(|panel| panel_data(panel, mobile, language)),
         "watch": player.watch.as_ref().map(crate::watch_data),
