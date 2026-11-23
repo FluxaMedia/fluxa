@@ -8,6 +8,7 @@ const TYPES: [(&str, &str); 3] = [
     ("anime", "anime"),
 ];
 const FULL_RESYNC_SECONDS: i64 = 7 * 24 * 60 * 60;
+const SYNC_SCHEMA: i64 = 4;
 const STATUSES: [&str; 5] = ["plantowatch", "watching", "completed", "dropped", "hold"];
 
 fn with_rewatch(args: &Value, path: String) -> String {
@@ -70,6 +71,25 @@ fn stamp<'a>(activities: &'a Value, domain: Option<&str>, field: &str) -> Option
     scope.get(field)?.as_str()
 }
 
+pub(crate) fn simkl_item_meta_plan_json(args_json: &str) -> Option<String> {
+    let args: Value = serde_json::from_str(args_json).ok()?;
+    let id = args.get("simklId").and_then(Value::as_i64)?;
+    let kind = match args.get("kind").and_then(Value::as_str)? {
+        "anime" => "anime",
+        "movie" => "movies",
+        _ => "tv",
+    };
+    let mut requests = vec![{
+        let mut plan = keyed(&args, "detail", format!("/{kind}/{id}"));
+        plan["key"] = json!("detail");
+        plan
+    }];
+    if kind != "movies" {
+        requests.push(keyed(&args, "episodes", format!("/{kind}/episodes/{id}")));
+    }
+    serde_json::to_string(&requests).ok()
+}
+
 pub(crate) fn simkl_sync_plan_json(args_json: &str) -> Option<String> {
     let args: Value = serde_json::from_str(args_json).ok()?;
     let Some(activities) = args.get("activities").filter(|value| value.is_object()) else {
@@ -77,11 +97,12 @@ pub(crate) fn simkl_sync_plan_json(args_json: &str) -> Option<String> {
         return serde_json::to_string(&plan).ok();
     };
     let now = args.get("nowSeconds").and_then(Value::as_i64);
-    let stale = now.is_some_and(|now| {
-        args.pointer("/state/fullAt")
-            .and_then(Value::as_i64)
-            .is_none_or(|full_at| now - full_at > FULL_RESYNC_SECONDS)
-    });
+    let stale = args.pointer("/state/schema").and_then(Value::as_i64) != Some(SYNC_SCHEMA)
+        || now.is_some_and(|now| {
+            args.pointer("/state/fullAt")
+                .and_then(Value::as_i64)
+                .is_none_or(|full_at| now - full_at > FULL_RESYNC_SECONDS)
+        });
     let saved = args
         .get("state")
         .and_then(|state| state.get("activities"))
@@ -93,7 +114,7 @@ pub(crate) fn simkl_sync_plan_json(args_json: &str) -> Option<String> {
                 keyed(
                     &args,
                     &format!("items_{kind}"),
-                    with_rewatch(&args, format!("/sync/all-items/{kind}")),
+                    with_rewatch(&args, format!("/sync/all-items/{kind}?next_watch_info=yes")),
                 )
             })
             .collect();
@@ -111,8 +132,8 @@ pub(crate) fn simkl_sync_plan_json(args_json: &str) -> Option<String> {
         }
         let since = stamp(saved, Some(domain), "all").or_else(|| stamp(saved, None, "all"));
         let path = match since {
-            Some(since) => format!("/sync/all-items/{kind}?date_from={since}"),
-            None => format!("/sync/all-items/{kind}"),
+            Some(since) => format!("/sync/all-items/{kind}?next_watch_info=yes&date_from={since}"),
+            None => format!("/sync/all-items/{kind}?next_watch_info=yes"),
         };
         requests.push(keyed(
             &args,
@@ -255,7 +276,7 @@ pub(crate) fn simkl_sync_apply_json(args_json: &str) -> Option<String> {
     )?)
     .ok()?;
     serde_json::to_string(&json!({
-        "state": {"activities": args.get("activities")?, "items": items, "playback": playback, "rewatches": rewatches, "fullAt": full_at},
+        "state": {"activities": args.get("activities")?, "items": items, "playback": playback, "rewatches": rewatches, "fullAt": full_at, "schema": SYNC_SCHEMA},
         "snapshot": snapshot
     }))
     .ok()

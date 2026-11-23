@@ -193,6 +193,11 @@ impl EffectExecutor {
                 let items = snapshot
                     .and_then(|snapshot| snapshot.get("continueWatching").cloned())
                     .unwrap_or_else(|| json!([]));
+                let items = if other == "simkl" {
+                    self.enrich_simkl_items(profile.clone(), items).await
+                } else {
+                    items
+                };
                 return Ok(self.with_saved_streams(profile_id, items));
             }
             Some(other) => {

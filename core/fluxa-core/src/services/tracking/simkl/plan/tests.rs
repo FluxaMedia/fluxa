@@ -31,7 +31,8 @@ fn first_sync_pulls_each_type_then_playback() {
 #[test]
 fn unchanged_activities_make_no_item_requests() {
     let activities = json!({"all": "2026-01-01T00:00:00Z"});
-    let planned = plan(json!({"state": {"activities": activities}, "activities": activities}));
+    let planned =
+        plan(json!({"state": {"activities": activities, "schema": 4}, "activities": activities}));
     assert_eq!(planned["mode"], "cached");
     assert!(planned["requests"].as_array().unwrap().is_empty());
 }
@@ -40,7 +41,7 @@ fn unchanged_activities_make_no_item_requests() {
 fn only_the_moved_domain_is_fetched_with_date_from() {
     let saved = json!({"all": "t1", "tv_shows": {"all": "t1"}, "movies": {"all": "t1"}, "anime": {"all": "t1"}});
     let now = json!({"all": "t2", "tv_shows": {"all": "t2", "removed_from_list": "t2"}, "movies": {"all": "t1"}, "anime": {"all": "t1"}});
-    let planned = plan(json!({"state": {"activities": saved}, "activities": now}));
+    let planned = plan(json!({"state": {"activities": saved, "schema": 4}, "activities": now}));
     let urls: Vec<_> = planned["requests"]
         .as_array()
         .unwrap()
@@ -48,7 +49,7 @@ fn only_the_moved_domain_is_fetched_with_date_from() {
         .map(|request| request["url"].as_str().unwrap())
         .collect();
     assert_eq!(urls.len(), 2);
-    assert!(urls[0].contains("/sync/all-items/shows?date_from=t1"));
+    assert!(urls[0].contains("/sync/all-items/shows?next_watch_info=yes&date_from=t1"));
     assert!(urls[1].contains("extended=simkl_ids_only"));
 }
 
@@ -75,16 +76,26 @@ fn week_old_state_forces_a_full_pull() {
     let activities = json!({"all": "t1"});
     let stale = plan(json!({
         "nowSeconds": 1_000_000,
-        "state": {"activities": activities, "fullAt": 1_000_000 - 8 * 24 * 60 * 60},
+        "state": {"activities": activities, "schema": 4, "fullAt": 1_000_000 - 8 * 24 * 60 * 60},
         "activities": activities,
     }));
     assert_eq!(stale["mode"], "full");
     let fresh = plan(json!({
         "nowSeconds": 1_000_000,
-        "state": {"activities": activities, "fullAt": 1_000_000 - 60},
+        "state": {"activities": activities, "schema": 4, "fullAt": 1_000_000 - 60},
         "activities": activities,
     }));
     assert_eq!(fresh["mode"], "cached");
+}
+
+#[test]
+fn state_from_an_older_mapping_forces_a_full_pull() {
+    let activities = json!({"all": "t1"});
+    let planned = plan(json!({
+        "state": {"activities": activities},
+        "activities": activities,
+    }));
+    assert_eq!(planned["mode"], "full");
 }
 
 #[test]
@@ -112,7 +123,9 @@ fn delta_replaces_changed_items_and_drops_removed_ones() {
 fn rewatch_flag_is_added_to_item_requests_only() {
     let saved = json!({"all": "t1", "tv_shows": {"all": "t1"}});
     let now = json!({"all": "t2", "tv_shows": {"all": "t2", "removed_from_list": "t2"}});
-    let planned = plan(json!({"rewatch": true, "state": {"activities": saved}, "activities": now}));
+    let planned = plan(
+        json!({"rewatch": true, "state": {"activities": saved, "schema": 4}, "activities": now}),
+    );
     let urls: Vec<_> = planned["requests"]
         .as_array()
         .unwrap()

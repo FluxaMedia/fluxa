@@ -100,6 +100,52 @@ pub(super) fn random_hex() -> Option<String> {
     Some(bytes.iter().map(|byte| format!("{byte:02x}")).collect())
 }
 
+fn simkl_wanted(items: &Value) -> Vec<(i64, &'static str)> {
+    items
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter_map(|item| {
+            let id = item.get("simklId")?.as_i64()?;
+            let kind = if item.get("isAnime").and_then(Value::as_bool) == Some(true) {
+                "anime"
+            } else if str_field(item, "type") == "movie" {
+                "movie"
+            } else {
+                "series"
+            };
+            Some((id, kind))
+        })
+        .collect()
+}
+
+async fn fetch_simkl_meta(
+    mut args: Value,
+    id: i64,
+    kind: &'static str,
+    now: i64,
+) -> Option<(i64, Value)> {
+    args["simklId"] = json!(id);
+    args["kind"] = json!(kind);
+    let requests = core_value("simklItemMetaPlan", args)?;
+    let client = http_client().ok()?;
+    let mut responses = Map::new();
+    let requests: Vec<Value> = requests.as_array()?.clone();
+    for request in requests {
+        let key = str_field(&request, "key").to_owned();
+        let (status, body) = send(&client, &request).await.ok()?;
+        if (200..300).contains(&status) {
+            responses.insert(key, body);
+        }
+    }
+    let mut slim = core_value(
+        "simklSlimItemMeta",
+        json!({"detail": responses.get("detail")?, "episodes": responses.get("episodes")}),
+    )?;
+    slim["at"] = json!(now);
+    Some((id, slim))
+}
+
 fn str_field<'a>(value: &'a Value, key: &str) -> &'a str {
     value.get(key).and_then(Value::as_str).unwrap_or("")
 }
@@ -129,6 +175,8 @@ fn token_fingerprint(credentials: &Value) -> String {
     format!("{:x}", hasher.finish())
 }
 const REWATCH_INTENT_TTL: i64 = 86_400;
+const SIMKL_META_TTL: i64 = 24 * 60 * 60;
+const SIMKL_META_CONCURRENCY: usize = 6;
 
 fn simkl_account_key(profile_id: &str) -> String {
     format!("simkl_account_{}", sanitize_key(profile_id))
@@ -430,6 +478,64 @@ impl EffectExecutor {
             }
             credentials
         })
+    }
+
+    pub(super) async fn enrich_simkl_items(&self, profile: Value, items: Value) -> Value {
+        let Some(credentials) = self.provider_credentials("simkl", &profile) else {
+            return items;
+        };
+        let wanted = simkl_wanted(&items);
+        let now = chrono_unix_seconds();
+        let stale = self.stale_simkl_metas(&wanted, now);
+        let mut fetched: Vec<(i64, Value)> = Vec::new();
+        for chunk in stale.chunks(SIMKL_META_CONCURRENCY) {
+            let batch = futures::future::join_all(
+                chunk
+                    .iter()
+                    .map(|(id, kind)| fetch_simkl_meta(credentials.clone(), *id, *kind, now)),
+            )
+            .await;
+            fetched.extend(batch.into_iter().flatten());
+        }
+        self.simkl_enriched(wanted, fetched, items)
+    }
+
+    fn stale_simkl_metas(
+        &self,
+        wanted: &[(i64, &'static str)],
+        now: i64,
+    ) -> Vec<(i64, &'static str)> {
+        wanted
+            .iter()
+            .filter(|(id, _)| {
+                self.storage
+                    .read_json(&format!("simkl_meta_{id}"))
+                    .ok()
+                    .flatten()
+                    .and_then(|meta| meta["at"].as_i64())
+                    .is_none_or(|at| now - at > SIMKL_META_TTL)
+            })
+            .copied()
+            .collect()
+    }
+
+    fn simkl_enriched(
+        &self,
+        wanted: Vec<(i64, &'static str)>,
+        fetched: Vec<(i64, Value)>,
+        items: Value,
+    ) -> Value {
+        for (id, meta) in fetched {
+            let _ = self.storage.write_json(&format!("simkl_meta_{id}"), &meta);
+        }
+        let metas: Map<String, Value> = wanted
+            .iter()
+            .filter_map(|(id, _)| {
+                let meta = self.storage.read_json(&format!("simkl_meta_{id}")).ok()??;
+                Some((id.to_string(), meta))
+            })
+            .collect();
+        core_value("simklEnrichItems", json!({"items": items, "metas": metas})).unwrap_or(items)
     }
 
     pub(super) fn save_profile(&self, profile: &Value) {

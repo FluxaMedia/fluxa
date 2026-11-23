@@ -72,16 +72,25 @@ fn simkl_fanart_url(source: &Value) -> Option<String> {
     source
         .get("fanart")
         .and_then(Value::as_str)
-        .map(|p| format!("https://simkl.in/fanart/{p}_m.jpg"))
+        .map(|p| format!("https://simkl.in/fanart/{p}_mobile.webp"))
+}
+
+fn simkl_poster_url(source: &Value) -> Option<String> {
+    source
+        .get("poster")
+        .and_then(Value::as_str)
+        .map(|p| format!("https://simkl.in/posters/{p}_m.webp"))
 }
 
 fn simkl_episode_marker(entry: &Value, field: &str) -> Option<(i64, i64)> {
     entry
         .get(field)
         .and_then(Value::as_str)
-        .and_then(|value| value.strip_prefix('S'))
-        .and_then(|value| value.split_once('E'))
-        .and_then(|(season, episode)| {
+        .and_then(|value| {
+            let (season, episode) = value
+                .strip_prefix('S')
+                .and_then(|rest| rest.split_once('E'))
+                .or_else(|| Some(("1", value.strip_prefix('E')?)))?;
             Some((season.parse::<i64>().ok()?, episode.parse::<i64>().ok()?))
         })
         .filter(|(season, episode)| *season > 0 && *episode > 0)
@@ -124,10 +133,7 @@ pub(crate) fn simkl_watching_to_items_json(shows_json: &str, movies_json: &str) 
             continue;
         };
         let title = show.get("title").and_then(Value::as_str).unwrap_or("");
-        let poster = show
-            .get("poster")
-            .and_then(Value::as_str)
-            .map(|p| format!("https://simkl.in/posters/{p}_m.jpg"));
+        let poster = simkl_poster_url(show);
         let background = simkl_fanart_url(show);
         let saved_at = entry
             .get("last_watched_at")
@@ -148,6 +154,10 @@ pub(crate) fn simkl_watching_to_items_json(shows_json: &str, movies_json: &str) 
             "lastVideoId": last_video_id,
             "lastEpisodeSeason": card_episode.map(|(season, _)| season),
             "lastEpisodeNumber": card_episode.map(|(_, episode)| episode),
+            "lastEpisodeName": next_episode
+                .and_then(|_| entry.pointer("/next_to_watch_info/title"))
+                .and_then(Value::as_str)
+                .filter(|title| !title.trim().is_empty()),
             "continueWatchingBadge": next_episode.map(|_| "upNext"),
             "savedAt": saved_at, "reason": "simkl",
             "source": "simkl",
@@ -164,10 +174,7 @@ pub(crate) fn simkl_watching_to_items_json(shows_json: &str, movies_json: &str) 
             continue;
         };
         let title = movie.get("title").and_then(Value::as_str).unwrap_or("");
-        let poster = movie
-            .get("poster")
-            .and_then(Value::as_str)
-            .map(|p| format!("https://simkl.in/posters/{p}_m.jpg"));
+        let poster = simkl_poster_url(movie);
         let background = simkl_fanart_url(movie);
         let saved_at = entry
             .get("last_watched")
@@ -181,6 +188,107 @@ pub(crate) fn simkl_watching_to_items_json(shows_json: &str, movies_json: &str) 
             "source": "simkl",
             "providerIds": movie.get("ids")
         }));
+    }
+    items.sort_by(|a, b| {
+        let saved = |item: &Value| {
+            item.get("savedAt")
+                .and_then(Value::as_str)
+                .map(str::to_owned)
+        };
+        saved(b).cmp(&saved(a))
+    });
+    serde_json::to_string(&items).ok()
+}
+
+pub(crate) fn simkl_slim_item_meta_json(args_json: &str) -> Option<String> {
+    let args: Value = serde_json::from_str(args_json).ok()?;
+    let detail = args.get("detail")?;
+    let episodes: Vec<Value> = args
+        .get("episodes")
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+        .filter(|episode| episode.get("type").and_then(Value::as_str) != Some("special"))
+        .filter_map(|episode| {
+            Some(json!({
+                "season": episode.get("season").and_then(Value::as_i64),
+                "episode": episode.get("episode").and_then(Value::as_i64)?,
+                "title": episode.get("title"),
+                "overview": episode.get("description"),
+                "img": episode.get("img"),
+            }))
+        })
+        .collect();
+    serde_json::to_string(&json!({
+        "fanart": detail.get("fanart"),
+        "englishTitle": detail.get("en_title"),
+        "episodes": episodes,
+    }))
+    .ok()
+}
+
+pub(crate) fn simkl_enrich_items_json(args_json: &str) -> Option<String> {
+    let args: Value = serde_json::from_str(args_json).ok()?;
+    let metas = args.get("metas")?;
+    let mut items: Vec<Value> = serde_json::from_str(&args.get("items")?.to_string()).ok()?;
+    for item in items.iter_mut() {
+        let Some(meta) = item
+            .get("simklId")
+            .and_then(Value::as_i64)
+            .and_then(|id| metas.get(id.to_string()))
+        else {
+            continue;
+        };
+        let anime = item.get("isAnime").and_then(Value::as_bool) == Some(true);
+        let season = item.get("lastEpisodeSeason").and_then(Value::as_i64);
+        let number = item.get("lastEpisodeNumber").and_then(Value::as_i64);
+        let episode = meta
+            .get("episodes")
+            .and_then(Value::as_array)
+            .and_then(|episodes| {
+                episodes.iter().find(|episode| {
+                    episode.get("episode").and_then(Value::as_i64) == number
+                        && (anime
+                            || episode.get("season").and_then(Value::as_i64).is_none()
+                            || episode.get("season").and_then(Value::as_i64) == season)
+                })
+            });
+        let Some(object) = item.as_object_mut() else {
+            continue;
+        };
+        if let Some(path) = meta.get("fanart").and_then(Value::as_str) {
+            object.insert(
+                "background".to_owned(),
+                json!(format!("https://simkl.in/fanart/{path}_mobile.webp")),
+            );
+        }
+        if let Some(title) = meta
+            .get("englishTitle")
+            .and_then(Value::as_str)
+            .filter(|title| !title.trim().is_empty())
+        {
+            object.insert("name".to_owned(), json!(title));
+        }
+        let Some(episode) = episode else {
+            continue;
+        };
+        if let Some(path) = episode.get("img").and_then(Value::as_str) {
+            object.insert(
+                "lastEpisodeThumbnail".to_owned(),
+                json!(format!("https://simkl.in/episodes/{path}_w.webp")),
+            );
+        }
+        for (target, source) in [
+            ("lastEpisodeName", "title"),
+            ("lastEpisodeOverview", "overview"),
+        ] {
+            let missing = object.get(target).is_none_or(|value| value.is_null());
+            if let Some(value) = episode.get(source).filter(|value| {
+                missing && value.as_str().is_some_and(|text| !text.trim().is_empty())
+            }) {
+                object.insert(target.to_owned(), value.clone());
+            }
+        }
     }
     serde_json::to_string(&items).ok()
 }
@@ -291,10 +399,7 @@ pub(crate) fn simkl_library_to_items_json(shows_json: &str, movies_json: &str) -
             continue;
         };
         let title = show.get("title").and_then(Value::as_str).unwrap_or("");
-        let poster = show
-            .get("poster")
-            .and_then(Value::as_str)
-            .map(|p| format!("https://simkl.in/posters/{p}_m.jpg"));
+        let poster = simkl_poster_url(show);
         let background = simkl_fanart_url(show);
         let kind = if entry.get("anime_type").and_then(Value::as_str) == Some("movie") {
             "movie"
@@ -311,10 +416,7 @@ pub(crate) fn simkl_library_to_items_json(shows_json: &str, movies_json: &str) -
             continue;
         };
         let title = movie.get("title").and_then(Value::as_str).unwrap_or("");
-        let poster = movie
-            .get("poster")
-            .and_then(Value::as_str)
-            .map(|p| format!("https://simkl.in/posters/{p}_m.jpg"));
+        let poster = simkl_poster_url(movie);
         let background = simkl_fanart_url(movie);
         items.push(json!({ "id": id, "name": title, "type": "movie", "source": "simkl", "poster": poster, "background": background, "providerIds": movie.get("ids") }));
     }

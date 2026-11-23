@@ -11,7 +11,7 @@ fn simkl_library_items_share_watchlist_metadata_mapping() {
     let items: Value = serde_json::from_str(&items).unwrap();
     assert_eq!(items[0]["id"], "tt42");
     assert_eq!(items[0]["type"], "series");
-    assert_eq!(items[0]["poster"], "https://simkl.in/posters/poster_m.jpg");
+    assert_eq!(items[0]["poster"], "https://simkl.in/posters/poster_m.webp");
     assert_eq!(items[1]["id"], "tmdb:7");
     assert_eq!(items[1]["type"], "movie");
 }
@@ -314,4 +314,84 @@ fn watching_show_with_nothing_left_to_watch_is_not_offered_again() {
     let items: Value = serde_json::from_str(&items).unwrap();
     assert_eq!(items.as_array().unwrap().len(), 1);
     assert_eq!(items[0]["lastVideoId"], "tt2:1:3");
+}
+
+#[test]
+fn watching_anime_without_a_season_still_gets_its_next_episode() {
+    let watching = r#"{"shows":[{"anime":true,"show":{"title":"Example Anime","poster":"p","fanart":"f","ids":{"simkl":9,"mal":1}},"last_watched":"E04","next_to_watch":"E05","next_to_watch_info":{"title":"The Fifth","episode":5}}]}"#;
+    let items: Value =
+        serde_json::from_str(&simkl_watching_to_items_json(watching, "[]").unwrap()).unwrap();
+    assert_eq!(items[0]["lastEpisodeSeason"], 1);
+    assert_eq!(items[0]["lastEpisodeNumber"], 5);
+    assert_eq!(items[0]["continueWatchingBadge"], "upNext");
+    assert_eq!(items[0]["lastEpisodeName"], "The Fifth");
+    assert_eq!(
+        items[0]["background"],
+        "https://simkl.in/fanart/f_mobile.webp"
+    );
+}
+
+#[test]
+fn enrichment_fills_background_name_and_episode_art_from_simkl() {
+    let items = json!([
+        {"id":"tt1","name":"Ore dake Level Up na Ken","simklId":9,"isAnime":true,"lastEpisodeSeason":1,"lastEpisodeNumber":2},
+        {"id":"tt2","name":"Ben 10","simklId":7,"isAnime":false,"lastEpisodeSeason":1,"lastEpisodeNumber":3,"lastEpisodeName":"The Krakken"}
+    ]);
+    let anime = simkl_slim_item_meta_json(
+        &json!({
+            "detail": {"fanart": "12/abc", "en_title": "Solo Leveling"},
+            "episodes": [{"episode": 2, "title": "If I Had One More Chance", "description": "d", "img": "15/xyz", "type": "episode"}],
+        })
+        .to_string(),
+    )
+    .unwrap();
+    let tv = simkl_slim_item_meta_json(
+        &json!({
+            "detail": {"fanart": "66/def"},
+            "episodes": [
+                {"season": 1, "episode": 3, "title": "Other", "img": "1/s1", "type": "episode"},
+                {"season": 2, "episode": 3, "title": "Wrong season", "img": "2/s2", "type": "episode"}
+            ],
+        })
+        .to_string(),
+    )
+    .unwrap();
+    let metas = json!({"9": serde_json::from_str::<Value>(&anime).unwrap(), "7": serde_json::from_str::<Value>(&tv).unwrap()});
+    let out: Value = serde_json::from_str(
+        &simkl_enrich_items_json(&json!({"items": items, "metas": metas}).to_string()).unwrap(),
+    )
+    .unwrap();
+    assert_eq!(out[0]["name"], "Solo Leveling");
+    assert_eq!(
+        out[0]["background"],
+        "https://simkl.in/fanart/12/abc_mobile.webp"
+    );
+    assert_eq!(out[0]["lastEpisodeName"], "If I Had One More Chance");
+    assert_eq!(
+        out[0]["lastEpisodeThumbnail"],
+        "https://simkl.in/episodes/15/xyz_w.webp"
+    );
+    assert_eq!(out[1]["lastEpisodeName"], "The Krakken");
+    assert_eq!(
+        out[1]["lastEpisodeThumbnail"],
+        "https://simkl.in/episodes/1/s1_w.webp"
+    );
+}
+
+#[test]
+fn watching_items_are_ordered_by_last_watched_across_shows_and_anime() {
+    let shows = r#"[
+        {"show":{"title":"Old Show","ids":{"imdb":"tt1"}},"last_watched_at":"2026-05-01T00:00:00Z","next_to_watch":"S01E02"},
+        {"show":{"title":"Recent Show","ids":{"imdb":"tt2"}},"last_watched_at":"2026-08-01T00:00:00Z","next_to_watch":"S01E02"},
+        {"anime":true,"show":{"title":"Middle Anime","ids":{"simkl":3}},"last_watched_at":"2026-07-01T00:00:00Z","next_to_watch":"E2"}
+    ]"#;
+    let items: Value =
+        serde_json::from_str(&simkl_watching_to_items_json(shows, "[]").unwrap()).unwrap();
+    let names: Vec<_> = items
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|item| item["name"].as_str().unwrap())
+        .collect();
+    assert_eq!(names, ["Recent Show", "Middle Anime", "Old Show"]);
 }

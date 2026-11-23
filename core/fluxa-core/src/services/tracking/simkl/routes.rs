@@ -6,6 +6,9 @@ pub(crate) fn route_simkl(method: &str, args_json: &str) -> Outcome {
         "simklSyncPlan" => opt_json(services::simkl::simkl_sync_plan_json(args_json)),
         "simklCalendarPlan" => opt_json(services::simkl::simkl_calendar_plan_json(args_json)),
         "simklSyncApply" => opt_json(services::simkl::simkl_sync_apply_json(args_json)),
+        "simklItemMetaPlan" => opt_json(services::simkl::simkl_item_meta_plan_json(args_json)),
+        "simklSlimItemMeta" => opt_json(services::simkl::simkl_slim_item_meta_json(args_json)),
+        "simklEnrichItems" => opt_json(services::simkl::simkl_enrich_items_json(args_json)),
         _ => Err(unknown_method()),
     }
 }
