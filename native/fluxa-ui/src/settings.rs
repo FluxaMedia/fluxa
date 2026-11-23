@@ -126,8 +126,9 @@ pub(super) fn row_applies(key: &str, viewport: Viewport) -> bool {
         return false;
     }
     match key {
-        "navLayout" | "navMode" | "navSidebarMode" | "homeCategoryBar" | "interfaceDensity"
-        | "uiScale" => !viewport.is_compact(),
+        "navLayout" | "navMode" | "navSidebarMode" | "homeCategoryBar" | "interfaceDensity" => {
+            !viewport.is_compact()
+        }
         "automaticUpdates" => matches!(
             viewport.platform,
             UiPlatform::Android | UiPlatform::Windows | UiPlatform::Macos | UiPlatform::Linux
@@ -434,7 +435,7 @@ pub fn option_label(key: &str, value: &str, language: &str) -> String {
         return localized(named, language);
     }
     match key {
-        "uiScale" | "subtitleSize" | "scrobbleWatchedPercent" => format!("{value}%"),
+        "subtitleSize" | "scrobbleWatchedPercent" => format!("{value}%"),
         "subtitleTextOpacity" | "subtitleBackgroundOpacity" | "subtitleOutlineOpacity" => {
             format!("{}%", (value.parse::<f64>().unwrap_or(1.0) * 100.0).round())
         }

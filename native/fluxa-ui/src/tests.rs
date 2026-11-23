@@ -436,7 +436,6 @@ fn native_appearance_exposes_web_preferences_and_uses_white_default_accent() {
         .flat_map(|section| section.rows.iter().map(|row| row.key))
         .collect();
     for key in [
-        "uiScale",
         "navLayout",
         "posterWidthPreset",
         "continueWatchingArtwork",
@@ -515,7 +514,6 @@ fn settings_search_spans_every_section() {
         .collect();
     assert!(rows.contains(&"subtitleSize"));
     assert!(rows.contains(&"downloadSubtitleLanguage"));
-    assert!(!rows.contains(&"uiScale"));
 }
 
 #[test]

@@ -430,12 +430,10 @@ impl RendererState {
 
     fn scale(&self) -> f32 {
         if let Some(canvas) = skins::canvas(self.home.form_factor) {
-            return self.size[0] as f32 / canvas * self.settings.ui_scale();
+            return self.size[0] as f32 / canvas;
         }
         if self.home.form_factor == fluxa_ui::UiFormFactorJson::Tv {
-            return self.size[0] as f32 / 1920.0
-                * fluxa_ui::metric("tv-zoom")
-                * self.settings.ui_scale();
+            return self.size[0] as f32 / 1920.0 * fluxa_ui::metric("tv-zoom");
         }
         let fit = if self.home.form_factor == fluxa_ui::UiFormFactorJson::Desktop {
             let width = self.size[0] as f32 / self.density;
@@ -444,12 +442,7 @@ impl RendererState {
         } else {
             1.0
         };
-        let user = if self.home.form_factor == fluxa_ui::UiFormFactorJson::Mobile {
-            1.0
-        } else {
-            self.settings.ui_scale()
-        };
-        self.density * fit * user
+        self.density * fit
     }
 }
 

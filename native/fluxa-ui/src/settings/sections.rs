@@ -45,7 +45,6 @@ impl SettingsRange {
 
 pub fn slider_range(key: &str) -> Option<SettingsRange> {
     let (min, max, step, marks): (f64, f64, f64, &'static [f64]) = match key {
-        "uiScale" => (75.0, 150.0, 5.0, &[75.0, 100.0, 150.0]),
         "subtitleSize" => (50.0, 200.0, 5.0, &[50.0, 100.0, 200.0]),
         "scrobbleWatchedPercent" => (50.0, 100.0, 1.0, &[50.0, 75.0, 100.0]),
         "autoPlayCountdownSecs" => (1.0, 30.0, 1.0, &[1.0, 10.0, 20.0, 30.0]),
@@ -126,19 +125,11 @@ pub(super) const ABOUT_SETTINGS: [SettingsRow; 2] = [
     },
 ];
 pub(super) const ABOUT_GROUPS: [(usize, &str); 1] = [(2, "settings.group.updates_privacy")];
-pub(super) const APPEARANCE_SETTINGS: [SettingsRow; 13] = [
+pub(super) const APPEARANCE_SETTINGS: [SettingsRow; 12] = [
     SettingsRow {
         label: "Theme",
         key: "themeId",
         fixed: &["fluxa-dark", "amoled", "midnight-blue"],
-    },
-    SettingsRow {
-        label: "UI scale",
-        key: "uiScale",
-        fixed: &[
-            "75", "80", "85", "90", "95", "100", "105", "110", "115", "120", "125", "130", "135",
-            "140", "145", "150",
-        ],
     },
     SettingsRow {
         label: "AMOLED black",
@@ -200,7 +191,7 @@ pub(super) const APPEARANCE_SETTINGS: [SettingsRow; 13] = [
     },
 ];
 pub(super) const APPEARANCE_GROUPS: [(usize, &str); 2] = [
-    (5, "settings.group.color_and_motion"),
+    (4, "settings.group.color_and_motion"),
     (7, "settings.group.navigation"),
 ];
 pub(super) const HOME_SETTINGS: [SettingsRow; 19] = [

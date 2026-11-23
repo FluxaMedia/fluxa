@@ -1633,13 +1633,6 @@
       "category": "general"
     },
     {
-      "key": "uiScale",
-      "type": "string",
-      "default": "100",
-      "scope": "profile",
-      "category": "appearance"
-    },
-    {
       "key": "upcomingRowEnabled",
       "type": "boolean",
       "default": null,
