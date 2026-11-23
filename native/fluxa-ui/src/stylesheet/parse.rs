@@ -290,6 +290,10 @@ pub(super) fn parse_patch(rule: &str, value: &Value) -> Result<Patch, String> {
                 .collect()
         })
         .unwrap_or_default();
+    let clip = match value.get("clip").and_then(Value::as_str) {
+        Some(text) => Some(parse_clip(rule, text)?),
+        None => None,
+    };
     Ok(Patch {
         vars: super::scoped::intern(custom),
         auto_states: match value.get("states").and_then(Value::as_str) {
@@ -304,6 +308,11 @@ pub(super) fn parse_patch(rule: &str, value: &Value) -> Result<Patch, String> {
         },
         gradient,
         shadow,
+        clip,
+        rotate: value
+            .get("rotate")
+            .and_then(Value::as_f64)
+            .map(|degrees| degrees as f32),
         margin: length("margin")?,
         width: length("width")?,
         width_vw: view("width", "vw"),
@@ -464,6 +473,39 @@ fn top_level(text: &str, separator: char) -> Vec<String> {
         .map(|part| part.trim().to_owned())
         .filter(|part| !part.is_empty())
         .collect()
+}
+
+fn parse_clip(rule: &str, text: &str) -> Result<Clip, String> {
+    let inner = text
+        .trim()
+        .strip_prefix("polygon(")
+        .and_then(|rest| rest.strip_suffix(')'))
+        .ok_or_else(|| format!("{rule}.clip-path: expected polygon(...)"))?;
+    let mut points = [(0.0, 0.0); MAX_CLIP_POINTS];
+    let pairs = top_level(inner, ',');
+    if pairs.len() < 3 || pairs.len() > MAX_CLIP_POINTS {
+        return Err(format!(
+            "{rule}.clip-path: use 3 to {MAX_CLIP_POINTS} points"
+        ));
+    }
+    for (slot, pair) in points.iter_mut().zip(&pairs) {
+        let axis = |word: &str| {
+            word.strip_suffix('%')
+                .unwrap_or(word)
+                .parse::<f32>()
+                .map(|percent| percent / 100.0)
+                .map_err(|_| format!("{rule}.clip-path: bad coordinate {word}"))
+        };
+        let mut words = pair.split_whitespace();
+        let (Some(x), Some(y), None) = (words.next(), words.next(), words.next()) else {
+            return Err(format!("{rule}.clip-path: expected \"x% y%\", got {pair}"));
+        };
+        *slot = (axis(x)?, axis(y)?);
+    }
+    Ok(Clip {
+        points,
+        len: pairs.len(),
+    })
 }
 
 fn parse_gradient(rule: &str, text: &str) -> Result<GradientSpec, String> {
