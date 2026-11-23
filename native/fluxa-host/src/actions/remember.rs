@@ -137,15 +137,7 @@ pub(crate) fn remember_actions(state: &mut RendererState, actions: Vec<UiAction>
                     }
                     Local::MenuPick(index) => crate::card_menu::pick(state, index),
                     Local::MenuDismiss => crate::card_menu::dismiss(state),
-                    Local::SettingMenu(key) => {
-                        if let Some(row) = (0..)
-                            .map_while(fluxa_ui::settings_row_by_index)
-                            .find(|row| row.key == key)
-                            && !row.choices().is_empty()
-                        {
-                            card_menu::open_setting(state, row);
-                        }
-                    }
+                    Local::SettingMenu(key) => card_menu::open_setting_key(state, &key),
                     Local::Page(name) => crate::skins::open_page(&name),
                     Local::Script(id, method, args) => crate::skins::script_act(&id, &method, args),
                     Local::Skins(op, id) => match op.as_str() {

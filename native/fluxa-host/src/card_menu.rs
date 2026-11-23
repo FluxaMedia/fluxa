@@ -409,37 +409,74 @@ fn play_action(raw: Value, card: HomeCard) -> NativeAction {
     }
 }
 
-pub(super) fn open_setting(state: &mut RendererState, row: &'static fluxa_ui::SettingsRow) {
-    let current = state
-        .settings
+fn row_target(
+    settings: &fluxa_ui::SettingsModel,
+    row: &'static fluxa_ui::SettingsRow,
+) -> (Target, usize) {
+    let current = settings
         .value(row.key)
         .and_then(Value::as_str)
         .and_then(|value| row.choices().iter().position(|option| *option == value));
+    (Target::Setting(row), current.unwrap_or(0))
+}
+
+fn source_target(
+    settings: &fluxa_ui::SettingsModel,
+    title: &'static str,
+    key: &'static str,
+) -> Option<(Target, usize)> {
+    let (options, current, _) = fluxa_ui::account_source_state(settings, key);
+    if options.is_empty() {
+        return None;
+    }
+    let position = options.iter().position(|(value, _)| *value == current);
+    let target = Target::Source {
+        key,
+        title,
+        count: options.len(),
+    };
+    Some((target, position.unwrap_or(0)))
+}
+
+fn setting_target(settings: &fluxa_ui::SettingsModel, key: &str) -> Option<(Target, usize)> {
+    let row = (0..)
+        .map_while(fluxa_ui::settings_row_by_index)
+        .find(|row| row.key == key && !row.choices().is_empty());
+    if let Some(row) = row {
+        return Some(row_target(settings, row));
+    }
+    let (title, key) = (0..)
+        .map_while(fluxa_ui::account_source)
+        .find(|(_, source)| *source == key)?;
+    source_target(settings, title, key)
+}
+
+fn open_target(state: &mut RendererState, target: Target, current: usize) {
     state.card_menu = Some(CardMenu {
-        target: Target::Setting(row),
-        selected: state.keyboard_focus_visible.then(|| current.unwrap_or(0)),
+        target,
+        selected: state.keyboard_focus_visible.then_some(current),
         anchor: Pos2::ZERO,
     });
+}
+
+pub(super) fn open_setting(state: &mut RendererState, row: &'static fluxa_ui::SettingsRow) {
+    let (target, current) = row_target(&state.settings, row);
+    open_target(state, target, current);
+}
+
+pub(super) fn open_setting_key(state: &mut RendererState, key: &str) {
+    if let Some((target, current)) = setting_target(&state.settings, key) {
+        open_target(state, target, current);
+    }
 }
 
 pub(super) fn open_source(state: &mut RendererState, index: usize) {
     let Some((title, key)) = fluxa_ui::account_source(index) else {
         return;
     };
-    let (options, current, _) = fluxa_ui::account_source_state(&state.settings, key);
-    if options.is_empty() {
-        return;
+    if let Some((target, current)) = source_target(&state.settings, title, key) {
+        open_target(state, target, current);
     }
-    let current = options.iter().position(|(value, _)| *value == current);
-    state.card_menu = Some(CardMenu {
-        target: Target::Source {
-            key,
-            title,
-            count: options.len(),
-        },
-        selected: state.keyboard_focus_visible.then(|| current.unwrap_or(0)),
-        anchor: Pos2::ZERO,
-    });
 }
 
 pub(super) fn open_choice(state: &mut RendererState, request: fluxa_ui::ChoiceRequest) {
@@ -937,5 +974,64 @@ pub(super) fn tick(state: &mut RendererState) {
     if open_at(state, Pos2::new(start[0], start[1])) {
         state.touch_menu_opened = true;
         fluxa_ui::buzz(fluxa_ui::Haptic::LongPress);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    fn nuvio_only(values: Value) -> fluxa_ui::SettingsModel {
+        fluxa_ui::SettingsModel {
+            values,
+            profile: json!({"nuvioAccessToken": "token"}),
+            ..Default::default()
+        }
+    }
+
+    #[test]
+    fn library_source_dropdown_opens_with_the_connected_providers() {
+        let settings = nuvio_only(json!({"integrationLibrarySource": "nuvio"}));
+        let (target, current) = setting_target(&settings, "integrationLibrarySource").unwrap();
+        assert!(matches!(target, Target::Source { count: 1, .. }));
+        assert_eq!(current, 0);
+    }
+
+    #[test]
+    fn stale_source_still_opens_so_it_can_be_replaced() {
+        let settings = nuvio_only(json!({"continueWatchingSource": "simkl"}));
+        let (target, current) = setting_target(&settings, "continueWatchingSource").unwrap();
+        assert!(matches!(target, Target::Source { count: 1, .. }));
+        assert_eq!(current, 0);
+    }
+
+    #[test]
+    fn fixed_choice_settings_keep_their_own_menu() {
+        let settings = nuvio_only(json!({}));
+        let (target, _) = setting_target(&settings, "language").unwrap();
+        assert!(matches!(target, Target::Setting(_)));
+    }
+
+    #[test]
+    fn every_account_source_with_options_resolves_by_key() {
+        let settings = fluxa_ui::SettingsModel {
+            values: json!({}),
+            profile: json!({
+                "nuvioAccessToken": "a",
+                "traktAccessToken": "b",
+                "mdblistAccessToken": "c",
+            }),
+            ..Default::default()
+        };
+        for (_, key) in (0..).map_while(fluxa_ui::account_source) {
+            let (options, _, _) = fluxa_ui::account_source_state(&settings, key);
+            if !options.is_empty() {
+                assert!(
+                    setting_target(&settings, key).is_some(),
+                    "{key} has options but its dropdown does not open"
+                );
+            }
+        }
     }
 }
