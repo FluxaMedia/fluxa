@@ -203,10 +203,10 @@ pub(crate) fn dispatch_refresh_continue_watching(
     engine: &mut HeadlessEngine,
     profile: Option<Value>,
     language: Option<String>,
-    source: Option<String>,
 ) -> Vec<EffectEnvelope> {
     let profile_value = profile.unwrap_or_else(|| engine.state.profile.active.clone());
     let profile_id = active_profile_id(&engine.state, &profile_value);
+    let source = continue_watching_source(engine);
     let generation = engine.bump_generation(GenerationKey::Home);
     vec![
         engine.effect(
@@ -222,6 +222,16 @@ pub(crate) fn dispatch_refresh_continue_watching(
             },
         ),
     ]
+}
+
+fn continue_watching_source(engine: &HeadlessEngine) -> Option<String> {
+    engine
+        .state
+        .settings
+        .values
+        .get("continueWatchingSource")
+        .and_then(Value::as_str)
+        .map(str::to_owned)
 }
 
 pub(crate) fn remove_from_continue_watching(engine: &mut HeadlessEngine, dropped_id: &str) {
@@ -288,6 +298,7 @@ pub(crate) fn dispatch_load(
             progressive: true,
         },
     );
+    let source = continue_watching_source(engine);
     let continue_watching = engine.effect(
         EffectKind::RefreshContinueWatching,
         generation,
@@ -295,7 +306,7 @@ pub(crate) fn dispatch_load(
             profile_id,
             profile: profile_value,
             language: language_value,
-            source: None,
+            source,
         },
     );
     vec![bootstrap, continue_watching]

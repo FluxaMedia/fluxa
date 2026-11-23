@@ -127,7 +127,7 @@ pub(crate) fn complete(
                         .and_then(Value::as_bool)
                         == Some(true);
                     if closing {
-                        return home::dispatch_refresh_continue_watching(engine, None, None, None);
+                        return home::dispatch_refresh_continue_watching(engine, None, None);
                     }
                 } else {
                     engine.state.library.last_write_error = normalize_error(result.error.clone());

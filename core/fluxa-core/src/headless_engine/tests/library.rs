@@ -143,3 +143,122 @@ mod addon_events {
         assert_eq!(emitted(&act(&mut engine, scrobble("stop", true))), 1);
     }
 }
+
+mod source_setting {
+    use super::super::super::*;
+    use crate::runtime::EffectKind;
+
+    fn kinds(effects: Vec<EffectEnvelope>) -> Vec<EffectKind> {
+        effects.into_iter().map(|effect| effect.kind).collect()
+    }
+
+    #[test]
+    fn picking_a_library_source_reloads_the_library() {
+        let mut engine = HeadlessEngine::default();
+        let action: AppAction = serde_json::from_str(
+            r#"{"type":"settingsChanged","key":"integrationLibrarySource","value":"trakt"}"#,
+        )
+        .unwrap();
+        let kinds = kinds(engine.dispatch(action));
+        assert_eq!(
+            kinds,
+            [EffectKind::WriteSettings, EffectKind::ReadLibraryState]
+        );
+    }
+
+    #[test]
+    fn picking_a_continue_watching_source_refreshes_with_that_source() {
+        let mut engine = HeadlessEngine::default();
+        let action: AppAction = serde_json::from_str(
+            r#"{"type":"settingsChanged","key":"continueWatchingSource","value":"simkl"}"#,
+        )
+        .unwrap();
+        let effects = engine.dispatch(action);
+        assert_eq!(effects[1].kind, EffectKind::RefreshContinueWatching);
+        assert_eq!(effects[1].payload["source"], "simkl");
+    }
+
+    #[test]
+    fn home_refresh_uses_the_chosen_source_not_the_trigger_tag() {
+        let mut engine = HeadlessEngine::default();
+        let pick: AppAction = serde_json::from_str(
+            r#"{"type":"settingsChanged","key":"continueWatchingSource","value":"trakt"}"#,
+        )
+        .unwrap();
+        engine.dispatch(pick);
+        let refresh: AppAction = serde_json::from_str(
+            r#"{"type":"refreshContinueWatchingRequested","source":"navigation"}"#,
+        )
+        .unwrap();
+        let effects = engine.dispatch(refresh);
+        assert_eq!(effects[0].payload["source"], "trakt");
+    }
+
+    #[test]
+    fn unrelated_settings_do_not_reload_anything() {
+        let mut engine = HeadlessEngine::default();
+        let action: AppAction =
+            serde_json::from_str(r#"{"type":"settingsChanged","key":"language","value":"tr"}"#)
+                .unwrap();
+        assert_eq!(kinds(engine.dispatch(action)), [EffectKind::WriteSettings]);
+    }
+
+    fn pick(engine: &mut HeadlessEngine, key: &str, value: &str) {
+        let action: AppAction = serde_json::from_value(
+            serde_json::json!({"type": "settingsChanged", "key": key, "value": value}),
+        )
+        .unwrap();
+        engine.dispatch(action);
+    }
+
+    fn activate(engine: &mut HeadlessEngine, profile: serde_json::Value) -> Vec<EffectEnvelope> {
+        let action: AppAction = serde_json::from_value(
+            serde_json::json!({"type": "profileActivated", "profile": profile}),
+        )
+        .unwrap();
+        engine.dispatch(action)
+    }
+
+    #[test]
+    fn disconnecting_the_selected_provider_falls_back_to_nuvio() {
+        let mut engine = HeadlessEngine::default();
+        pick(&mut engine, "continueWatchingSource", "simkl");
+        pick(&mut engine, "integrationLibrarySource", "simkl");
+        let effects = activate(
+            &mut engine,
+            serde_json::json!({"id": "p1", "nuvioAccessToken": "token"}),
+        );
+        let writes = effects
+            .iter()
+            .filter(|effect| effect.kind == EffectKind::WriteSettings)
+            .map(|effect| effect.payload["value"].clone())
+            .collect::<Vec<_>>();
+        assert_eq!(writes, ["nuvio", "nuvio"]);
+        assert_eq!(
+            engine.state.settings.values["continueWatchingSource"],
+            "nuvio"
+        );
+    }
+
+    #[test]
+    fn disconnecting_without_nuvio_falls_back_to_local() {
+        let mut engine = HeadlessEngine::default();
+        pick(&mut engine, "continueWatchingSource", "trakt");
+        activate(&mut engine, serde_json::json!({"id": "p1"}));
+        assert_eq!(
+            engine.state.settings.values["continueWatchingSource"],
+            "local"
+        );
+    }
+
+    #[test]
+    fn a_connected_source_is_left_alone() {
+        let mut engine = HeadlessEngine::default();
+        pick(&mut engine, "continueWatchingSource", "simkl");
+        let effects = activate(
+            &mut engine,
+            serde_json::json!({"id": "p1", "simklAccessToken": "token"}),
+        );
+        assert!(effects.is_empty());
+    }
+}

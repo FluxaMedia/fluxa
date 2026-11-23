@@ -33,11 +33,75 @@ pub(crate) fn dispatch(
     if let Some(values) = engine.state.settings.values.as_object_mut() {
         values.insert(key.clone(), value.clone());
     }
-    vec![engine.effect(
+    let mut effects = vec![engine.effect(
         EffectKind::WriteSettings,
         generation,
-        WriteSettingsPayload { key, value },
-    )]
+        WriteSettingsPayload {
+            key: key.clone(),
+            value: value.clone(),
+        },
+    )];
+    match key.as_str() {
+        "integrationLibrarySource" => {
+            effects.extend(crate::headless_engine::library::dispatch_hydrate(
+                engine, None,
+            ));
+        }
+        "continueWatchingSource" => {
+            effects.extend(
+                crate::headless_engine::home::dispatch_refresh_continue_watching(
+                    engine, None, None,
+                ),
+            );
+        }
+        _ => {}
+    }
+    effects
+}
+
+const SOURCE_KEYS: [&str; 2] = ["integrationLibrarySource", "continueWatchingSource"];
+
+fn source_token_field(source: &str) -> Option<&'static str> {
+    match source {
+        "nuvio" => Some("nuvioAccessToken"),
+        "stremio" => Some("stremioAuthKey"),
+        other => crate::services::registry::provider(other).map(|provider| provider.token_field),
+    }
+}
+
+fn has_token(profile: &Value, field: &str) -> bool {
+    profile
+        .get(field)
+        .and_then(Value::as_str)
+        .is_some_and(|token| !token.trim().is_empty())
+}
+
+pub(crate) fn reset_disconnected_sources(
+    engine: &mut HeadlessEngine,
+    profile: &Value,
+) -> Vec<EffectEnvelope> {
+    let fallback = if has_token(profile, "nuvioAccessToken") {
+        "nuvio"
+    } else {
+        "local"
+    };
+    let stale = SOURCE_KEYS
+        .into_iter()
+        .filter(|key| {
+            engine
+                .state
+                .settings
+                .values
+                .get(key)
+                .and_then(Value::as_str)
+                .and_then(source_token_field)
+                .is_some_and(|field| !has_token(profile, field))
+        })
+        .collect::<Vec<_>>();
+    stale
+        .into_iter()
+        .flat_map(|key| dispatch(engine, key.to_owned(), Value::String(fallback.to_owned())))
+        .collect()
 }
 
 pub(crate) fn complete(

@@ -8,8 +8,9 @@ pub(crate) fn dispatch_profile_activated(
     engine: &mut HeadlessEngine,
     profile: crate::types::Profile,
 ) -> Vec<EffectEnvelope> {
+    let value = profile.to_value();
     profile::activate(engine, profile);
-    vec![]
+    crate::settings::engine::reset_disconnected_sources(engine, &value)
 }
 
 pub(crate) fn dispatch_hydrate(
