@@ -873,12 +873,18 @@ fn frame<'a>(
     }
     let padding = node.padding.or(style.and_then(|style| style.padding_box));
     if let Some([top, right, bottom, left]) = padding {
-        item = item.padding(Insets {
+        let insets = Insets {
             left,
             top,
             right,
             bottom,
-        });
+        };
+        let drawn_by_text = node.kind == "text" && !style.is_some_and(style::shaped);
+        item = if drawn_by_text {
+            layout_items::column(vec![item]).padding(insets)
+        } else {
+            item.padding(insets)
+        };
     }
     let placed = style.and_then(|style| style.place).map(|place| {
         let (cross, main) = if node.kind == "row" {
