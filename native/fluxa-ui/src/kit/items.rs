@@ -71,6 +71,20 @@ pub(crate) fn direct<'a>(size: Vec2, paint: impl FnOnce(&Painter, Rect) + 'a) ->
     }
 }
 
+pub(crate) fn measured<'a>(
+    measure: impl Fn(Option<f32>) -> Vec2 + 'static,
+    paint: impl FnOnce(&Painter, Rect) + 'a,
+) -> Item<'a> {
+    Item {
+        probe: None,
+        node: flex::measured(measure),
+        vertical: false,
+        spacer: None,
+        paint: Some(Paint::Direct(Box::new(paint))),
+        children: Vec::new(),
+    }
+}
+
 pub(crate) fn widget<'a>(ui: &mut Ui, mut add: impl FnMut(&mut Ui) + 'a) -> Item<'a> {
     let mut probe = ui.new_child(
         UiBuilder::new()

@@ -165,48 +165,50 @@ pub(super) fn text<'a, A: HomeAssets>(
             };
             if opacity >= 1.0 {
                 let wrap_width = explicit.or(inherited).unwrap_or(560.0);
-                let mut job = crate::gfx::text::LayoutJob::simple(
-                    content.clone(),
-                    font.clone(),
-                    color,
-                    wrap_width,
-                );
-                job.wrap.max_rows = rows;
-                job.wrap.overflow_character = Some('…');
-                if centered {
-                    job.halign = crate::gfx::Align::Center;
-                }
-                let galley = ui.ctx().fonts_mut(|fonts| fonts.layout_job(job));
-                let size = if centered {
-                    Vec2::new(wrap_width, galley.size().y)
-                } else {
-                    galley.size()
-                };
-                let ctx = ui.ctx().clone();
-                let fit_rows = galley.rows.len().max(1);
-                return kit::direct(size, move |painter, rect| {
-                    let galley = if rect.width() + 0.5 < size.x {
+                let layout = {
+                    let ctx = ui.ctx().clone();
+                    let content = content.clone();
+                    let font = font.clone();
+                    move |width: f32| {
                         let mut job = crate::gfx::text::LayoutJob::simple(
                             content.clone(),
                             font.clone(),
                             color,
-                            rect.width(),
+                            width,
                         );
-                        job.wrap.max_rows = fit_rows;
+                        job.wrap.max_rows = rows;
                         job.wrap.overflow_character = Some('…');
                         if centered {
                             job.halign = crate::gfx::Align::Center;
                         }
                         ctx.fonts_mut(|fonts| fonts.layout_job(job))
+                    }
+                };
+                let measure = {
+                    let layout = layout.clone();
+                    move |width: Option<f32>| {
+                        let width = width.unwrap_or(wrap_width);
+                        let galley = layout(width);
+                        if centered {
+                            Vec2::new(width, galley.size().y)
+                        } else {
+                            galley.size()
+                        }
+                    }
+                };
+                let natural = measure(None).x;
+                return kit::measured(measure, move |painter, rect| {
+                    let width = if rect.width() + 0.5 < natural {
+                        rect.width()
                     } else {
-                        galley
+                        wrap_width
                     };
                     let origin = if centered {
                         crate::gfx::Pos2::new(rect.center().x, rect.min.y)
                     } else {
                         rect.min
                     };
-                    painter.galley_with_override_text_color(origin, galley, color);
+                    painter.galley_with_override_text_color(origin, layout(width), color);
                 })
                 .min_width(0.0)
                 .shrink(1.0);

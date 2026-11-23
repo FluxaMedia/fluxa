@@ -153,6 +153,7 @@ enum Kind {
 struct Memo {
     border: Option<Vec2>,
     min: Option<Vec2>,
+    width_dependent: Option<bool>,
 }
 
 thread_local! {
@@ -252,6 +253,10 @@ pub(crate) fn text_size(painter: &crate::gfx::Painter, text: &str, font: &FontId
     painter
         .layout_no_wrap(text.to_owned(), font.clone(), Color32::WHITE)
         .size()
+}
+
+pub(crate) fn measured(measure: impl Fn(Option<f32>) -> Vec2 + 'static) -> Node {
+    Node::new(Kind::Text(Measure(std::rc::Rc::new(measure))))
 }
 
 pub(crate) fn text(painter: &crate::gfx::Painter, text: &str, font: &FontId) -> Node {
@@ -586,13 +591,6 @@ impl Node {
         self
     }
 
-    fn measured(&self, width: Option<f32>) -> Option<Vec2> {
-        match &self.kind {
-            Kind::Text(measure) => Some((measure.0)(width)),
-            _ => None,
-        }
-    }
-
     fn content_size(&self) -> Vec2 {
         match &self.kind {
             Kind::Leaf(size) => *size,
@@ -648,8 +646,31 @@ impl Node {
         total + self.line_gap * (lines.max(1) - 1) as f32
     }
 
-    fn wrapped_outer_height(&self, width: f32) -> Option<f32> {
-        if !self.wrap || self.height.is_some() || !matches!(self.kind, Kind::Flex(Axis::Row)) {
+    fn width_dependent(&self) -> bool {
+        if !memoising() {
+            return self.compute_width_dependent();
+        }
+        let mut memo = self.memo.get();
+        if let Some(dependent) = memo.width_dependent {
+            return dependent;
+        }
+        let dependent = self.compute_width_dependent();
+        memo.width_dependent = Some(dependent);
+        self.memo.set(memo);
+        dependent
+    }
+
+    fn compute_width_dependent(&self) -> bool {
+        match &self.kind {
+            Kind::Text(_) => true,
+            Kind::Flex(Axis::Row) if self.wrap => true,
+            Kind::Flex(_) => self.children.iter().any(Node::width_dependent),
+            _ => false,
+        }
+    }
+
+    fn height_for_width(&self, width: f32) -> Option<f32> {
+        if self.height.is_some() || !self.width_dependent() {
             return None;
         }
         let border = self
@@ -657,11 +678,55 @@ impl Node {
             .unwrap_or(width - self.margin.width())
             .min(self.max_w.unwrap_or(f32::INFINITY))
             .max(self.min_w.unwrap_or(0.0));
-        let avail = (border - self.padding.width()).max(0.0);
-        let height = (self.wrapped_lines_height(avail) + self.padding.height())
+        let inner = (border - self.padding.width()).max(0.0);
+        let content = match &self.kind {
+            Kind::Text(measure) => (measure.0)(Some(inner)).y,
+            Kind::Flex(Axis::Row) if self.wrap => self.wrapped_lines_height(inner),
+            Kind::Flex(Axis::Row) => self.row_content_height(inner),
+            Kind::Flex(Axis::Column) => self.column_content_height(inner),
+            Kind::Leaf(_) | Kind::Stack(_) => return None,
+        };
+        let height = (content + self.padding.height())
             .min(self.max_h.unwrap_or(f32::INFINITY))
             .max(self.min_h.unwrap_or(0.0));
         Some(height + self.margin.height())
+    }
+
+    fn row_content_height(&self, inner: f32) -> f32 {
+        let line: Vec<usize> = (0..self.children.len()).collect();
+        let (lengths, _) = self.flex_lengths(Axis::Row, &line, inner, f32::INFINITY);
+        self.children
+            .iter()
+            .zip(lengths)
+            .map(|(child, length)| {
+                child
+                    .height_for_width(length)
+                    .unwrap_or_else(|| child.outer_size().y)
+            })
+            .fold(0.0, f32::max)
+    }
+
+    fn column_content_height(&self, inner: f32) -> f32 {
+        let gaps = self.gap * self.children.len().saturating_sub(1) as f32;
+        let total: f32 = self
+            .children
+            .iter()
+            .map(|child| {
+                child
+                    .height_for_width(self.cross_width(child, inner))
+                    .unwrap_or_else(|| child.outer_size().y)
+            })
+            .sum();
+        total + gaps
+    }
+
+    fn cross_width(&self, child: &Node, avail: f32) -> f32 {
+        let align = child.align_self.or(self.align).unwrap_or(Align::Stretch);
+        if align == Align::Stretch && child.width.is_none() && child.aspect.is_none() {
+            avail
+        } else {
+            child.outer_size().x.min(avail)
+        }
     }
 
     fn min_content(&self) -> Vec2 {
@@ -938,7 +1003,7 @@ impl Node {
                         .map(|&i| {
                             let child = &self.children[i];
                             let wrapped = child
-                                .wrapped_outer_height(child.span(axis).0.min(main_avail))
+                                .height_for_width(child.span(axis).0.min(main_avail))
                                 .filter(|_| axis == Axis::Row);
                             wrapped.unwrap_or_else(|| cross(axis, child.outer_size()))
                         })
@@ -974,23 +1039,24 @@ impl Node {
             .collect()
     }
 
-    fn place_line(&self, axis: Axis, line: &[usize], rect: Rect) -> Vec<Rect> {
+    fn flex_lengths(
+        &self,
+        axis: Axis,
+        line: &[usize],
+        main_avail: f32,
+        cross_avail: f32,
+    ) -> (Vec<f32>, f32) {
         let count = line.len();
-        if count == 0 {
-            return Vec::new();
-        }
-        let main_avail = main(axis, rect.size());
-        let cross_avail = cross(axis, rect.size());
-        let gaps = self.gap * (count - 1) as f32;
+        let gaps = self.gap * count.saturating_sub(1) as f32;
         let spans: Vec<(f32, f32, f32)> = line
             .iter()
             .map(|&i| {
                 let child = &self.children[i];
                 let (base, min, max) = child.span(axis);
-                match child
-                    .wrapped_outer_height(cross_avail)
-                    .filter(|_| axis == Axis::Column)
-                {
+                let wrapped = Some(axis)
+                    .filter(|axis| *axis == Axis::Column)
+                    .and_then(|_| child.height_for_width(self.cross_width(child, cross_avail)));
+                match wrapped {
                     Some(height) => (height, min.min(height), max.max(height)),
                     None => (base, min, max),
                 }
@@ -1060,6 +1126,17 @@ impl Node {
             }
             free = -deficit;
         }
+        (lengths, free)
+    }
+
+    fn place_line(&self, axis: Axis, line: &[usize], rect: Rect) -> Vec<Rect> {
+        let count = line.len();
+        if count == 0 {
+            return Vec::new();
+        }
+        let main_avail = main(axis, rect.size());
+        let cross_avail = cross(axis, rect.size());
+        let (lengths, free) = self.flex_lengths(axis, line, main_avail, cross_avail);
 
         let free = free.max(0.0);
         let (mut cursor, gap) = match self.justify.unwrap_or(Justify::Start) {
@@ -1083,14 +1160,10 @@ impl Node {
             let child = &self.children[index];
             let align = child.align_self.or(self.align).unwrap_or(Align::Stretch);
             let mut wanted = cross(axis, child.outer_size());
-            if axis == Axis::Row && child.height.is_none() {
-                let inner = length - child.margin.width() - child.padding.width();
-                if let Some(size) = child.measured(Some(inner.max(0.0))) {
-                    wanted = size.y + child.padding.height() + child.margin.height();
-                }
-                if let Some(height) = child.wrapped_outer_height(length) {
-                    wanted = height;
-                }
+            if axis == Axis::Row
+                && let Some(height) = child.height_for_width(length)
+            {
+                wanted = height;
             }
             if let Some(ratio) = child.aspect.filter(|_| child.fixed_cross(axis).is_none()) {
                 let main_margin = match axis {
@@ -1193,6 +1266,34 @@ mod tests {
 
     fn rects(node: Node, bounds: Rect) -> Vec<Rect> {
         node.solve(bounds).children.iter().map(|c| c.rect).collect()
+    }
+
+    fn wrapping_text(natural: f32, line: f32) -> Node {
+        measured(move |width| match width {
+            None => Vec2::new(natural, line),
+            Some(width) => {
+                let lines = (natural / width.max(1.0)).ceil().max(1.0);
+                Vec2::new(width.min(natural), lines * line)
+            }
+        })
+        .min_width(0.0)
+    }
+
+    #[test]
+    fn cards_grow_when_text_inside_wraps_after_shrinking() {
+        let card = |id| {
+            row([
+                column([wrapping_text(200.0, 10.0)]).id(id),
+                boxed(100.0, 10.0).shrink(0.0),
+            ])
+            .id(id + 10)
+        };
+        let placed = column([card(1), card(2)])
+            .gap(4.0)
+            .solve(bounds(220.0, 200.0));
+        assert_eq!(placed.find(11).unwrap().height(), 20.0);
+        assert_eq!(placed.find(12).unwrap().top(), 24.0);
+        assert_eq!(placed.find(1).unwrap().width(), 120.0);
     }
 
     #[test]

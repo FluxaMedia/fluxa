@@ -7,7 +7,8 @@ mod items;
 mod page;
 pub(crate) use image::fit_inside;
 pub(crate) use items::{
-    Item, direct, item, lay, lay_hug, lay_in, lay_overflow, lay_point, probing, shared, widget,
+    Item, direct, item, lay, lay_hug, lay_in, lay_overflow, lay_point, measured, probing, shared,
+    widget,
 };
 pub(crate) mod layout_items {
     pub(crate) use super::items::{column, fill, gap, row, space, stack};
