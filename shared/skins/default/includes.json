@@ -26,7 +26,8 @@
               "type": "icon",
               "props": {
                 "name": "{item.icon}",
-                "size": 22
+                "size": 22,
+                "fill": "{item.active}"
               }
             },
             {
@@ -70,7 +71,8 @@
               "type": "icon",
               "props": {
                 "name": "{item.icon}",
-                "size": 22
+                "size": 22,
+                "fill": "{item.active}"
               }
             },
             {

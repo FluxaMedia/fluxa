@@ -606,9 +606,15 @@ fn icon<'a, A: HomeAssets>(node: &Resolved, env: &'a Env<'a, A>) -> kit::Item<'a
         });
     }
     let spinning = prop(node, "spin") == "true";
+    let filled = prop(node, "fill") == "true";
     kit::shared(Vec2::splat(size), move |ui, rect| {
         let rect = lens(ui.ctx(), &keys, rect);
-        let Some(texture) = assets.borrow().icon(&name) else {
+        let assets = assets.borrow();
+        let texture = filled
+            .then(|| assets.icon(&format!("{name}Fill")))
+            .flatten()
+            .or_else(|| assets.icon(&name));
+        let Some(texture) = texture else {
             return;
         };
         if !spinning {

@@ -57,7 +57,8 @@
       "name",
       "size",
       "logo",
-      "spin"
+      "spin",
+      "fill"
     ],
     "image": [
       "fit",
