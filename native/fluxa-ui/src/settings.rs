@@ -545,6 +545,18 @@ mod setup_tests {
         );
         assert!(setup_export("streamkitSetup", &values).contains("streamLimit"));
     }
+
+    #[test]
+    fn disconnected_sync_source_shows_the_connected_one() {
+        let settings = SettingsModel {
+            values: serde_json::json!({"continueWatchingSource": "simkl"}),
+            profile: serde_json::json!({"nuvioAccessToken": "t"}),
+            ..Default::default()
+        };
+        let (_, current, label) = account_source_state(&settings, "continueWatchingSource");
+        assert_eq!(current, "nuvio");
+        assert!(!label.is_empty());
+    }
 }
 
 pub fn settings_data(settings: &SettingsModel, form: UiFormFactor) -> serde_json::Value {

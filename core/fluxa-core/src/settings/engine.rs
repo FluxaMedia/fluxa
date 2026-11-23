@@ -61,7 +61,7 @@ pub(crate) fn dispatch(
 
 const SOURCE_KEYS: [&str; 2] = ["integrationLibrarySource", "continueWatchingSource"];
 
-fn source_token_field(source: &str) -> Option<&'static str> {
+pub(crate) fn source_token_field(source: &str) -> Option<&'static str> {
     match source {
         "nuvio" => Some("nuvioAccessToken"),
         "stremio" => Some("stremioAuthKey"),
@@ -69,7 +69,7 @@ fn source_token_field(source: &str) -> Option<&'static str> {
     }
 }
 
-fn has_token(profile: &Value, field: &str) -> bool {
+pub(crate) fn has_token(profile: &Value, field: &str) -> bool {
     profile
         .get(field)
         .and_then(Value::as_str)

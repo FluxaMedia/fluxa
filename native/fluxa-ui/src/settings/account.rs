@@ -67,11 +67,23 @@ pub fn account_source_state(
             .map(|(source, _)| (source.to_owned(), source_label(source, language)))
             .collect::<Vec<_>>()
     };
-    let current = settings
+    let mut current = settings
         .value(key)
         .and_then(serde_json::Value::as_str)
         .unwrap_or_default()
         .to_owned();
+    let is_sync_source = ACCOUNT_SOURCES[..SYNC_SOURCES]
+        .iter()
+        .any(|(_, source_key)| *source_key == key);
+    if is_sync_source && !options.iter().any(|(source, _)| *source == current) {
+        let fallback = options
+            .iter()
+            .find(|(source, _)| source == "nuvio")
+            .or(options.first());
+        if let Some((source, _)) = fallback {
+            current = source.clone();
+        }
+    }
     let label = match options.iter().find(|(source, _)| *source == current) {
         Some((_, label)) => label.clone(),
         None if matches!(

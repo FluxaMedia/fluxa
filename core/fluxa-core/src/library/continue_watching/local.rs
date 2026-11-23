@@ -17,11 +17,18 @@ pub(crate) fn normalized_continue_watching_source(value: Option<&str>) -> &'stat
 
 pub(crate) fn continue_watching_source_plan_json(args_json: &str) -> Option<String> {
     let args: Value = serde_json::from_str(args_json).ok()?;
-    let source =
-        match normalized_continue_watching_source(args.get("source").and_then(Value::as_str)) {
-            "local" if args.get("nuvioConnected").and_then(Value::as_bool) == Some(true) => "nuvio",
-            source => source,
-        };
+    let nuvio_connected = args.get("nuvioConnected").and_then(Value::as_bool) == Some(true);
+    let requested = normalized_continue_watching_source(args.get("source").and_then(Value::as_str));
+    let disconnected = args.get("profile").is_some_and(|profile| {
+        crate::settings::engine::source_token_field(requested)
+            .is_some_and(|field| !crate::settings::engine::has_token(profile, field))
+    });
+    let source = match requested {
+        "local" if nuvio_connected => "nuvio",
+        _ if disconnected && nuvio_connected => "nuvio",
+        _ if disconnected => "local",
+        source => source,
+    };
     let provider = match source {
         "local" => None,
         provider => Some(provider),

@@ -61,3 +61,23 @@ fn continue_watching_keeps_resolved_up_next_placeholders() {
     assert_eq!(result[0]["id"], "tt0760437");
     assert_eq!(result[0]["continueWatchingBadge"], "upNext");
 }
+
+#[test]
+fn a_tracker_that_is_no_longer_connected_falls_back_to_nuvio() {
+    let plan = |args: &str| -> Value {
+        serde_json::from_str(&continue_watching_source_plan_json(args).unwrap()).unwrap()
+    };
+    let with_nuvio =
+        plan(r#"{"source":"simkl","nuvioConnected":true,"profile":{"nuvioAccessToken":"t"}}"#);
+    assert_eq!(with_nuvio["source"], "nuvio");
+    assert_eq!(with_nuvio["usesLocal"], false);
+
+    let without = plan(r#"{"source":"simkl","nuvioConnected":false,"profile":{}}"#);
+    assert_eq!(without["source"], "local");
+    assert_eq!(without["usesLocal"], true);
+
+    let connected = plan(
+        r#"{"source":"simkl","nuvioConnected":true,"profile":{"nuvioAccessToken":"t","simklAccessToken":"s"}}"#,
+    );
+    assert_eq!(connected["source"], "simkl");
+}

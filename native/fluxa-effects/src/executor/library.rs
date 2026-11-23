@@ -164,7 +164,7 @@ impl EffectExecutor {
             .unwrap_or("local");
         let provider = core_value(
             "continueWatchingSourcePlan",
-            json!({"source": requested, "nuvioConnected": nuvio_connected}),
+            json!({"source": requested, "nuvioConnected": nuvio_connected, "profile": profile}),
         )
         .and_then(|plan| plan.get("provider")?.as_str().map(ToOwned::to_owned));
         match provider.as_deref() {
