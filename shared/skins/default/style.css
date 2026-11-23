@@ -360,7 +360,7 @@ hero-synopsis-size { font-size: 16; }
   to { opacity: 1; }
 }
 
-.guide-now { background: var(--ink-full); width: 2px; height: 100%; }
+.guide-now { background: var(--ink-full); width: 2px; height: 100vh; }
 .icon-btn, .avatar-choice, .back { border-radius: var(--radius-pill); }
 .icon-btn { width: icon-button; height: icon-button; align-items: center; justify-content: center; }
 .icon-btn.small { width: 28px; height: 28px; }
