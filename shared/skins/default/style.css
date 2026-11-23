@@ -647,7 +647,7 @@ div { flex-grow: 1; gap: var(--gap-tight); }
 
 a { gap: var(--gap-base); padding: var(--space-4); border-radius: var(--radius-md); color: var(--ink-muted); font-size: var(--text-md); font-weight: 500; transition: .15s; }
 icon.plain:hover, track, .surface.soft, .select-row:focus, .avatar-choice:selected, .source-row:hover, a:hover { background: var(--ink-soft); }
-a:hover, a:selected { color: var(--ink-full); }
+a:hover, a:focus, a:selected { color: var(--ink-full); }
 a:focus, a:selected { background: var(--ink-raised); }
 
 /* Buttons: every `button` node, and the Rust widgets through the legacy names.
