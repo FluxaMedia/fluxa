@@ -493,6 +493,10 @@ fn rows_follow_the_form_factor() {
         1080
     ));
     assert!(!applies("playerGestures", UiFormFactor::Tv, 1920, 1080));
+    assert!(applies("navLayout", UiFormFactor::Desktop, 1920, 1080));
+    assert!(applies("navLayout", UiFormFactor::Tv, 1920, 1080));
+    assert!(!applies("navLayout", UiFormFactor::Mobile, 390, 844));
+    assert!(!applies("navLayout", UiFormFactor::Mobile, 1024, 768));
     assert!(applies("subtitleSize", UiFormFactor::Tv, 1920, 1080));
 }
 

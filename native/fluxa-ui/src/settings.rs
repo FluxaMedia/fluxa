@@ -101,7 +101,10 @@ fn row_forms(key: &str) -> Forms {
         | "playerShowSettings"
         | "playerShowVolume"
         | "playerShowFullscreen" => DESKTOP,
-        "followFocusHero"
+        "navLayout"
+        | "navSidebarMode"
+        | "homeCategoryBar"
+        | "followFocusHero"
         | "expandedPosters"
         | "expandedPostersDelay"
         | "trailerOnExpandedPosters"
