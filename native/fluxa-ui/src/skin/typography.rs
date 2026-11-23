@@ -25,7 +25,15 @@ pub(super) fn text_rule(
     chain: &[std::rc::Rc<Ancestor>],
     position: Option<(usize, usize)>,
 ) -> Option<crate::stylesheet::Style> {
-    let (class, modifiers) = class_parts(node, position)?;
+    let Some((class, modifiers)) = class_parts(node, position) else {
+        if chain.is_empty() {
+            return None;
+        }
+        let ancestors = ancestor_states(ui.ctx(), chain);
+        return Some(crate::stylesheet::within(&ancestors, || {
+            crate::stylesheet::base_with("", &[])
+        }));
+    };
     let follow = prop(node, "follow").into_owned();
     let hovered = !follow.is_empty() && group_hovered(ui.ctx(), &follow);
     let ancestors = ancestor_states(ui.ctx(), chain);
