@@ -432,7 +432,7 @@ hero-synopsis-size { font-size: 16; }
 
 .modal-scrim { background: rgba(0, 0, 0, 0.72); }
 
-.menu-sheet { width: 100%; }
+.menu-sheet { width: 100vw; }
 
 .select-row { height: 34px; gap: var(--gap-snug); }
 
