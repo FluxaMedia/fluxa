@@ -419,6 +419,7 @@ struct Layer {
 #[derive(Clone, Debug, PartialEq)]
 enum Query {
     Platform(String),
+    Form(String),
     Input(String),
     Theme(String),
     Window(String),
@@ -433,6 +434,7 @@ impl Query {
         let metrics = crate::metrics::view();
         match self {
             Query::Platform(name) => metrics.platform == name,
+            Query::Form(name) => metrics.form == name,
             Query::Input(name) => crate::metrics::input() == name,
             Query::Theme(id) => fluxa_theme::theme::selected_theme_id() == *id,
             Query::Window(name) => metrics.window_class == name,
@@ -2180,6 +2182,16 @@ mod tests {
             assert!(queries.contains(&expected));
         }
         assert!(Sheet::parse("@media (input: stylus) { .a { gap: 1px; } }").is_err());
+    }
+
+    #[test]
+    fn form_media_query_tracks_the_device_not_the_window_width() {
+        let sheet = Sheet::parse("@media (form: mobile) { .a { gap: 9px; } }").expect("parses");
+        assert_eq!(
+            sheet.rules["a"].media[0].0,
+            Query::Form("mobile".to_owned())
+        );
+        assert!(Sheet::parse("@media (form: watch) { .a { gap: 1px; } }").is_err());
     }
 
     #[test]

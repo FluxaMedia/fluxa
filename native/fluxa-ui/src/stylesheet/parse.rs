@@ -117,6 +117,12 @@ impl Query {
                 other => Err(format!("{key}: unknown input {other}")),
             };
         }
+        if let Some(form) = body.strip_prefix("form:") {
+            return match form {
+                "mobile" | "desktop" | "tv" => Ok(Query::Form(form.to_owned())),
+                other => Err(format!("{key}: unknown form {other}")),
+            };
+        }
         if let Some(theme) = body.strip_prefix("theme:") {
             return Ok(Query::Theme(theme.to_owned()));
         }
