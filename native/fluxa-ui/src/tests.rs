@@ -466,6 +466,37 @@ fn shortcuts_only_listed_on_desktop() {
 }
 
 #[test]
+fn rows_follow_the_form_factor() {
+    let applies = |key, form_factor, width, height| {
+        super::settings::row_applies(key, Viewport::new(width, height, form_factor))
+    };
+    assert!(applies(
+        "posterHoverPreview",
+        UiFormFactor::Desktop,
+        1920,
+        1080
+    ));
+    assert!(!applies("posterHoverPreview", UiFormFactor::Tv, 1920, 1080));
+    assert!(!applies(
+        "posterHoverPreview",
+        UiFormFactor::Mobile,
+        390,
+        844
+    ));
+    assert!(applies("expandedPosters", UiFormFactor::Tv, 1920, 1080));
+    assert!(!applies("expandedPosters", UiFormFactor::Mobile, 390, 844));
+    assert!(applies("playerGestures", UiFormFactor::Mobile, 390, 844));
+    assert!(!applies(
+        "playerGestures",
+        UiFormFactor::Desktop,
+        1920,
+        1080
+    ));
+    assert!(!applies("playerGestures", UiFormFactor::Tv, 1920, 1080));
+    assert!(applies("subtitleSize", UiFormFactor::Tv, 1920, 1080));
+}
+
+#[test]
 fn settings_search_spans_every_section() {
     let settings = SettingsModel {
         search: "subtitle".to_owned(),

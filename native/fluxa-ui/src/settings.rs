@@ -70,24 +70,65 @@ fn category_group(category: &str) -> &'static str {
     }
 }
 
+#[derive(Clone, Copy)]
+struct Forms(u8);
+
+const MOBILE: Forms = Forms(1);
+const DESKTOP: Forms = Forms(2);
+const TV: Forms = Forms(4);
+const EVERY_FORM: Forms = Forms(7);
+
+impl Forms {
+    const fn and(self, other: Forms) -> Forms {
+        Forms(self.0 | other.0)
+    }
+
+    fn has(self, form_factor: UiFormFactor) -> bool {
+        let bit = match form_factor {
+            UiFormFactor::Mobile => MOBILE,
+            UiFormFactor::Desktop => DESKTOP,
+            UiFormFactor::Tv => TV,
+        };
+        self.0 & bit.0 != 0
+    }
+}
+
+fn row_forms(key: &str) -> Forms {
+    match key {
+        "posterHoverPreview"
+        | "posterHoverPreviewDelay"
+        | "discordRichPresenceEnabled"
+        | "playerShowSettings"
+        | "playerShowVolume"
+        | "playerShowFullscreen" => DESKTOP,
+        "followFocusHero"
+        | "expandedPosters"
+        | "expandedPostersDelay"
+        | "trailerOnExpandedPosters"
+        | "trailerOnExpandedPostersDelay" => DESKTOP.and(TV),
+        "navLabels"
+        | "playerGestures"
+        | "playerDoubleTapSeek"
+        | "playerCenterControls"
+        | "backgroundPlayback"
+        | "torrentWifiOnly" => MOBILE,
+        "pictureInPicture" => MOBILE.and(TV),
+        "detailSeasonPostersOnHero" => Forms(0),
+        _ => EVERY_FORM,
+    }
+}
+
 pub(super) fn row_applies(key: &str, viewport: Viewport) -> bool {
-    let compact = viewport.is_compact();
-    let desktop = !compact && !viewport.is_tv();
+    if !row_forms(key).has(viewport.form_factor) {
+        return false;
+    }
     match key {
         "navLayout" | "navMode" | "navSidebarMode" | "homeCategoryBar" | "interfaceDensity"
-        | "posterHoverPreview" => !compact,
-        "navLabels" => compact,
-        "uiScale" => !compact,
-        "posterHoverPreviewDelay" => desktop,
-        "discordRichPresenceEnabled" => desktop,
-        "detailSeasonPostersOnHero" => false,
+        | "uiScale" => !viewport.is_compact(),
         "automaticUpdates" => matches!(
             viewport.platform,
             UiPlatform::Android | UiPlatform::Windows | UiPlatform::Macos | UiPlatform::Linux
         ),
-        "backgroundPlayback" | "pictureInPicture" | "torrentWifiOnly" => !desktop,
-        "playerShowSettings" | "playerShowVolume" | "playerShowFullscreen" => desktop,
-        "playerGestures" | "playerDoubleTapSeek" | "playerCenterControls" => compact,
         _ => true,
     }
 }
