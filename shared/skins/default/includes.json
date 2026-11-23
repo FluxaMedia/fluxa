@@ -329,8 +329,18 @@
           {
             "type": "text",
             "tag": "small",
-            "class": "hero-meta",
+            "class": "hero-meta wide-only",
             "text": "{slide.eyebrow}"
+          },
+          {
+            "type": "text",
+            "tag": "small",
+            "class": "hero-meta compact-only",
+            "text": "{slide.eyebrow}",
+            "props": {
+              "lines": 2,
+              "center": true
+            }
           },
           {
             "type": "row",
@@ -1304,7 +1314,11 @@
             "type": "text",
             "tag": "small",
             "class": "compact-only",
-            "text": "{detail.meta}"
+            "text": "{detail.meta}",
+            "props": {
+              "lines": 2,
+              "center": true
+            }
           },
           {
             "type": "text",

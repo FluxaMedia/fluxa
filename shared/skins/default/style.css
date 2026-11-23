@@ -718,6 +718,11 @@ button:focus { scale: 1.04; }
 
 .hero-content { gap: var(--gap-base); padding: var(--space-5); align-items: flex-start; justify-content: flex-end; }
 
+@media (size: compact), (max-height: 479px) {
+  .hero-content { align-items: center; }
+  .hero-content .ratings, .hero-content .actions { justify-content: center; }
+}
+
 .card-preview .actions { gap: var(--gap-snug); }
 .badges { padding: var(--space-2); align-items: flex-start; }
 .avatar-choice, .badges .card-badge { padding: var(--space-1); }

@@ -579,18 +579,15 @@ fn icon<'a, A: HomeAssets>(node: &Resolved, env: &'a Env<'a, A>) -> kit::Item<'a
             size as f32
         });
     let chain = plain_frames(&env.ancestors.borrow());
-    let tint = class_parts(node, None)
-        .map(|(rule, modifiers)| {
-            crate::stylesheet::within(&chain, || {
-                let style = crate::stylesheet::base_with(&rule, &modifiers);
-                if style.text_declared {
-                    style.text
-                } else {
-                    crate::metrics::theme().text_primary
-                }
-            })
-        })
-        .unwrap_or(crate::metrics::theme().text_primary);
+    let (rule, modifiers) = class_parts(node, None).unwrap_or(("", &[]));
+    let tint = crate::stylesheet::within(&chain, || {
+        let style = crate::stylesheet::base_with(rule, modifiers);
+        if style.text_declared {
+            style.text
+        } else {
+            crate::metrics::theme().text_primary
+        }
+    });
     let assets = env.assets;
     let keys = ancestor_keys(env);
     let logo = prop(node, "logo").into_owned();
