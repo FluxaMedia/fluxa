@@ -595,6 +595,18 @@ fn sample_sources() -> Vec<fluxa_ui::PlayerSource> {
             "640 MB · Turkish",
             vec![badge("480p")],
         ),
+        source(
+            "ExampleHub",
+            "Example Hub 4K",
+            "[ExampleHost] [5.68 GB] Example.Show.S01E02.Sample.Title.2160p.WEB-DL.DDP5.1.Atmos.HDR10.H.265-GROUP\nHDR DV\nExampleHost | ExampleHub",
+            Vec::new(),
+        ),
+        source(
+            "ExampleHub",
+            "Example.Show.S01E02.Sample.Title.2160p.WEB-DL.DDP5.1.Atmos.HDR10.H.265-GROUP.mkv",
+            "",
+            vec![badge("4K")],
+        ),
     ]
 }
 
