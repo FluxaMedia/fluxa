@@ -366,6 +366,7 @@ hero-synopsis-size { font-size: 16; }
 .icon-btn:focus { background: var(--ink-soft); scale: 1.08; }
 
 .play-progress, .progress-bar, .slider-fill, .gauge-fill { background: var(--color-accent); border-radius: var(--radius-sm); }
+.bar .progress-track { background: color-mix(in srgb, var(--color-text-primary) 28%, transparent); }
 .play-progress { align-items: flex-start; }
 
 .switch { width: 3.5rem; height: 2rem; padding: var(--space-1); }
