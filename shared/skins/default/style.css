@@ -311,7 +311,7 @@ hero-synopsis-size { font-size: 16; }
 .episode:focus { border: 3px solid #ffffff; scale: 1.06; }
 
 .episode.current { border: 2px solid #ffffff; }
-.watched .episode-thumb { opacity: 0.55; }
+.watched .thumb { opacity: 0.55; }
 
 .surface { background: var(--ink-faint); border-radius: var(--radius-md); }
 .surface.solid { background: var(--color-surface-raised); }
@@ -408,7 +408,7 @@ hero-synopsis-size { font-size: 16; }
 
 .slider-buffered { background: var(--ink-soft); border-radius: var(--radius-sm); }
 
-.slider-segment, .mini-tile, .panel-thumb { border-radius: var(--radius-sm); }
+.slider-segment, .mini-tile { border-radius: var(--radius-sm); }
 .slider-chapter { background: #000000; }
 
 .select, .select-field { height: control-height; }
@@ -439,7 +439,10 @@ hero-synopsis-size { font-size: 16; }
 .toast { padding: var(--space-4); border-radius: var(--radius-pill); box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45); }
 
 .mini-tile { aspect-ratio: 16 / 9; max-width: 400px; width: 22vw; }
-.episode-thumb, .episode-art, .trailer-thumb, .modal-art, .panel-thumb { aspect-ratio: 16 / 9; }
+.thumb { aspect-ratio: 16 / 9; border-radius: var(--radius-md); }
+.thumb.small { width: 96px; }
+.thumb.medium { width: 160px; }
+.thumb.large { width: 276px; }
 
 .mini-controls {
   opacity: 0;
@@ -450,7 +453,6 @@ hero-synopsis-size { font-size: 16; }
 
 .mini-tile:hover .mini-controls { opacity: 1; }
 
-.panel-thumb { width: 96px; }
 .panel-label { font-weight: 500; }
 
 .hero-skeleton { background: var(--ink-faint); animation: skeleton-pulse 1.2s infinite alternate; }
@@ -565,7 +567,6 @@ hero-synopsis-size { font-size: 16; }
 
 .day-number { width: 24px; height: 24px; justify-content: center; }
 
-.episode-thumb, .episode-art { width: 276px; }
 .detail-hero { height: 68vh; }
 
 .progress { width: 200px; height: 4px; }
@@ -761,8 +762,7 @@ button:focus { scale: 1.04; }
 
 .episode-text { width: 17.5rem; gap: var(--gap-tight); padding: 0 var(--space-1) var(--space-1); }
 .cast { width: 7.5rem; gap: var(--gap-snug); align-items: center; }
-.trailer { width: 18.5rem; gap: var(--gap-snug); }
-.trailer-thumb { width: 296px; }
+.trailer { width: 17.25rem; gap: var(--gap-snug); }
 .info li { gap: var(--gap-loose); padding: var(--space-2) 0; }
 .info small { width: 11.25rem; }
 
@@ -803,7 +803,6 @@ button:focus { scale: 1.04; }
 .modal-stack header { height: 18.75rem; }
 .modal-stack footer { align-items: flex-start; justify-content: flex-end; padding: var(--space-5); }
 .details { gap: var(--gap-base); padding: 0 var(--space-5) var(--space-5); }
-.modal-art { width: 160px; }
 .mini-poster { width: 8.75rem; gap: var(--gap-snug); }
 .mini-poster-art { width: 140px; }
 .reco-text { width: 35rem; gap: var(--gap-base); align-items: flex-start; }

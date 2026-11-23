@@ -1026,12 +1026,12 @@
       {
         "type": "stack",
         "tag": "figure",
-        "class": "episode-art",
+        "class": "thumb large",
         "children": [
           {
             "type": "image",
             "src": "{ep.thumb}",
-            "class": "episode-thumb surface solid",
+            "class": "thumb large surface solid",
             "props": {
               "fit": "cover"
             }
@@ -1183,7 +1183,7 @@
         "props": {
           "fit": "cover"
         },
-        "class": "trailer-thumb"
+        "class": "thumb large"
       },
       {
         "type": "text",

@@ -205,7 +205,7 @@
                                             "props": {
                                               "fit": "cover"
                                             },
-                                            "class": "modal-art"
+                                            "class": "thumb medium"
                                           },
                                           {
                                             "type": "column",

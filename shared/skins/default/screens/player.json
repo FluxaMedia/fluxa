@@ -736,7 +736,7 @@
                                   "type": "image",
                                   "when": "row.thumb",
                                   "src": "{row.thumb}",
-                                  "class": "panel-thumb",
+                                  "class": "thumb small",
                                   "props": {
                                     "fit": "cover"
                                   }
@@ -994,7 +994,7 @@
                                       "type": "image",
                                       "when": "row.thumb",
                                       "src": "{row.thumb}",
-                                      "class": "panel-thumb",
+                                      "class": "thumb small",
                                       "props": {
                                         "fit": "cover"
                                       }
@@ -1269,7 +1269,7 @@
                                   "type": "image",
                                   "when": "row.thumb",
                                   "src": "{row.thumb}",
-                                  "class": "panel-thumb",
+                                  "class": "thumb small",
                                   "props": {
                                     "fit": "cover"
                                   }

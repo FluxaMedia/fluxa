@@ -485,13 +485,6 @@
       "since": 1
     },
     {
-      "name": "episode-art",
-      "element": "stack",
-      "meaning": "",
-      "stability": "internal",
-      "since": 6
-    },
-    {
       "name": "episode-check",
       "element": "stack",
       "meaning": "Watched check mark on an episode",
@@ -532,13 +525,6 @@
       "meaning": "",
       "stability": "internal",
       "since": 6
-    },
-    {
-      "name": "episode-thumb",
-      "element": "image",
-      "meaning": "Episode still image",
-      "stability": "internal",
-      "since": 1
     },
     {
       "name": "episode-time",
@@ -842,6 +828,13 @@
       "since": 1
     },
     {
+      "name": "large",
+      "element": "image stack",
+      "meaning": "",
+      "stability": "internal",
+      "since": 6
+    },
+    {
       "name": "layer",
       "element": "column row",
       "meaning": "",
@@ -926,6 +919,13 @@
       "since": 6
     },
     {
+      "name": "medium",
+      "element": "image",
+      "meaning": "",
+      "stability": "internal",
+      "since": 6
+    },
+    {
       "name": "menu-items",
       "element": "column",
       "meaning": "",
@@ -991,13 +991,6 @@
     {
       "name": "modal",
       "element": "column",
-      "meaning": "",
-      "stability": "internal",
-      "since": 6
-    },
-    {
-      "name": "modal-art",
-      "element": "image",
       "meaning": "",
       "stability": "internal",
       "since": 6
@@ -1260,13 +1253,6 @@
       "meaning": "",
       "stability": "internal",
       "since": 6
-    },
-    {
-      "name": "panel-thumb",
-      "element": "image",
-      "meaning": "Thumbnail inside a panel",
-      "stability": "internal",
-      "since": 1
     },
     {
       "name": "phone",
@@ -1781,7 +1767,7 @@
     },
     {
       "name": "small",
-      "element": "row",
+      "element": "image row",
       "meaning": "",
       "stability": "internal",
       "since": 6
@@ -1948,6 +1934,13 @@
       "since": 6
     },
     {
+      "name": "thumb",
+      "element": "image stack",
+      "meaning": "",
+      "stability": "internal",
+      "since": 6
+    },
+    {
       "name": "tile",
       "element": "row",
       "meaning": "",
@@ -2041,13 +2034,6 @@
     {
       "name": "trailer-actions",
       "element": "row",
-      "meaning": "",
-      "stability": "internal",
-      "since": 6
-    },
-    {
-      "name": "trailer-thumb",
-      "element": "image",
       "meaning": "",
       "stability": "internal",
       "since": 6
