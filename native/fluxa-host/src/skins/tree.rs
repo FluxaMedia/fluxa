@@ -102,10 +102,10 @@ pub(crate) fn tree(
         .ok()
         .and_then(|fields| fields.clone())
         .unwrap_or_default();
-    let mut nav = fluxa_ui::nav_data(if route == Route::Calendar {
-        "library"
-    } else {
-        screen
+    let mut nav = fluxa_ui::nav_data(match route {
+        Route::Calendar => "library",
+        Route::Detail => "home",
+        _ => screen,
     });
 
     let behavior = settings
