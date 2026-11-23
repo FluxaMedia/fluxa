@@ -425,8 +425,7 @@ hero-synopsis-size { font-size: 16; }
 
 .card-preview { box-shadow: 0 14px 36px rgba(0, 0, 0, 0.55); }
 
-.preview-art, .next-thumb, .select-row { border-radius: var(--radius-md); }
-.next-thumb { height: 140px; }
+.preview-art, .select-row { border-radius: var(--radius-md); }
 .menu-scrim { background: rgba(0, 0, 0, 0.35); }
 
 .modal-scrim { background: rgba(0, 0, 0, 0.72); }

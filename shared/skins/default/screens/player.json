@@ -1914,7 +1914,7 @@
               "type": "image",
               "when": "player.next.thumb",
               "src": "{player.next.thumb}",
-              "class": "next-thumb"
+              "class": "thumb"
             },
             {
               "type": "text",

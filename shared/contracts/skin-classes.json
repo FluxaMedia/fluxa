@@ -1059,13 +1059,6 @@
       "since": 1
     },
     {
-      "name": "next-thumb",
-      "element": "image",
-      "meaning": "Next-episode thumbnail in the player",
-      "stability": "internal",
-      "since": 1
-    },
-    {
       "name": "num-label",
       "element": "",
       "meaning": "Day number in the calendar",
