@@ -147,6 +147,11 @@ pub(crate) fn tree(
         Route::Detail => fluxa_ui::detail_data(detail),
         _ => Value::Null,
     };
+    let prefs = if route == Route::Settings {
+        prefs_data(settings, home.form_factor.into(), &fields)
+    } else {
+        Value::Null
+    };
     let screen_key = if route == Route::Discover {
         let mut hasher = fluxa_ui::FastHasher::default();
         (
@@ -163,6 +168,8 @@ pub(crate) fn tree(
         )
             .hash(&mut hasher);
         hasher.finish()
+    } else if route == Route::Settings {
+        json_key(&prefs)
     } else {
         json_key(&screen_data())
     };
@@ -333,7 +340,7 @@ pub(crate) fn tree(
                 "const": skin.constants(),
                 "sections": sections,
                 "settings": settings.values,
-                "prefs": if route == Route::Settings { prefs_data(settings, home.form_factor.into(), &fields) } else { Value::Null },
+                "prefs": prefs,
                 "fields": fields,
                 "nav": nav,
                 "ext": ext::snapshot(),
