@@ -264,44 +264,37 @@ impl EffectExecutor {
             .native_timeout(Duration::from_secs(20))
             .build()
             .map_err(|error| error.to_string())?;
-        for request in requests {
-            let Some(url) = request.get("url").and_then(Value::as_str) else {
-                continue;
-            };
-            let (status_code, body) = match fetch_text(&client, url).await {
-                Ok(response) => response,
-                Err(error) => {
-                    crate::log!(
-                        "[fluxa-native] meta request failed for {}: {error}",
-                        url_without_query(url)
-                    );
-                    continue;
+        let trailer_requests = plan
+            .get("trailerRequests")
+            .and_then(Value::as_array)
+            .cloned()
+            .unwrap_or_default();
+        let supplements = futures::future::join_all(
+            trailer_requests
+                .iter()
+                .map(|request| fetch_supplemental_trailers(&client, request)),
+        );
+        let primary = async {
+            for request in requests {
+                if let Some(meta) = fetch_primary_meta(&client, &request).await {
+                    return meta;
                 }
-            };
-            let parsed = core_value(
-                "parseAndPlanAddonResource",
-                json!({
-                    "resource": "meta",
-                    "url": url,
-                    "statusCode": status_code,
-                    "body": body,
-                    "kind": "metaDetail",
-                    "addonName": request.get("addonName"),
-                    "season": null
-                }),
-            );
-            if parsed
-                .as_ref()
-                .and_then(|value| value.get("kind"))
-                .and_then(Value::as_str)
-                == Some("success")
-            {
-                return Ok(parsed
-                    .and_then(|value| value.pointer("/value/meta").cloned())
-                    .unwrap_or(Value::Null));
             }
+            Value::Null
+        };
+        let (meta, supplements) = futures::join!(primary, supplements);
+        if meta.is_null() {
+            return Ok(Value::Null);
         }
-        Ok(Value::Null)
+        let supplements: Vec<Value> = supplements.into_iter().flatten().collect();
+        if supplements.is_empty() {
+            return Ok(meta);
+        }
+        Ok(core_value(
+            "mergeMetaTrailers",
+            json!({"meta": meta.clone(), "supplements": supplements}),
+        )
+        .unwrap_or(meta))
     }
 
     pub(super) async fn fetch_addon_manifest(&self, payload: &Value) -> Result<Value, String> {
@@ -567,4 +560,52 @@ mod meta_cache_tests {
         );
         assert_eq!(cache.entries.len(), META_CAPACITY);
     }
+}
+
+async fn fetch_primary_meta(client: &Client, request: &Value) -> Option<Value> {
+    let url = request.get("url").and_then(Value::as_str)?;
+    let parsed = parse_meta_response(client, request, url, "metaDetail").await?;
+    Some(
+        parsed
+            .pointer("/value/meta")
+            .cloned()
+            .unwrap_or(Value::Null),
+    )
+}
+
+async fn fetch_supplemental_trailers(client: &Client, request: &Value) -> Option<Value> {
+    let url = request.get("url").and_then(Value::as_str)?;
+    let parsed = parse_meta_response(client, request, url, "metaTrailers").await?;
+    parsed.pointer("/value/trailers").cloned()
+}
+
+async fn parse_meta_response(
+    client: &Client,
+    request: &Value,
+    url: &str,
+    kind: &str,
+) -> Option<Value> {
+    let (status_code, body) = match fetch_text(client, url).await {
+        Ok(response) => response,
+        Err(error) => {
+            crate::log!(
+                "[fluxa-native] meta request failed for {}: {error}",
+                url_without_query(url)
+            );
+            return None;
+        }
+    };
+    let parsed = core_value(
+        "parseAndPlanAddonResource",
+        json!({
+            "resource": "meta",
+            "url": url,
+            "statusCode": status_code,
+            "body": body,
+            "kind": kind,
+            "addonName": request.get("addonName"),
+            "season": null
+        }),
+    )?;
+    (parsed.get("kind").and_then(Value::as_str) == Some("success")).then_some(parsed)
 }

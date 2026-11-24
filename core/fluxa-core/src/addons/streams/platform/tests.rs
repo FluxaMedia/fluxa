@@ -126,6 +126,41 @@ fn resource_fetch_plan_meta_detail_returns_executable_candidate_identity() {
 }
 
 #[test]
+fn meta_addons_without_catalogs_only_supply_trailers() {
+    let meta_manifest = json!({ "resources": ["meta"], "types": ["series"] });
+    let request = json!({
+        "kind": "metaDetail",
+        "contentType": "series",
+        "id": "tt7",
+        "addons": [
+            {
+                "name": "Browse",
+                "transportUrl": "https://browse.example/manifest.json",
+                "manifest": {
+                    "resources": ["meta"],
+                    "types": ["series"],
+                    "catalogs": [{ "type": "series", "id": "top" }],
+                },
+            },
+            {
+                "name": "Extras",
+                "transportUrl": "https://extras.example/manifest.json",
+                "manifest": meta_manifest,
+            },
+        ],
+    });
+    let plan = resource_fetch_plan_json(&request.to_string())
+        .and_then(|json| serde_json::from_str::<Value>(&json).ok())
+        .expect("plan");
+
+    assert_eq!(plan["requests"].as_array().unwrap().len(), 1);
+    assert_eq!(plan["requests"][0]["addonName"], "Browse");
+    assert_eq!(plan["trailerRequests"].as_array().unwrap().len(), 1);
+    assert_eq!(plan["trailerRequests"][0]["addonName"], "Extras");
+    assert_eq!(plan["trailerRequests"][0]["kind"], "metaTrailers");
+}
+
+#[test]
 fn resource_fetch_plan_search_only_targets_catalogs_supporting_search() {
     let request = json!({
         "kind": "search",

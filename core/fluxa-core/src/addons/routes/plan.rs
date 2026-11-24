@@ -10,6 +10,20 @@ pub(crate) fn route_resource_plan(method: &str, args_json: &str) -> Outcome {
         "resourceFetchPlan" => opt_json(
             crate::addons::streams::platform::resource_fetch_plan_json(args_json),
         ),
+        "mergeMetaTrailers" => {
+            let args = object(args_json)?;
+            let supplements = args
+                .get("supplements")
+                .and_then(Value::as_array)
+                .cloned()
+                .unwrap_or_default();
+            Ok(
+                crate::headless_engine::helpers::merge_supplemental_trailers(
+                    field(&args, "meta")?.clone(),
+                    &supplements,
+                ),
+            )
+        }
         "resourceFetchExecutionPolicy" => opt_json(
             crate::addons::streams::platform::resource_fetch_execution_policy_json(args_json),
         ),

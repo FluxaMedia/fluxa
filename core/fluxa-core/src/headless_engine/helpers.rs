@@ -11,7 +11,6 @@ struct NormalizedTrailer {
     item_type: String,
     url: String,
     thumbnail: Option<String>,
-    source: &'static str,
 }
 
 pub(crate) fn normalize_error(error: Value) -> Value {
@@ -90,10 +89,8 @@ pub(crate) fn normalize_meta_trailers(meta: &Value) -> Value {
                 .collect::<Vec<_>>()
         })
         .unwrap_or_default();
-    // Trailerio and a few Stremio-compatible addons expose direct trailer
-    // streams as `links: [{ trailers, provider }]` rather than the usual
-    // `trailers` array. Preserve native trailer entries first, then append
-    // these URLs as additional sources without duplicating a URL.
+    // Some addons expose direct trailer urls as `links: [{ trailers, provider }]`
+    // instead of a `trailers` array; append them after the native entries.
     if let Some(links) = meta.get("links").and_then(Value::as_array) {
         for link in links {
             let Some(trailer) = normalize_meta_link_trailer(link) else {
@@ -108,6 +105,31 @@ pub(crate) fn normalize_meta_trailers(meta: &Value) -> Value {
         }
     }
     Value::Array(trailers)
+}
+
+pub(crate) fn merge_supplemental_trailers(mut meta: Value, supplements: &[Value]) -> Value {
+    let mut trailers: Vec<Value> = Vec::new();
+    let own = normalize_meta_trailers(&meta);
+    let own = own.as_array().into_iter().flatten();
+    for trailer in supplements
+        .iter()
+        .filter_map(Value::as_array)
+        .flatten()
+        .chain(own)
+    {
+        if !trailers
+            .iter()
+            .any(|known| known.get("url") == trailer.get("url"))
+        {
+            trailers.push(trailer.clone());
+        }
+    }
+    if let Some(obj) = meta.as_object_mut()
+        && !trailers.is_empty()
+    {
+        obj.insert("trailers".to_string(), Value::Array(trailers));
+    }
+    meta
 }
 
 fn normalize_meta_trailer(trailer: &Value) -> Option<Value> {
@@ -131,7 +153,10 @@ fn normalize_meta_trailer(trailer: &Value) -> Option<Value> {
                 .as_ref()
                 .map(|value| format!("https://www.youtube.com/watch?v={value}"))
         })?;
-    let id = youtube_id.clone().unwrap_or_else(|| url.clone());
+    let id = youtube_id
+        .clone()
+        .or_else(|| non_blank_str(trailer, "id"))
+        .unwrap_or_else(|| url.clone());
     let item_type = non_blank_str(trailer, "type").unwrap_or_else(|| "Trailer".to_string());
     let title = non_blank_str(trailer, "name")
         .or_else(|| non_blank_str(trailer, "title"))
@@ -148,7 +173,6 @@ fn normalize_meta_trailer(trailer: &Value) -> Option<Value> {
         item_type,
         url,
         thumbnail,
-        source: "addon",
     })
     .ok()
 }
@@ -166,7 +190,6 @@ fn normalize_meta_link_trailer(link: &Value) -> Option<Value> {
         item_type,
         url,
         thumbnail: non_blank_str(link, "thumbnail"),
-        source: "addon",
     })
     .ok()
 }
@@ -224,8 +247,41 @@ pub(crate) fn upsert_by_key(target: &mut Value, key: &str, value: &str, item: Va
 
 #[cfg(test)]
 mod trailer_tests {
-    use super::normalize_meta_trailers;
+    use super::{merge_supplemental_trailers, normalize_meta_trailers};
     use serde_json::json;
+
+    #[test]
+    fn links_become_direct_trailers() {
+        let meta = json!({ "links": [
+            { "trailers": "https://example.com/a.mp4", "provider": "Provider A" },
+            { "trailers": "https://example.com/a.mp4", "provider": "Provider B" },
+            { "name": "Genre" }
+        ]});
+        let trailers = normalize_meta_trailers(&meta);
+        assert_eq!(trailers.as_array().unwrap().len(), 1);
+        assert_eq!(trailers[0]["url"], "https://example.com/a.mp4");
+        assert_eq!(trailers[0]["title"], "Provider A");
+    }
+
+    #[test]
+    fn supplemental_trailers_keep_primary_meta() {
+        let meta = json!({ "id": "tt1", "name": "Show", "trailers": [{ "ytId": "abc" }] });
+        let extra = normalize_meta_trailers(&json!({
+            "links": [{ "trailers": "https://example.com/a.mp4", "provider": "A" }]
+        }));
+        let merged = merge_supplemental_trailers(meta, &[extra]);
+        assert_eq!(merged["name"], "Show");
+        assert_eq!(merged["trailers"].as_array().unwrap().len(), 2);
+        assert_eq!(merged["trailers"][0]["url"], "https://example.com/a.mp4");
+        assert_eq!(merged["trailers"][1]["id"], "abc");
+    }
+
+    #[test]
+    fn normalizing_twice_keeps_ids_and_thumbnails() {
+        let once = normalize_meta_trailers(&json!({ "trailers": [{ "ytId": "abc" }] }));
+        let twice = normalize_meta_trailers(&json!({ "trailers": once.clone() }));
+        assert_eq!(once, twice);
+    }
 
     #[test]
     fn youtube_id_drops_query_suffix() {

@@ -16,7 +16,7 @@ pub(crate) fn resource_kind_to_resource(
     }
     match kind {
         "catalogPage" | "discover" | "search" => "catalog",
-        "metaDetail" | "seasonEpisodes" => "meta",
+        "metaDetail" | "metaTrailers" | "seasonEpisodes" => "meta",
         "streams" => "stream",
         "subtitles" => "subtitles",
         other if !other.trim().is_empty() => other,
@@ -41,6 +41,10 @@ fn resource_parse_plan_value(
             json!({ "items": items })
         }
         "metaDetail" => json!({ "meta": response.get("meta").cloned().unwrap_or(Value::Null) }),
+        "metaTrailers" => {
+            let meta = response.get("meta").cloned().unwrap_or(Value::Null);
+            json!({ "trailers": crate::headless_engine::helpers::normalize_meta_trailers(&meta) })
+        }
         "streams" => {
             let streams = response
                 .get("streams")

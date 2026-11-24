@@ -44,6 +44,7 @@ struct ResourceFetchPlanRequest {
 pub(crate) fn resource_fetch_plan_json(request_json: &str) -> Option<String> {
     let request = serde_json::from_str::<ResourceFetchPlanRequest>(request_json).ok()?;
     let mut requests = Vec::<Value>::new();
+    let mut trailer_requests = Vec::<Value>::new();
 
     match request.kind.as_str() {
         "catalogPage" => {
@@ -189,11 +190,18 @@ pub(crate) fn resource_fetch_plan_json(request_json: &str) -> Option<String> {
                 None => Vec::new(),
             };
             let candidate_addons: Vec<&Value> = if source_addons.is_empty() {
-                // No known source addon (deep link, search, library nav), it's no
-                // longer configured, or it doesn't implement the meta resource at all
-                // (e.g. a torrent-indexing addon): fall back to racing every
-                // meta-capable addon instead of coming back empty.
-                request.addons.iter().collect()
+                let browsable: Vec<&Value> = request
+                    .addons
+                    .iter()
+                    .filter(|addon| {
+                        has_catalogs(addon) && addon_supports(addon, "meta", content_type, Some(id))
+                    })
+                    .collect();
+                if browsable.is_empty() {
+                    request.addons.iter().collect()
+                } else {
+                    browsable
+                }
             } else {
                 source_addons
             };
@@ -212,6 +220,25 @@ pub(crate) fn resource_fetch_plan_json(request_json: &str) -> Option<String> {
                     "contentType": content_type,
                     "id": id,
                     "stopOnFirstResult": true
+                }));
+            }
+            for addon in &request.addons {
+                let Some(transport_url) = addon_transport_url(addon) else {
+                    continue;
+                };
+                let already_primary = candidate_addons
+                    .iter()
+                    .any(|candidate| addon_transport_url(candidate) == Some(transport_url));
+                if has_catalogs(addon)
+                    || already_primary
+                    || !addon_supports(addon, "meta", content_type, Some(id))
+                {
+                    continue;
+                }
+                trailer_requests.push(json!({
+                    "url": build_resource_url(transport_url, "meta", content_type, id, None),
+                    "kind": "metaTrailers",
+                    "addonName": addon_display_name(addon),
                 }));
             }
         }
@@ -294,7 +321,8 @@ pub(crate) fn resource_fetch_plan_json(request_json: &str) -> Option<String> {
         }
     }
 
-    serde_json::to_string(&json!({ "requests": requests })).ok()
+    serde_json::to_string(&json!({ "requests": requests, "trailerRequests": trailer_requests }))
+        .ok()
 }
 
 /// Wraps `resource_fetch_plan_json` with the execution policy for running its
@@ -356,6 +384,9 @@ fn addon_manifest(addon: &Value) -> Value {
         .get("manifest")
         .cloned()
         .unwrap_or_else(|| addon.clone())
+}
+fn has_catalogs(addon: &Value) -> bool {
+    !addon_catalogs(addon).is_empty()
 }
 fn addon_catalogs(addon: &Value) -> Vec<Value> {
     addon_manifest(addon)

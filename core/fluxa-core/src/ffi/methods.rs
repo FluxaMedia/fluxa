@@ -80,6 +80,7 @@ static METHODS: &[(&str, Router)] = &[
     ("mediaServerParse", route_mediaserver),
     ("mediaServerRequest", route_mediaserver),
     ("mergeDiscoverSources", route_search_plan),
+    ("mergeMetaTrailers", route_resource_plan),
     ("mergeSearchSources", route_search_plan),
     ("normalizeAddonDescriptor", route_addon_protocol),
     ("normalizeLibraryDocument", route_library_state),

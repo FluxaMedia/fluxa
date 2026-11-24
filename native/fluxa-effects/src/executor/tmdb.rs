@@ -61,6 +61,7 @@ impl EffectExecutor {
         language: String,
     ) -> std::sync::mpsc::Receiver<Vec<(String, Value)>> {
         let (sender, receiver) = std::sync::mpsc::channel();
+        let executor = self.clone();
         let task = async move {
             let mut found = Vec::new();
             if let Ok(client) = Client::builder()
@@ -72,7 +73,10 @@ impl EffectExecutor {
                     let Some(id) = item.get("id").and_then(Value::as_str) else {
                         continue;
                     };
-                    let trailers = tmdb_trailers(&client, &item, &api_key, &language).await;
+                    let trailers = match executor.addon_trailers(&item).await {
+                        Some(trailers) => Some(trailers),
+                        None => tmdb_trailers(&client, &item, &api_key, &language).await,
+                    };
                     found.push((id.to_owned(), trailers.unwrap_or_else(|| json!([]))));
                 }
             }
@@ -83,6 +87,28 @@ impl EffectExecutor {
         #[cfg(not(target_arch = "wasm32"))]
         super::runtime().spawn(task);
         receiver
+    }
+
+    async fn addon_trailers(&self, item: &Value) -> Option<Value> {
+        let content_type = item.get("type").and_then(Value::as_str)?;
+        let id = item.get("id").and_then(Value::as_str)?;
+        let base = if id.starts_with("tmdb:") {
+            id
+        } else {
+            id.split(':').next().unwrap_or(id)
+        };
+        let meta = self
+            .fetch_meta_detail(&json!({"contentType": content_type, "id": base}))
+            .await
+            .ok()
+            .filter(|meta| !meta.is_null())?;
+        core_value(
+            "mergeMetaTrailers",
+            json!({"meta": meta, "supplements": []}),
+        )?
+        .get("trailers")
+        .filter(|trailers| trailers.as_array().is_some_and(|items| !items.is_empty()))
+        .cloned()
     }
 
     pub fn fetch_logos(

@@ -349,16 +349,12 @@ fn youtube_ids(urls: &[String]) -> Vec<String> {
 }
 
 pub(crate) fn trailer_sources(urls: &[String]) -> Vec<TrailerSource> {
-    let mut youtube = Vec::new();
-    let mut direct = Vec::new();
-    for url in urls {
-        match youtube_ids(std::slice::from_ref(url)).pop() {
-            Some(id) => youtube.push(TrailerSource::YouTube(id)),
-            None => direct.push(TrailerSource::Direct(url.clone())),
-        }
-    }
-    youtube.extend(direct);
-    youtube
+    urls.iter()
+        .map(|url| match youtube_ids(std::slice::from_ref(url)).pop() {
+            Some(id) => TrailerSource::YouTube(id),
+            None => TrailerSource::Direct(url.clone()),
+        })
+        .collect()
 }
 
 fn queue_expanded(state: &mut RendererState) {
