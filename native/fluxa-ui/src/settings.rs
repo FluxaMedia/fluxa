@@ -442,8 +442,7 @@ pub fn option_label(key: &str, value: &str, language: &str) -> String {
         "expandedPostersDelay" | "trailerOnExpandedPostersDelay" if value == "0" => {
             localized("settings.expanded_posters_delay_instant", language)
         }
-        "homeHeroAutoplayTrailerDelaySecs"
-        | "detailHeroAutoplayTrailerDelaySecs"
+        "heroAutoplayTrailerDelaySecs"
         | "expandedPostersDelay"
         | "trailerOnExpandedPostersDelay"
         | "autoPlayCountdownSecs"

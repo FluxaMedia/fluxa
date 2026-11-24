@@ -289,20 +289,6 @@
       "category": "general"
     },
     {
-      "key": "detailHeroAutoplayTrailer",
-      "type": "boolean",
-      "default": false,
-      "scope": "profile",
-      "category": "appearance"
-    },
-    {
-      "key": "detailHeroAutoplayTrailerDelaySecs",
-      "type": "string",
-      "default": "2",
-      "scope": "profile",
-      "category": "appearance"
-    },
-    {
       "key": "detailPreferClearlogo",
       "type": "boolean",
       "default": null,
@@ -534,7 +520,7 @@
       "category": "appearance"
     },
     {
-      "key": "homeHeroAutoplayTrailer",
+      "key": "heroAutoplayTrailer",
       "type": "boolean",
       "default": false,
       "scope": "profile",
@@ -548,7 +534,7 @@
       "category": "appearance"
     },
     {
-      "key": "homeHeroAutoplayTrailerDelaySecs",
+      "key": "heroAutoplayTrailerDelaySecs",
       "type": "string",
       "default": "2",
       "scope": "profile",

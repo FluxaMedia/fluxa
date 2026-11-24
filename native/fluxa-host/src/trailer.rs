@@ -152,7 +152,7 @@ fn wanted(state: &RendererState) -> Option<Wanted> {
         return Some(Wanted {
             key: state.detail.id.clone(),
             urls: state.detail.trailers.clone(),
-            delay: delay("detailHeroAutoplayTrailerDelaySecs"),
+            delay: delay("heroAutoplayTrailerDelaySecs"),
             poster: false,
         });
     }
@@ -174,7 +174,7 @@ fn wanted(state: &RendererState) -> Option<Wanted> {
                     poster: true,
                 });
             }
-            if !settings.bool_value("homeHeroAutoplayTrailer") || !state.home.show_hero_section {
+            if !settings.bool_value("heroAutoplayTrailer") || !state.home.show_hero_section {
                 return None;
             }
             let hero = focus_hero(state)?;
@@ -187,17 +187,17 @@ fn wanted(state: &RendererState) -> Option<Wanted> {
             Some(Wanted {
                 key,
                 urls,
-                delay: delay("homeHeroAutoplayTrailerDelaySecs"),
+                delay: delay("heroAutoplayTrailerDelaySecs"),
                 poster: false,
             })
         }
         Route::Detail
-            if settings.bool_value("detailHeroAutoplayTrailer") && !state.detail.id.is_empty() =>
+            if settings.bool_value("heroAutoplayTrailer") && !state.detail.id.is_empty() =>
         {
             Some(Wanted {
                 key: state.detail.id.clone(),
                 urls: state.detail.trailers.clone(),
-                delay: delay("detailHeroAutoplayTrailerDelaySecs"),
+                delay: delay("heroAutoplayTrailerDelaySecs"),
                 poster: false,
             })
         }
@@ -214,7 +214,7 @@ fn focus_hero(state: &RendererState) -> Option<fluxa_ui::HomeHero> {
 }
 
 fn queue_focus_hero(state: &mut RendererState) {
-    if state.route != Route::Home || !state.settings.bool_value("homeHeroAutoplayTrailer") {
+    if state.route != Route::Home || !state.settings.bool_value("heroAutoplayTrailer") {
         return;
     }
     let Some(context) = state.gpu.as_ref().map(|gpu| &gpu.egui_context) else {

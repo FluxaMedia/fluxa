@@ -49,7 +49,7 @@ pub fn slider_range(key: &str) -> Option<SettingsRange> {
         "scrobbleWatchedPercent" => (50.0, 100.0, 1.0, &[50.0, 75.0, 100.0]),
         "autoPlayCountdownSecs" => (1.0, 30.0, 1.0, &[1.0, 10.0, 20.0, 30.0]),
         "reuseLastStreamTtlHours" => (1.0, 720.0, 1.0, &[1.0, 12.0, 24.0, 168.0, 720.0]),
-        "homeHeroAutoplayTrailerDelaySecs" | "detailHeroAutoplayTrailerDelaySecs" => {
+        "heroAutoplayTrailerDelaySecs" => {
             (0.0, 10.0, 1.0, &[0.0, 5.0, 10.0])
         }
         "trickplayInterval" => (5.0, 60.0, 5.0, &[5.0, 30.0, 60.0]),
@@ -221,13 +221,13 @@ pub(super) const HOME_SETTINGS: [SettingsRow; 19] = [
         fixed: &[],
     },
     SettingsRow {
-        label: "Autoplay home hero trailer",
-        key: "homeHeroAutoplayTrailer",
+        label: "Autoplay hero trailer",
+        key: "heroAutoplayTrailer",
         fixed: &[],
     },
     SettingsRow {
-        label: "Home trailer delay",
-        key: "homeHeroAutoplayTrailerDelaySecs",
+        label: "Hero trailer delay",
+        key: "heroAutoplayTrailerDelaySecs",
         fixed: &["2", "4", "6", "10"],
     },
     SettingsRow {
@@ -308,7 +308,7 @@ pub(super) const HOME_GROUPS: [(usize, &str); 2] = [
     (9, "settings.group.home"),
     (10, "settings.group.continue_watching"),
 ];
-pub(super) const DETAILS_SETTINGS: [SettingsRow; 13] = [
+pub(super) const DETAILS_SETTINGS: [SettingsRow; 11] = [
     SettingsRow {
         label: "Detail hero collapses",
         key: "detailCollapsingHero",
@@ -328,16 +328,6 @@ pub(super) const DETAILS_SETTINGS: [SettingsRow; 13] = [
         label: "Trailer on detail hero",
         key: "trailerOnHero",
         fixed: &[],
-    },
-    SettingsRow {
-        label: "Autoplay detail hero trailer",
-        key: "detailHeroAutoplayTrailer",
-        fixed: &[],
-    },
-    SettingsRow {
-        label: "Detail trailer delay",
-        key: "detailHeroAutoplayTrailerDelaySecs",
-        fixed: &["2", "4", "6", "10"],
     },
     SettingsRow {
         label: "Episode titles",

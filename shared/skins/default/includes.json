@@ -299,11 +299,11 @@
       },
       {
         "type": "video",
-        "when": "settings.homeHeroAutoplayTrailer",
+        "when": "settings.heroAutoplayTrailer",
         "props": {
           "item": "{slide.itemId}",
           "urls": "{slide.trailers}",
-          "delay": "{settings.homeHeroAutoplayTrailerDelaySecs}",
+          "delay": "{settings.heroAutoplayTrailerDelaySecs}",
           "subtitles": true
         }
       },
@@ -1233,11 +1233,11 @@
       },
       {
         "type": "video",
-        "when": "settings.detailHeroAutoplayTrailer",
+        "when": "settings.heroAutoplayTrailer",
         "props": {
           "item": "{detail.id}",
           "urls": "{detail.trailerUrls}",
-          "delay": "{settings.detailHeroAutoplayTrailerDelaySecs}",
+          "delay": "{settings.heroAutoplayTrailerDelaySecs}",
           "subtitles": true
         }
       },

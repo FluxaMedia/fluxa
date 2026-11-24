@@ -265,7 +265,7 @@ pub fn home_hero_plan_over<'a>(
     let billboard = billboard.map(prepare);
     let slides = slides.into_iter().map(&prepare).collect::<Vec<_>>();
     let autoplay = prefs
-        .get("homeHeroAutoplayTrailer")
+        .get("heroAutoplayTrailer")
         .and_then(Value::as_bool)
         .unwrap_or(false);
     let trailer_fetch_enabled = autoplay
