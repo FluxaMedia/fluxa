@@ -439,7 +439,7 @@ fn native_appearance_exposes_web_preferences_and_uses_white_default_accent() {
         "navLayout",
         "posterWidthPreset",
         "continueWatchingArtwork",
-        "heroAutoplayTrailer",
+        "autoplayTrailer",
         "detailSeasonSelectorMode",
         "episodeCardsLayout",
     ] {

@@ -520,7 +520,7 @@
       "category": "appearance"
     },
     {
-      "key": "heroAutoplayTrailer",
+      "key": "autoplayTrailer",
       "type": "boolean",
       "default": false,
       "scope": "profile",
@@ -534,7 +534,7 @@
       "category": "appearance"
     },
     {
-      "key": "heroAutoplayTrailerDelaySecs",
+      "key": "autoplayTrailerDelaySecs",
       "type": "string",
       "default": "2",
       "scope": "profile",
@@ -551,20 +551,6 @@
       "key": "expandedPostersDelay",
       "type": "string",
       "default": "1",
-      "scope": "profile",
-      "category": "appearance"
-    },
-    {
-      "key": "trailerOnExpandedPosters",
-      "type": "boolean",
-      "default": false,
-      "scope": "profile",
-      "category": "appearance"
-    },
-    {
-      "key": "trailerOnExpandedPostersDelay",
-      "type": "string",
-      "default": "2",
       "scope": "profile",
       "category": "appearance"
     },

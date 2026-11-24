@@ -207,12 +207,12 @@
           },
           {
             "type": "video",
-            "when": "settings.trailerOnExpandedPosters",
+            "when": "settings.autoplayTrailer",
             "props": {
               "expandedOnly": true,
               "item": "{card.id}",
               "urls": "{card.trailers}",
-              "delay": "{settings.trailerOnExpandedPostersDelay}"
+              "delay": "{settings.autoplayTrailerDelaySecs}"
             }
           },
           {
@@ -299,11 +299,11 @@
       },
       {
         "type": "video",
-        "when": "settings.heroAutoplayTrailer",
+        "when": "settings.autoplayTrailer",
         "props": {
           "item": "{slide.itemId}",
           "urls": "{slide.trailers}",
-          "delay": "{settings.heroAutoplayTrailerDelaySecs}",
+          "delay": "{settings.autoplayTrailerDelaySecs}",
           "subtitles": true
         }
       },
@@ -1233,11 +1233,11 @@
       },
       {
         "type": "video",
-        "when": "settings.heroAutoplayTrailer",
+        "when": "settings.autoplayTrailer",
         "props": {
           "item": "{detail.id}",
           "urls": "{detail.trailerUrls}",
-          "delay": "{settings.heroAutoplayTrailerDelaySecs}",
+          "delay": "{settings.autoplayTrailerDelaySecs}",
           "subtitles": true
         }
       },
@@ -4419,11 +4419,11 @@
           },
           {
             "type": "video",
-            "when": "settings.trailerOnExpandedPosters",
+            "when": "settings.autoplayTrailer",
             "props": {
               "item": "{card.id}",
               "urls": "{card.trailers}",
-              "delay": "{settings.trailerOnExpandedPostersDelay}"
+              "delay": "{settings.autoplayTrailerDelaySecs}"
             }
           }
         ]

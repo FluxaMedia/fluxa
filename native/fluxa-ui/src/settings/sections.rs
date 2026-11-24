@@ -49,9 +49,7 @@ pub fn slider_range(key: &str) -> Option<SettingsRange> {
         "scrobbleWatchedPercent" => (50.0, 100.0, 1.0, &[50.0, 75.0, 100.0]),
         "autoPlayCountdownSecs" => (1.0, 30.0, 1.0, &[1.0, 10.0, 20.0, 30.0]),
         "reuseLastStreamTtlHours" => (1.0, 720.0, 1.0, &[1.0, 12.0, 24.0, 168.0, 720.0]),
-        "heroAutoplayTrailerDelaySecs" => {
-            (0.0, 10.0, 1.0, &[0.0, 5.0, 10.0])
-        }
+        "autoplayTrailerDelaySecs" => (0.0, 10.0, 1.0, &[0.0, 5.0, 10.0]),
         "trickplayInterval" => (5.0, 60.0, 5.0, &[5.0, 30.0, 60.0]),
         "playerForwardBufferSeconds" => (10.0, 600.0, 10.0, &[10.0, 300.0, 600.0]),
         "playerBackBufferSeconds" => (0.0, 300.0, 5.0, &[0.0, 60.0, 300.0]),
@@ -221,14 +219,14 @@ pub(super) const HOME_SETTINGS: [SettingsRow; 19] = [
         fixed: &[],
     },
     SettingsRow {
-        label: "Autoplay hero trailer",
-        key: "heroAutoplayTrailer",
+        label: "Autoplay trailers",
+        key: "autoplayTrailer",
         fixed: &[],
     },
     SettingsRow {
-        label: "Hero trailer delay",
-        key: "heroAutoplayTrailerDelaySecs",
-        fixed: &["2", "4", "6", "10"],
+        label: "Trailer delay",
+        key: "autoplayTrailerDelaySecs",
+        fixed: &["0", "2", "4", "6", "10"],
     },
     SettingsRow {
         label: "Shorten synopsis",
@@ -797,7 +795,7 @@ pub(super) const STREAM_BADGES_SETTINGS: [SettingsRow; 9] = [
     },
 ];
 
-pub(super) const POSTERS_SETTINGS: [SettingsRow; 53] = [
+pub(super) const POSTERS_SETTINGS: [SettingsRow; 51] = [
     SettingsRow {
         label: "Card corners",
         key: "cardCornerPreset",
@@ -1074,16 +1072,6 @@ pub(super) const POSTERS_SETTINGS: [SettingsRow; 53] = [
         key: "expandedPostersDelay",
         fixed: &["0", "1", "2", "3"],
     },
-    SettingsRow {
-        label: "Trailer on expanded posters",
-        key: "trailerOnExpandedPosters",
-        fixed: &[],
-    },
-    SettingsRow {
-        label: "Expanded poster trailer delay",
-        key: "trailerOnExpandedPostersDelay",
-        fixed: &["0", "2", "4", "6"],
-    },
 ];
 pub(super) const POSTERS_GROUPS: [(usize, &str); 7] = [
     (8, "settings.group.cards"),
@@ -1092,7 +1080,7 @@ pub(super) const POSTERS_GROUPS: [(usize, &str); 7] = [
     (13, "settings.group.poster_badges"),
     (6, "settings.group.poster_sashes"),
     (7, "settings.group.poster_top_numbers"),
-    (4, "settings.group.expanded_posters"),
+    (2, "settings.group.expanded_posters"),
 ];
 pub(super) const PREVIEWS_SETTINGS: [SettingsRow; 4] = [
     SettingsRow {

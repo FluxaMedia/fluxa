@@ -131,7 +131,7 @@ fn wanted(state: &RendererState) -> Option<Wanted> {
     let settings = &state.settings;
     let delay = |key: &str| settings.number_value(key).unwrap_or(2.0).max(0.0);
     if state.detail_modal && !state.detail.id.is_empty() {
-        if settings.bool_value("trailerOnExpandedPosters")
+        if settings.bool_value("autoplayTrailer")
             && let Some(poster) = state
                 .gpu
                 .as_ref()
@@ -145,21 +145,21 @@ fn wanted(state: &RendererState) -> Option<Wanted> {
             return Some(Wanted {
                 urls: state.trailers.urls_for(&poster.id, &poster.raw),
                 key: poster.id,
-                delay: delay("trailerOnExpandedPostersDelay"),
+                delay: delay("autoplayTrailerDelaySecs"),
                 poster: true,
             });
         }
         return Some(Wanted {
             key: state.detail.id.clone(),
             urls: state.detail.trailers.clone(),
-            delay: delay("heroAutoplayTrailerDelaySecs"),
+            delay: delay("autoplayTrailerDelaySecs"),
             poster: false,
         });
     }
     match state.route {
         Route::Home => {
             let context = &state.gpu.as_ref()?.egui_context;
-            if settings.bool_value("trailerOnExpandedPosters")
+            if settings.bool_value("autoplayTrailer")
                 && let Some(poster) =
                     fluxa_ui::previewed_poster(fluxa_ui::gfx::Context::from_backend(context))
                         .filter(|poster| poster.trailer)
@@ -170,11 +170,11 @@ fn wanted(state: &RendererState) -> Option<Wanted> {
                 return Some(Wanted {
                     urls: state.trailers.urls_for(&poster.id, &poster.raw),
                     key: poster.id,
-                    delay: delay("trailerOnExpandedPostersDelay"),
+                    delay: delay("autoplayTrailerDelaySecs"),
                     poster: true,
                 });
             }
-            if !settings.bool_value("heroAutoplayTrailer") || !state.home.show_hero_section {
+            if !settings.bool_value("autoplayTrailer") || !state.home.show_hero_section {
                 return None;
             }
             let hero = focus_hero(state)?;
@@ -187,17 +187,15 @@ fn wanted(state: &RendererState) -> Option<Wanted> {
             Some(Wanted {
                 key,
                 urls,
-                delay: delay("heroAutoplayTrailerDelaySecs"),
+                delay: delay("autoplayTrailerDelaySecs"),
                 poster: false,
             })
         }
-        Route::Detail
-            if settings.bool_value("heroAutoplayTrailer") && !state.detail.id.is_empty() =>
-        {
+        Route::Detail if settings.bool_value("autoplayTrailer") && !state.detail.id.is_empty() => {
             Some(Wanted {
                 key: state.detail.id.clone(),
                 urls: state.detail.trailers.clone(),
-                delay: delay("heroAutoplayTrailerDelaySecs"),
+                delay: delay("autoplayTrailerDelaySecs"),
                 poster: false,
             })
         }
@@ -214,7 +212,7 @@ fn focus_hero(state: &RendererState) -> Option<fluxa_ui::HomeHero> {
 }
 
 fn queue_focus_hero(state: &mut RendererState) {
-    if state.route != Route::Home || !state.settings.bool_value("heroAutoplayTrailer") {
+    if state.route != Route::Home || !state.settings.bool_value("autoplayTrailer") {
         return;
     }
     let Some(context) = state.gpu.as_ref().map(|gpu| &gpu.egui_context) else {
@@ -359,7 +357,7 @@ pub(crate) fn trailer_sources(urls: &[String]) -> Vec<TrailerSource> {
 
 fn queue_expanded(state: &mut RendererState) {
     if !(state.route == Route::Home || state.detail_modal)
-        || !state.settings.bool_value("trailerOnExpandedPosters")
+        || !state.settings.bool_value("autoplayTrailer")
     {
         return;
     }
