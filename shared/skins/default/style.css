@@ -565,6 +565,12 @@ hero-synopsis-size { font-size: 16; }
 
 .fullscreen, .player { height: 100%; width: 100%; }
 
+.hero, .hero-skeleton, .detail-hero { bleed: top left right; }
+.player, .menu-scrim { bleed: safe; }
+.hero-content { inset: left right; }
+.detail-hero header { inset: safe; }
+.player .layer { inset: safe; }
+
 @media (size: compact) {
   :root {
     --page-padding: 16px;

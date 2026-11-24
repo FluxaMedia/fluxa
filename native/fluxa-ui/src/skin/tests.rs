@@ -50,7 +50,13 @@ fn sample_tree(rows: usize, per_row: usize) -> Vec<Resolved> {
 }
 
 fn render(tree: &[Resolved]) -> (Vec<(u64, ResolvedAction)>, Vec<(u64, Rect)>) {
-    let viewport = Viewport::new(1280, 800, UiFormFactor::Desktop);
+    render_in(tree, Viewport::new(1280, 800, UiFormFactor::Desktop))
+}
+
+fn render_in(
+    tree: &[Resolved],
+    viewport: Viewport,
+) -> (Vec<(u64, ResolvedAction)>, Vec<(u64, Rect)>) {
     let context = crate::gfx::Context::default();
     context.set_fonts(crate::fonts::definitions());
     let mut assets = NoAssets;
@@ -898,4 +904,48 @@ fn notched_polygon_triangulates_without_overlap() {
 
 fn cross_area(a: Pos2, b: Pos2, c: Pos2) -> f32 {
     ((b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x)).abs() / 2.0
+}
+
+#[test]
+fn bleed_reaches_the_screen_edge_while_inset_keeps_content_in_the_safe_area() {
+    crate::reload_styles_with(
+        ".backdrop { bleed: top left right; height: 200px; } .content { inset: left right; height: 40px; } .leaf { width: 10px; height: 10px; }",
+    )
+    .unwrap();
+    let tree = skin_from(json!({
+        "type": "column",
+        "children": [{
+            "type": "stack",
+            "class": "backdrop",
+            "action": {"name": "back"},
+            "children": [{
+                "type": "row",
+                "class": "content",
+                "children": [{
+                    "type": "row",
+                    "class": "leaf",
+                    "action": {"name": "back"},
+                    "children": []
+                }]
+            }]
+        }]
+    }));
+    let viewport = Viewport::new(1280, 800, UiFormFactor::Desktop).with_safe_area(30.0, 40.0, 50.0);
+    let (_, targets) = render_in(&tree, viewport);
+    assert_eq!(targets.len(), 2);
+    let rects: Vec<Rect> = targets.iter().map(|(_, rect)| *rect).collect();
+    let backdrop = rects
+        .iter()
+        .copied()
+        .max_by(|a, b| a.area().total_cmp(&b.area()))
+        .unwrap();
+    let leaf = rects
+        .iter()
+        .copied()
+        .min_by(|a, b| a.area().total_cmp(&b.area()))
+        .unwrap();
+    assert_eq!(backdrop.min, Pos2::ZERO);
+    assert_eq!(backdrop.max.x, 1280.0);
+    assert_eq!(backdrop.height(), 230.0);
+    assert_eq!(leaf.min.x, 40.0);
 }

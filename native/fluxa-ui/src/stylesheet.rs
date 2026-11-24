@@ -52,6 +52,8 @@ pub(crate) struct Style {
     pub place: Option<Place>,
     pub grow: Option<f32>,
     pub hidden: bool,
+    pub bleed: u8,
+    pub inset: u8,
     pub fill_space: bool,
     pub order: i32,
     pub padding_box: Option<[f32; 4]>,
@@ -159,6 +161,8 @@ impl Style {
             place: None,
             grow: None,
             hidden: false,
+            bleed: 0,
+            inset: 0,
             fill_space: false,
             order: 0,
             padding_box: None,
@@ -382,6 +386,8 @@ struct Patch {
     place: Option<Place>,
     grow: Option<f32>,
     hidden: Option<bool>,
+    bleed: Option<u8>,
+    inset: Option<u8>,
     fill_space: Option<bool>,
     order: Option<i32>,
     padding_box: Option<[Length; 4]>,
@@ -1087,6 +1093,12 @@ fn apply(style: &mut Style, patch: &Patch) {
     if let Some(hidden) = patch.hidden {
         style.hidden = hidden;
     }
+    if let Some(bleed) = patch.bleed {
+        style.bleed = bleed;
+    }
+    if let Some(inset) = patch.inset {
+        style.inset = inset;
+    }
     if let Some(fill_space) = patch.fill_space {
         style.fill_space = fill_space;
     }
@@ -1145,6 +1157,8 @@ fn mix(from: Style, to: Style, t: f32) -> Style {
         place: to.place,
         grow: to.grow,
         hidden: to.hidden,
+        bleed: to.bleed,
+        inset: to.inset,
         fill_space: to.fill_space,
         order: to.order,
         padding_box: to.padding_box,

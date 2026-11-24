@@ -300,6 +300,7 @@ pub(crate) struct Placed {
     pub rect: Rect,
     pub children: Vec<Placed>,
     pub layered: bool,
+    pub bleeds: bool,
     pub pan: Option<Pan>,
 }
 
@@ -352,7 +353,12 @@ impl Placed {
         for (index, child) in self.children.iter().enumerate() {
             let name = self.label(path, index);
             let visible = child.rect.width() > LINT_SLACK && child.rect.height() > LINT_SLACK;
-            if visible && !hollow && self.pan.is_none() && !room.contains_rect(child.rect) {
+            if visible
+                && !hollow
+                && !child.bleeds
+                && self.pan.is_none()
+                && !room.contains_rect(child.rect)
+            {
                 out.push(format!(
                     "{name} overflows its parent: {:?} not inside {:?}",
                     child.rect, self.rect
@@ -912,6 +918,10 @@ impl Node {
             rect: bounds,
             children,
             layered: matches!(self.kind, Kind::Stack(_)),
+            bleeds: self.margin.left < 0.0
+                || self.margin.top < 0.0
+                || self.margin.right < 0.0
+                || self.margin.bottom < 0.0,
             pan,
         }
     }

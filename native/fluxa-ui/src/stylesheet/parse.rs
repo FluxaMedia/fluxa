@@ -407,6 +407,8 @@ pub(super) fn parse_patch(rule: &str, value: &Value) -> Result<Patch, String> {
             .get("flex-fill")
             .and_then(Value::as_f64)
             .map(|fill| fill > 0.0),
+        bleed: value.get("bleed").and_then(Value::as_str).map(side_mask),
+        inset: value.get("inset").and_then(Value::as_str).map(side_mask),
         hidden: match value.get("display").and_then(Value::as_str) {
             Some("none") => Some(true),
             Some(_) => Some(false),
@@ -626,4 +628,17 @@ fn place(rule: &str, words: &str) -> Result<super::Place, String> {
         }
     }
     Ok(place)
+}
+
+fn side_mask(sides: &str) -> u8 {
+    sides.split_whitespace().fold(0, |mask, word| {
+        mask | match word {
+            "safe" => 0b1111,
+            "top" => 0b0001,
+            "right" => 0b0010,
+            "bottom" => 0b0100,
+            "left" => 0b1000,
+            _ => 0,
+        }
+    })
 }

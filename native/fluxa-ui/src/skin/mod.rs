@@ -466,7 +466,11 @@ fn build_node<'a, A: HomeAssets>(
     let sides = node
         .padding
         .or(sheet_style.as_ref().and_then(|style| style.padding_box))
-        .map_or(0.0, |[_, right, _, left]| right + left);
+        .map_or(0.0, |[_, right, _, left]| right + left)
+        + sheet_style.as_ref().map_or(0.0, |style| {
+            let inset = bled(style.inset, env.safe);
+            inset.left + inset.right
+        });
     let inner = own_width.or(parent_inner).map(|width| width - sides);
     env.inner.borrow_mut().push(inner);
     let scoped = !node.children.is_empty() && node.class.is_some();
@@ -520,12 +524,19 @@ fn build_node<'a, A: HomeAssets>(
     }
     env.inner.borrow_mut().pop();
     let margin = sheet_style.as_ref().map_or(0.0, |style| style.margin);
+    let bleed = sheet_style
+        .as_ref()
+        .map_or(Insets::default(), |style| bled(style.bleed, env.safe));
     let item = frame(
         boxed(item, node, env),
         node,
         env.view.get(),
         sheet_style.as_ref(),
         parent_inner,
+        bleed,
+        sheet_style
+            .as_ref()
+            .map_or(Insets::default(), |style| bled(style.inset, env.safe)),
     );
     let lead = rank_lead(node, own_width);
     let item = if lead > 0.0 {
@@ -541,6 +552,16 @@ fn build_node<'a, A: HomeAssets>(
             bottom: -extra.y * 0.5,
         }),
         None => item,
+    };
+    let item = if bleed == Insets::default() {
+        item
+    } else {
+        item.margin(Insets {
+            left: -bleed.left,
+            right: -bleed.right,
+            top: -bleed.top,
+            bottom: -bleed.bottom,
+        })
     };
     let item = match lifted {
         Some(ease) => {
@@ -564,6 +585,16 @@ fn build_node<'a, A: HomeAssets>(
         return wrapper;
     }
     item
+}
+
+fn bled(mask: u8, safe: Insets) -> Insets {
+    let side = |bit: u8, inset: f32| if mask & bit != 0 { inset } else { 0.0 };
+    Insets {
+        top: side(0b0001, safe.top),
+        right: side(0b0010, safe.right),
+        bottom: side(0b0100, safe.bottom),
+        left: side(0b1000, safe.left),
+    }
 }
 
 fn is_float(node: &Resolved) -> bool {
@@ -797,6 +828,8 @@ fn frame<'a>(
     view: Vec2,
     style: Option<&crate::stylesheet::Style>,
     parent: Option<f32>,
+    bleed: Insets,
+    inset: Insets,
 ) -> kit::Item<'a> {
     let aspect = style.and_then(|style| style.aspect);
     let mut width = node
@@ -815,6 +848,8 @@ fn frame<'a>(
             .map(|share| share * view.y));
     let mut width = width.or(style.and_then(|style| calc_size(style.width_calc, view, None)));
     let height = height.or(style.and_then(|style| calc_size(style.height_calc, view, None)));
+    let mut width = width.map(|width| width + bleed.left + bleed.right);
+    let height = height.map(|height| height + bleed.top + bleed.bottom);
     let spans_parent = style.is_some_and(|style| {
         style.width_pct.is_some() || calc_relative(style.width_calc).is_some()
     });
@@ -876,6 +911,17 @@ fn frame<'a>(
         item = item.gap(gap);
     }
     let padding = node.padding.or(style.and_then(|style| style.padding_box));
+    let padding = if inset == Insets::default() {
+        padding
+    } else {
+        let [top, right, bottom, left] = padding.unwrap_or([0.0; 4]);
+        Some([
+            top + inset.top,
+            right + inset.right,
+            bottom + inset.bottom,
+            left + inset.left,
+        ])
+    };
     if let Some([top, right, bottom, left]) = padding {
         let insets = Insets {
             left,
