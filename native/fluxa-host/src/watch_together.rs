@@ -23,6 +23,12 @@ pub(crate) struct State {
     keep_stream: bool,
 }
 
+impl State {
+    pub(crate) fn is_shared(&self) -> bool {
+        self.shared
+    }
+}
+
 fn now_ms() -> i64 {
     web_time::SystemTime::now()
         .duration_since(web_time::UNIX_EPOCH)
@@ -441,8 +447,9 @@ fn report(state: &mut RendererState, watch: &Value) {
         );
         if state.watch.selected.as_deref() != Some(key.as_str()) {
             state.watch.selected = Some(key);
-            if stream.is_some() || !same_content(&watch["content"], &content) {
-                state.watch.published = true;
+            let changed = !same_content(&watch["content"], &content);
+            if stream.is_some() || changed {
+                state.watch.published |= changed;
                 let start = state
                     .player
                     .as_ref()
@@ -457,7 +464,9 @@ fn report(state: &mut RendererState, watch: &Value) {
                         "nowMs": now_ms(),
                     }),
                 );
-                return;
+                if changed {
+                    return;
+                }
             }
         }
     }
