@@ -534,6 +534,7 @@ hero-synopsis-size { font-size: 16; }
 .trailer-actions { gap: var(--gap-base); }
 
 .field-input { width: 27.5rem; }
+.chat-input { width: 15rem; }
 
 .corner { align-items: flex-end; justify-content: flex-end; flex-fill: 1; }
 

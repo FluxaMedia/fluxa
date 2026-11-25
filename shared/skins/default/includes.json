@@ -3032,7 +3032,7 @@
                   "value": "{fields.watchChat}",
                   "kind": "text"
                 },
-                "class": "grow"
+                "class": "chat-input"
               },
               {
                 "type": "row",

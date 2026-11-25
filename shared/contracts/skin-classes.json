@@ -219,6 +219,13 @@
       "since": 6
     },
     {
+      "name": "chat-input",
+      "element": "input",
+      "meaning": "",
+      "stability": "internal",
+      "since": 6
+    },
+    {
       "name": "chat-text",
       "element": "text",
       "meaning": "Message text in watch-together chat",
