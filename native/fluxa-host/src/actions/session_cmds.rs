@@ -99,6 +99,9 @@ pub(crate) fn session_commands(action: &NativeAction, profile: &Value) -> Option
         NativeAction::ToggleFavorite { item } => {
             vec![json!({"type": "toggleLibraryStatusRequested", "list": "liked", "item": item})]
         }
+        NativeAction::ToggleStatus { list, item } => {
+            vec![json!({"type": "toggleLibraryStatusRequested", "list": list, "item": item})]
+        }
         NativeAction::SettingsChange { key, value } => {
             let mut commands = vec![json!({"type": "settingsChanged", "key": key, "value": value})];
             let exclusive = match (key.as_str(), value.as_bool()) {

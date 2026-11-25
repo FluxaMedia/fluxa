@@ -173,6 +173,18 @@ pub(super) fn native_action_for_node(
                 item: detail.item.clone(),
             });
         }
+        if node == fluxa_ui::NODE_DETAIL_COMPLETED {
+            return Some(NativeAction::ToggleStatus {
+                list: "completed".to_owned(),
+                item: detail.item.clone(),
+            });
+        }
+        if node == fluxa_ui::NODE_DETAIL_DROPPED {
+            return Some(NativeAction::ToggleStatus {
+                list: "dropped".to_owned(),
+                item: detail.item.clone(),
+            });
+        }
         if node == fluxa_ui::NODE_DETAIL_FAVORITE {
             return Some(NativeAction::ToggleFavorite {
                 item: detail.item.clone(),
