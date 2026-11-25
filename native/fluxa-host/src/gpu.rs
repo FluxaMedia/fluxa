@@ -1284,6 +1284,10 @@ impl Gpu {
                     );
                     let skin = crate::skins::remember(frame);
                     rendered_layout.activated = skin.activated.or(rendered_layout.activated);
+                    if skin.text_input_node.is_some() {
+                        rendered_layout.text_input = skin.text_input;
+                        rendered_layout.text_input_node = skin.text_input_node;
+                    }
                     rendered_layout.seek_to = skin.seek_to.or(rendered_layout.seek_to);
                     rendered_layout.focusable.extend(skin.focusable);
                 }
@@ -1339,6 +1343,10 @@ impl Gpu {
                         fluxa_ui::draw_skin_pinned(&context, viewport, &tree, &mut assets, 96);
                     let skin = crate::skins::remember_more(frame);
                     rendered_layout.activated = skin.activated.or(rendered_layout.activated);
+                    if skin.text_input_node.is_some() {
+                        rendered_layout.text_input = skin.text_input;
+                        rendered_layout.text_input_node = skin.text_input_node;
+                    }
                     rendered_layout.focusable.extend(skin.focusable);
                 }
             }
@@ -1368,6 +1376,10 @@ impl Gpu {
             ) {
                 let skin = crate::skins::remember_more(frame);
                 rendered_layout.activated = skin.activated.or(rendered_layout.activated);
+                if skin.text_input_node.is_some() {
+                    rendered_layout.text_input = skin.text_input;
+                    rendered_layout.text_input_node = skin.text_input_node;
+                }
                 rendered_layout.focusable.extend(skin.focusable);
             }
             let skinned = menu.as_ref().and_then(|menu| {
@@ -1393,6 +1405,10 @@ impl Gpu {
             ) {
                 let skin = crate::skins::remember_more(frame);
                 rendered_layout.activated = skin.activated.or(rendered_layout.activated);
+                if skin.text_input_node.is_some() {
+                    rendered_layout.text_input = skin.text_input;
+                    rendered_layout.text_input_node = skin.text_input_node;
+                }
                 rendered_layout.focusable.extend(skin.focusable);
             }
             if let Some(ambient) = ambient {
@@ -1425,6 +1441,10 @@ impl Gpu {
                     );
                     let skin = crate::skins::remember_more(frame);
                     rendered_layout.activated = skin.activated.or(rendered_layout.activated);
+                    if skin.text_input_node.is_some() {
+                        rendered_layout.text_input = skin.text_input;
+                        rendered_layout.text_input_node = skin.text_input_node;
+                    }
                     rendered_layout.focusable.extend(skin.focusable);
                 }
             }
@@ -1454,6 +1474,10 @@ impl Gpu {
                     );
                     let skin = crate::skins::remember_more(frame);
                     rendered_layout.activated = skin.activated.or(rendered_layout.activated);
+                    if skin.text_input_node.is_some() {
+                        rendered_layout.text_input = skin.text_input;
+                        rendered_layout.text_input_node = skin.text_input_node;
+                    }
                     rendered_layout.focusable.extend(skin.focusable);
                 }
             }
@@ -1481,6 +1505,10 @@ impl Gpu {
                 );
                 let skin = crate::skins::remember_more(frame);
                 rendered_layout.activated = skin.activated.or(rendered_layout.activated);
+                if skin.text_input_node.is_some() {
+                    rendered_layout.text_input = skin.text_input;
+                    rendered_layout.text_input_node = skin.text_input_node;
+                }
                 rendered_layout.focusable.extend(skin.focusable);
             }
             if player.is_none() && profiles.is_none() && welcome.is_none() {
@@ -1505,6 +1533,10 @@ impl Gpu {
                     );
                     let skin = crate::skins::remember_more(frame);
                     rendered_layout.activated = skin.activated.or(rendered_layout.activated);
+                    if skin.text_input_node.is_some() {
+                        rendered_layout.text_input = skin.text_input;
+                        rendered_layout.text_input_node = skin.text_input_node;
+                    }
                     rendered_layout.focusable.extend(skin.focusable);
                 }
             }

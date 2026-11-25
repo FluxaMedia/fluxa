@@ -38,6 +38,9 @@ pub(crate) fn remember_actions(state: &mut RendererState, actions: Vec<UiAction>
         let minimized = state.player.as_ref().is_some_and(|player| player.minimized);
         if state.player.is_some() && (!minimized || node.is_some_and(player::is_mini_node)) {
             if let Some(node) = node {
+                if crate::skins::is_field(node) {
+                    continue;
+                }
                 if let Some(crate::skins::Local::Watch(op, index)) =
                     crate::skins::local_for_node(node)
                 {
