@@ -252,6 +252,25 @@
                   "op": "cast"
                 }
               }
+            },
+            {
+              "type": "row",
+              "class": "icon-btn",
+              "children": [
+                {
+                  "type": "icon",
+                  "props": {
+                    "name": "Users"
+                  }
+                }
+              ],
+              "when": "player.canWatch",
+              "action": {
+                "name": "player",
+                "args": {
+                  "op": "watch"
+                }
+              }
             }
           ]
         }

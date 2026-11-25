@@ -213,6 +213,7 @@ pub(crate) fn detail_node(node: u64) -> Option<u64> {
             "info" => NODE_PLAYER_INFO,
             "cast" => NODE_PLAYER_CAST,
             "change_source" => NODE_PLAYER_CHANGE_SOURCE,
+            "watch" => NODE_PLAYER_WATCH,
             "show" => NODE_PLAYER_CONTROLS,
             "hide" => NODE_PLAYER_HIDE_CONTROLS,
             "panel_close" => NODE_PLAYER_PANEL_CLOSE,
