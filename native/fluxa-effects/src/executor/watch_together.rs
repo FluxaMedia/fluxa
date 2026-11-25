@@ -505,8 +505,9 @@ impl EffectExecutor {
         inbox: &mut UnboundedReceiver<Outbound>,
     ) -> Result<(), String> {
         let mut link = self.watch_link(Some(nuvio)).await?;
+        let gate = if nuvio { "&nuvio_realtime=1" } else { "" };
         let socket_url = format!(
-            "{}/realtime/v1/websocket?apikey={}&vsn=1.0.0",
+            "{}/realtime/v1/websocket?apikey={}&vsn=1.0.0{gate}",
             link.base.trim_end_matches('/').replacen("http", "ws", 1),
             link.key
         );
