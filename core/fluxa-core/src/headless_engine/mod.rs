@@ -48,6 +48,7 @@ pub(crate) struct HeadlessEngine {
     // be included in a UI state snapshot or StatePatch.
     pub(crate) pending_effects: Vec<EffectEnvelope>,
     pub(crate) watch_session: Option<crate::player::party::PartySession>,
+    pub(crate) watch_stream: Option<crate::player::watch_together::SharedStream>,
 }
 
 pub struct Engine(HeadlessEngine);

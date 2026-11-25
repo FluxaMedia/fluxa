@@ -65,6 +65,7 @@ pub struct PartySession {
     playback: Option<PartyPlayback>,
     clock: PartyClock,
     local_presence: Option<PartyPresence>,
+    shared_stream: Option<Value>,
     status_due: Option<i64>,
     persist_due: Option<i64>,
     heartbeat_due: i64,
@@ -108,6 +109,7 @@ impl PartySession {
             playback,
             clock,
             local_presence: None,
+            shared_stream: None,
             status_due: None,
             persist_due: None,
             heartbeat_due: at + HEARTBEAT_INTERVAL_MS,
@@ -159,6 +161,10 @@ impl PartySession {
         }
     }
 
+    pub fn set_shared_stream(&mut self, stream: Option<Value>) {
+        self.shared_stream = stream;
+    }
+
     pub fn on_connection(&mut self, connected: bool) -> Vec<PartyEffect> {
         if !connected {
             let own = self.party.member_id.clone();
@@ -198,6 +204,14 @@ impl PartySession {
                     event: "status",
                     payload: encode(&self.own_presence()),
                 }];
+                if self.party.is_host()
+                    && let Some(stream) = &self.shared_stream
+                {
+                    effects.push(PartyEffect::Send {
+                        event: "stream",
+                        payload: stream.clone(),
+                    });
+                }
                 if let Some(playback) = &self.playback {
                     effects.push(self.send_state(playback));
                 }

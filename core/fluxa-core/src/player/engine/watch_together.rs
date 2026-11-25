@@ -161,6 +161,7 @@ pub(crate) fn dispatch_join(
 
 fn request_room(engine: &mut HeadlessEngine, payload: RoomPayload) -> Vec<EffectEnvelope> {
     let generation = engine.bump_generation(GenerationKey::WatchTogether);
+    engine.watch_stream = None;
     let previous = engine.watch_session.take().map(|s| s.party().id.clone());
     let mut effects = Vec::new();
     if let Some(id) = previous {
@@ -182,6 +183,7 @@ fn request_room(engine: &mut HeadlessEngine, payload: RoomPayload) -> Vec<Effect
 }
 
 pub(crate) fn dispatch_leave(engine: &mut HeadlessEngine) -> Vec<EffectEnvelope> {
+    engine.watch_stream = None;
     let id = engine.watch_session.take().map(|s| s.party().id.clone());
     *engine.state.watch_together = WatchTogetherState::default();
     let generation = engine.bump_generation(GenerationKey::WatchTogether);
@@ -273,20 +275,30 @@ pub(crate) fn dispatch_content(
     let mut effects = run(engine, now_ms, |session| {
         session.publish_media(media, start_position_ms, t(now_ms))
     });
-    if let (Some(stream), Some(session)) = (stream, engine.watch_session.as_ref()) {
-        let payload = json!({
-            "member_id": session.party().member_id,
-            "stream": {
-                "media_key": session.party().media.key(),
-                "url": stream.url,
-                "headers": stream.headers,
-                "name": stream.title,
-            },
-        });
+    engine.watch_stream = stream;
+    let payload = stream_payload(engine);
+    if let Some(session) = engine.watch_session.as_mut() {
+        session.set_shared_stream(payload.clone());
+    }
+    if let (Some(payload), Some(session)) = (payload, engine.watch_session.as_ref()) {
         let room = session.party().id.clone();
         effects.push(broadcast(engine, &room, "stream", payload));
     }
     effects
+}
+
+fn stream_payload(engine: &HeadlessEngine) -> Option<Value> {
+    let stream = engine.watch_stream.as_ref()?;
+    let session = engine.watch_session.as_ref()?;
+    Some(json!({
+        "member_id": session.party().member_id,
+        "stream": {
+            "media_key": session.party().media.key(),
+            "url": stream.url,
+            "headers": stream.headers,
+            "name": stream.title,
+        },
+    }))
 }
 
 pub(crate) fn dispatch_status(
@@ -491,6 +503,10 @@ fn install(
     );
     let _ = &mut session;
     engine.watch_session = Some(session);
+    let payload = stream_payload(engine);
+    if let Some(session) = engine.watch_session.as_mut() {
+        session.set_shared_stream(payload);
+    }
     let state = &mut *engine.state.watch_together;
     state.connection_state = WatchTogetherConnectionState::Connected;
     state.error_message = None;
