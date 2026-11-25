@@ -547,6 +547,39 @@ pub(crate) fn open_modal(state: &mut RendererState) {
     }
 }
 
+pub(crate) fn act(state: &mut RendererState, op: &str, index: usize) {
+    use fluxa_ui::WatchTogetherRequest as Request;
+    let request = match op {
+        "close" => Some(Request::Close),
+        "create" => Some(Request::Create),
+        "join" => Some(Request::Join(
+            crate::skins::take_field("watchCode").trim().to_uppercase(),
+        )),
+        "leave" => Some(Request::Leave),
+        "end" => Some(Request::End),
+        "copy" => Some(Request::CopyCode),
+        "locked" => state
+            .watch_view
+            .as_ref()
+            .map(|view| Request::SetLocked(!view.locked)),
+        "share" => state
+            .watch_view
+            .as_ref()
+            .map(|view| Request::SetShareStream(!view.share_stream)),
+        "kick" => state
+            .watch_view
+            .as_ref()
+            .and_then(|view| view.members.get(index))
+            .map(|member| Request::Kick(member.id.clone())),
+        "chat" => Some(Request::Chat(crate::skins::take_field("watchChat")))
+            .filter(|request| matches!(request, Request::Chat(text) if !text.trim().is_empty())),
+        _ => None,
+    };
+    if let Some(request) = request {
+        handle(state, request);
+    }
+}
+
 pub(crate) fn handle(state: &mut RendererState, request: fluxa_ui::WatchTogetherRequest) {
     use fluxa_ui::WatchTogetherRequest as Request;
     match request {

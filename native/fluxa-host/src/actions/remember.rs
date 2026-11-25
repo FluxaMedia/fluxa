@@ -38,6 +38,12 @@ pub(crate) fn remember_actions(state: &mut RendererState, actions: Vec<UiAction>
         let minimized = state.player.as_ref().is_some_and(|player| player.minimized);
         if state.player.is_some() && (!minimized || node.is_some_and(player::is_mini_node)) {
             if let Some(node) = node {
+                if let Some(crate::skins::Local::Watch(op, index)) =
+                    crate::skins::local_for_node(node)
+                {
+                    crate::watch_together::act(state, &op, index);
+                    continue;
+                }
                 player::activate(state, node);
             } else if matches!(action, UiAction::Back) {
                 player::close(state);
@@ -147,38 +153,7 @@ pub(crate) fn remember_actions(state: &mut RendererState, actions: Vec<UiAction>
                         "revoke_scripts" => crate::skins::set_scripts(&id, false),
                         _ => crate::skins::install_from(&crate::skins::take_field("skinSource")),
                     },
-                    Local::Watch(op, index) => {
-                        use fluxa_ui::WatchTogetherRequest as Request;
-                        let request = match op.as_str() {
-                            "close" => Some(Request::Close),
-                            "create" => Some(Request::Create),
-                            "join" => Some(Request::Join(
-                                crate::skins::take_field("watchCode").trim().to_uppercase(),
-                            )),
-                            "leave" => Some(Request::Leave),
-                            "end" => Some(Request::End),
-                            "copy" => Some(Request::CopyCode),
-                            "locked" => state
-                                .watch_view
-                                .as_ref()
-                                .map(|view| Request::SetLocked(!view.locked)),
-                            "share" => state
-                                .watch_view
-                                .as_ref()
-                                .map(|view| Request::SetShareStream(!view.share_stream)),
-                            "kick" => state
-                                .watch_view
-                                .as_ref()
-                                .and_then(|view| view.members.get(index))
-                                .map(|member| Request::Kick(member.id.clone())),
-                            "chat" => Some(Request::Chat(crate::skins::take_field("watchChat")))
-                                .filter(|request| matches!(request, Request::Chat(text) if !text.trim().is_empty())),
-                            _ => None,
-                        };
-                        if let Some(request) = request {
-                            crate::watch_together::handle(state, request);
-                        }
-                    }
+                    Local::Watch(op, index) => crate::watch_together::act(state, &op, index),
                     Local::Welcome(op) => {
                         let request = match op.as_str() {
                             "signin" => fluxa_ui::WelcomeRequest::SignIn,
