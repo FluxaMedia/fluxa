@@ -852,7 +852,7 @@ button:focus { scale: 1.04; }
 .panel-cols { gap: var(--gap-loose); align-items: flex-start; }
 .panel-scroll { height: 40vh; }
 .sheet-scroll { height: 55vh; }
-.sync-panel { width: 340px; }
+.sync-panel, .panel-width { width: 340px; }
 
 @media (form: mobile) {
   .layer.sheet-on-mobile { place: bottom center; padding: 0; }
@@ -864,5 +864,23 @@ button:focus { scale: 1.04; }
 .reading { gap: var(--gap-tight); align-items: flex-end; }
 
 .stats-panel section { width: 17.5rem; }
+
+@media (form: desktop) {
+  .player .icon-btn { width: 50px; height: 50px; }
+  .player .icon-btn.small { width: 40px; height: 40px; }
+  .player h1 { font-size: 33px; }
+  .player h4 { font-size: 23px; }
+  .player p, .player small, .player button { font-size: 17.5px; }
+  .player button { height: 50px; }
+  .player .chip { height: 40px; }
+  .player .slider { height: 30px; }
+  .player .bar { height: 6px; }
+  .player .readout { width: 5rem; }
+  .player .panel-width, .player .sync-panel { width: 425px; }
+  .player .player-time { font-size: 17.5px; }
+  .player .switch { width: 4.4rem; height: 2.5rem; }
+  .player .code { width: 350px; }
+  .player .chat-input { width: 18.75rem; }
+}
 
 /* ==== end of stylesheet =================================================== */

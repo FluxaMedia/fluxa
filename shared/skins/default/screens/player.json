@@ -288,7 +288,8 @@
             {
               "type": "text",
               "text": "{player.elapsed}",
-              "style": "meta"
+              "style": "meta",
+              "class": "player-time"
             },
             {
               "type": "stack",
@@ -1964,8 +1965,7 @@
       "children": [
         {
           "type": "column",
-          "class": "popover player-panel panel-form",
-          "width": "{const.panelWidth}",
+          "class": "popover player-panel panel-form panel-width",
           "children": [
             {
               "include": "watch_body",
@@ -2002,8 +2002,7 @@
         {
           "type": "column",
           "when": "player.next",
-          "class": "popover player-panel panel-next",
-          "width": "{const.panelWidth}",
+          "class": "popover player-panel panel-next panel-width",
           "children": [
             {
               "type": "image",

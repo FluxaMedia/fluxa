@@ -1332,6 +1332,20 @@
       "since": 1
     },
     {
+      "name": "player-time",
+      "element": "text",
+      "meaning": "Elapsed time beside the player seek bar",
+      "stability": "internal",
+      "since": 6
+    },
+    {
+      "name": "panel-width",
+      "element": "column",
+      "meaning": "Standard width of a floating player panel",
+      "stability": "internal",
+      "since": 6
+    },
+    {
       "name": "player-panel",
       "element": "column",
       "meaning": "Floating panel in the player (audio, subtitles, settings)",
